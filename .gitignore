@@ -41,8 +41,7 @@ yarn-error.log*
 next-env.d.ts
 
 # project-specific
-*.sqlite
-*.sqlite-journal
+*.sqlite*
 docs/superpowers/captures/
 sources/
 *.har
