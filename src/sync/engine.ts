@@ -19,7 +19,21 @@ export type SyncResult = {
   preview: { new: AssetTransactionDoc[]; alreadyPresent: string[] }
 }
 
-export async function runSync(input: SyncInput): Promise<SyncResult> {
+export type PreparedSync = {
+  toInsert: AssetTransactionDoc[]
+  alreadyPresent: string[]
+  needsAsset: CanonicalTxn[]
+  unsupported: UnsupportedRow[]
+  total: number
+}
+
+/**
+ * Steps 1-6: read existing docs, diff, build AssetTransactionDocs.
+ * Does NOT write anything to CouchDB.
+ */
+export async function prepareSync(
+  input: Omit<SyncInput, 'couch'> & { couch: Pick<CouchClient, 'listAssetTransactions'> },
+): Promise<PreparedSync> {
   const existing = await input.couch.listAssetTransactions(input.accountId)
   const existingIds = new Set(existing.map((d: Record<string, unknown>) => d['_id']))
   const now = new Date().toISOString()
@@ -41,11 +55,22 @@ export async function runSync(input: SyncInput): Promise<SyncResult> {
     else toInsert.push(doc)
   }
 
+  return { toInsert, alreadyPresent, needsAsset, unsupported: input.unsupported, total: input.txns.length }
+}
+
+/**
+ * Commit step: writes prepared docs to CouchDB via bulkDocs.
+ */
+export async function commitSync(
+  prepared: PreparedSync,
+  couch: Pick<CouchClient, 'bulkDocs'>,
+): Promise<SyncResult> {
   let inserted = 0, conflict = 0
   const errors: SyncResult['errors'] = []
-  for (let i = 0; i < toInsert.length; i += 50) {
-    const batch = toInsert.slice(i, i + 50)
-    const res = await input.couch.bulkDocs(batch)
+
+  for (let i = 0; i < prepared.toInsert.length; i += 50) {
+    const batch = prepared.toInsert.slice(i, i + 50)
+    const res = await couch.bulkDocs(batch)
     for (const r of res) {
       if (r.status === 'inserted') inserted++
       else if (r.status === 'conflict') conflict++
@@ -54,9 +79,15 @@ export async function runSync(input: SyncInput): Promise<SyncResult> {
   }
 
   return {
-    total: input.txns.length,
+    total: prepared.total,
     inserted, conflict, errors,
-    needsAsset, unsupported: input.unsupported,
-    preview: { new: toInsert, alreadyPresent },
+    needsAsset: prepared.needsAsset,
+    unsupported: prepared.unsupported,
+    preview: { new: prepared.toInsert, alreadyPresent: prepared.alreadyPresent },
   }
+}
+
+export async function runSync(input: SyncInput): Promise<SyncResult> {
+  const prepared = await prepareSync(input)
+  return commitSync(prepared, input.couch)
 }
