@@ -169,8 +169,26 @@ CouchDB ignores fields the official clients don't know about. They round-trip ac
 ### Deterministic `_id` for dedup
 
 ```
-_id = "-AssetTransaction_" + uuidv5(NAMESPACE_WALLET_SYNC, broker + ":" + externalId)
+_id = "-AssetTransaction_" + uuidv5(broker + ":" + externalId, NAMESPACE_WALLET_SYNC)
 ```
+
+We use plain UUIDv5 by default. This is what phase 0 capture #12 tests against the live BudgetBakers CouchDB. If that test passes (BudgetBakers does not enforce a UUID-version regex on `_id`), we ship as-is.
+
+**Fallback if phase 0 #12 reveals UUID-version rejection.** Wallet's web/mobile clients use PouchDB, which generates v4 UUIDs (the captured doc shows `...4a22-9ef2...` — note the `4` at position 14). If `validate_doc_update` enforces a v4-shaped `_id`, swap the generator to v5-with-version-nibble-flipped-to-4:
+
+```ts
+function deterministicV4LookingUuid(name: string): string {
+  const v5 = uuidv5(name, NAMESPACE_WALLET_SYNC)
+  // v5 format: xxxxxxxx-xxxx-5xxx-Nxxx-xxxxxxxxxxxx
+  // overwrite position 14 (the version nibble) with '4' → bit-for-bit
+  // indistinguishable from a real v4 UUID to any validator that checks
+  // UUID version. Still deterministic. Collision resistance is
+  // essentially unchanged at our scale (122 bits of entropy).
+  return v5.substring(0, 14) + '4' + v5.substring(15)
+}
+```
+
+The fallback is a one-line generator change; the rest of the architecture is unaffected. If phase 0 #12 reveals an even stricter rejection (any non-PouchDB-generated `_id`), the second fallback is mirror-mode dedup (random `_id`s + `externalId` field as the dedup key, queried via `_find` before writes).
 
 `NAMESPACE_WALLET_SYNC` is **pinned for the lifetime of this tool**:
 
@@ -276,6 +294,7 @@ Before writing sync code, the user performs small captures from the Wallet web U
 | 9 | A `_bulk_docs` call with 100 docs (synthetic, e.g. via re-export of historic data triggering bulk replication) | Max practical batch size, presence of payload-size limits, observed rate-limiting headers |
 | 10 | Open `sources/tradeville.pdf` with `pdfjs-dist`; dump all text items with `(text, x, y, page)` triplets | Tradeville PDF layout: column x-positions, header row y-position per page, separator/noise text to ignore. **Output**: a `parsers/tradeville-layout.ts` constants file describing column geometry. |
 | 11 *(dry-run, not network capture)* | Open `sources/xtb.xlsx` and `sources/ibkr.csv` with the implementation parsers in dry-run mode | Sanity-check parsers against real data before writing to CouchDB; produce a JSON dump of `CanonicalTxn[]` for human review. |
+| 12 | Write **one** synthetic `AssetTransaction` doc to CouchDB with a deterministic v4-looking `_id` (e.g. `-AssetTransaction_<uuidv5-with-flipped-version>`), `accountId` pointing to a sandbox-acceptable account, and minimal valid fields; immediately read it back via `_find`. | Confirms BudgetBakers' `validate_doc_update` accepts a deterministic-but-v4-shaped `_id`. **If accepted**: deterministic-`_id` dedup is green-lit, proceed as designed. **If rejected** with a UUID-version error: investigate the actual constraint and adjust the `deterministicV4LookingUuid` function. **If rejected** with a more general "not a valid id format" error: fall back to mirror-mode dedup (random `_id`s + `externalId` field as the dedup key, queried via `_find`). Document the chosen path in this spec. The test doc is then deleted (PUT with `_deleted: true`) to keep Wallet clean. |
 
 **Outputs of phase 0** (committed to the spec, not the captures themselves):
 
@@ -469,6 +488,7 @@ Local state is purely an audit/UX cache. **CouchDB remains the source of truth**
 | Risk | Likelihood | Mitigation |
 |---|---|---|
 | BudgetBakers changes the CouchDB schema | Low (would break their own clients) | Re-run phase 0 captures; update the doc shape; bump tool version |
+| `validate_doc_update` rejects our deterministic `_id` | Low (mitigated by force-v4 shape) | Phase 0 capture #12 tests this explicitly before any write code ships. Two-step fallback: refine the v4-looking UUID generator, then if needed, switch to mirror-mode dedup (random `_id`s + `externalId` field). Architecture survives either way. |
 | `transactionType` enum has unexpected values | Medium | Phase 0 captures resolve this before any write code is shipped |
 | Broker CSVs lack stable transaction ids | Medium | Falls back to content hash; documented per-parser |
 | User's basic-auth token expires | Unknown | UI flow for re-paste; document the Wallet logout/login rotation path |
