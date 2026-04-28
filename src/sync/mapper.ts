@@ -54,9 +54,13 @@ export function toAssetTransactionDoc(txn: CanonicalTxn, ctx: MapperContext): As
     // 25.535 * 100 = 2553.4999... rounds down to 2553). Real broker prices
     // rarely sit on those boundaries; revisit if a parser starts feeding them.
     price: Math.round(txn.pricePerShare * 100),
-    // Round to 4 decimals (sub-cent precision) to avoid float drift like
-    // -2.18 * 100 = -217.99999999999997. Spec encoding is "decimal × 100".
-    cashAmount: Number((txn.cashAmount * 100).toFixed(4)),
+    // Wallet's data model: cashAmount is the absolute amount of the trade
+    // (gross + fee) in cents. The transactionType field (0=buy, 1=sell)
+    // determines whether Wallet adds or subtracts from the cash balance.
+    // Verified empirically: a captured live BUY had cashAmount: 11804.4998
+    // (positive) for a -€118.045 outflow.
+    // toFixed(4) cleans FP drift like 2.18*100 = 217.99999999999997.
+    cashAmount: Number((Math.abs(txn.cashAmount) * 100).toFixed(4)),
     priceCurrencyCode: txn.tradeCurrency,
     cashAmountCurrencyCode: txn.settlementCurrency,
     externalSource: txn.broker,

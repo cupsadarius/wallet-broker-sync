@@ -24,7 +24,7 @@ describe('toAssetTransactionDoc', () => {
     expect(doc.assetType).toBe(1)
     expect(doc.transactionType).toBe(0)
     expect(doc.price).toBe(11804)
-    expect(doc.cashAmount).toBe(-11805)        // exact, no float drift
+    expect(doc.cashAmount).toBe(11805)         // absolute value (Wallet's convention; direction comes from transactionType)
     expect(doc.priceCurrencyCode).toBe('EUR')
     expect(doc.cashAmountCurrencyCode).toBe('EUR')
     expect(doc.externalSource).toBe('xtb')
@@ -40,7 +40,7 @@ describe('toAssetTransactionDoc', () => {
     expect(doc.priceCurrencyCode).toBe('USD')
     expect(doc.cashAmountCurrencyCode).toBe('EUR')
     expect(doc.price).toBe(2552)
-    expect(doc.cashAmount).toBe(-218)
+    expect(doc.cashAmount).toBe(218)           // absolute value
   })
   it('rounds price to nearest integer × 100', () => {
     expect(toAssetTransactionDoc({ ...baseTxn, pricePerShare: 25.525 }, ctx).price).toBe(2553)
