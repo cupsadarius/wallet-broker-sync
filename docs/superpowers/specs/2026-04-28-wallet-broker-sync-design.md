@@ -133,7 +133,7 @@ Broker-agnostic. Workflow:
 
 ## Data model
 
-### Wallet `AssetTransaction` (captured from network)
+### Wallet `AssetTransaction` (schema confirmed via `_changes` feed capture)
 
 ```
 {
@@ -142,19 +142,24 @@ Broker-agnostic. Workflow:
   reservedModelType:  "AssetTransaction"
   reservedOwnerId:    <userId>
   reservedAuthorId:   <userId>
-  reservedSource:     "web"
-  reservedCreatedAt:  ISO timestamp
-  reservedUpdatedAt:  ISO timestamp
+  reservedSource:     "web"   // we'll set to "wallet-broker-sync" on writes
+  reservedCreatedAt:  ISO timestamp (UTC, ms precision)
+  reservedUpdatedAt:  ISO timestamp (UTC, ms precision)
   assetId:            "-StocksFundsAsset_<uuid>"
   accountId:          "-Account_<uuid>"
-  assetType:          number   // TBD — phase 0 captures the full enum (provisional: 1 = stock/ETF)
-  transactionType:    number   // TBD — phase 0 captures the full enum (provisional: 0 = buy, 1 = sell)
-  date:               ISO timestamp   // TBD — phase 0 confirms timezone convention
-  quantity:           number
-  price:              number   // TBD — phase 0 confirms encoding (decimal vs scaled integer)
-  cashAmount:         number   // total cash impact incl. fee
+  assetType:          1                // stock/ETF (CONFIRMED)
+  transactionType:    0                // 0 = buy (CONFIRMED, two examples). 1 = sell (still TBD — no sell observed)
+  date:               ISO timestamp    // UTC with ms precision, e.g. "2026-04-28T10:09:20.103Z"
+  quantity:           number           // decimal, in shares (e.g. 0.1, 1.0, 0.93)
+  price:              number           // INTEGER scaled × 100 in priceCurrencyCode
+                                       // FLTR @ $25.52 → price = 2552
+                                       // VUAA @ €118.04 → price = 11804
+  cashAmount:         number           // DECIMAL scaled × 100 in cashAmountCurrencyCode
+                                       // (decimals retained for sub-cent precision from fees/FX)
+                                       // 0.1 FLTR @ $25.52, settled in EUR → cashAmount = 217.839
   cashAmountCurrencyCode: ISO 4217
-  priceCurrencyCode:  ISO 4217
+  priceCurrencyCode:  ISO 4217         // may differ from cashAmountCurrencyCode for FX trades;
+                                       // no fxRate stored — Wallet derives FX server-side
 
   // Custom fields we add (CouchDB schemaless; round-trip safely):
   externalSource:     "xtb" | "ibkr" | "tradeville"
@@ -164,7 +169,18 @@ Broker-agnostic. Workflow:
 }
 ```
 
-CouchDB ignores fields the official clients don't know about. They round-trip across replication and stay attached to the doc.
+**Encoding rules for the mapper (CanonicalTxn → AssetTransaction):**
+
+- `pricePerShare` (real currency, e.g. 25.52) → multiply by 100 → `price: 2552` (integer; round to nearest if necessary).
+- `cashAmount` (real currency, e.g. -2.18) → multiply by 100 → `cashAmount: -218.0` (decimal preserved). Sign convention for buys is verified during phase-0 capture #12.
+- Quantity stays as-is (decimal, no scaling).
+- `date` normalized to UTC Z-suffixed ISO with ms precision.
+
+**Sell case still TBD.** No sell appeared in the captured `_changes` window. Phase-0 capture #12 writes both a synthetic buy and a synthetic sell to confirm `transactionType: 1` for sells.
+
+**Fee shape: not on `AssetTransaction`.** The "Charges, Fees" row in Wallet's UI is a separate `Record` doc (different `reservedModelType`). Phase 0 still needs one capture of that doc shape; until confirmed, parsers fold trade-embedded fees into `cashAmount` and emit no separate fee txn. Standalone fee rows from brokers go to `unsupported` and a v1.1 patch wires them in once we have the `Record` schema.
+
+CouchDB is schemaless — fields the official clients don't know about (`externalSource`, `externalId`, `syncedAt`, `syncToolVersion`) round-trip safely.
 
 ### Deterministic `_id` for dedup
 
@@ -213,28 +229,72 @@ For brokers that don't supply a stable transaction id, the parser computes a con
 
 The canonicalization function is part of the public parser contract and tested against fixtures. Two identical orders on the same millisecond timestamp on the same venue would still collide — accepted limitation, documented per parser.
 
-### Asset lookup
+### Asset lookup (`StocksFundsAsset` schema confirmed)
 
-Each `AssetTransaction` requires an `assetId` pointing to an existing `StocksFundsAsset` doc.
+```
+{
+  _id:                "-StocksFundsAsset_<uuid>"
+  reservedModelType:  "StocksFundsAsset"
+  reservedOwnerId:    <userId>
+  reservedAuthorId:   <userId>
+  reservedSource:     "web" | "android" | "ios"
+  reservedCreatedAt / reservedUpdatedAt: ISO timestamp
+  symbol:             "VUAA" | "FLTR" | …      // ticker
+  exchange:           "XETR" | "NYSE" | …      // short name
+  exchangeName:       "FRANKFURT" | "NEW YORK STOCK EXCHANGE, INC." | …  // full name
+  exchangeCode:       "XETR" | "ARCX" | …      // MIC (Market Identifier Code) — our lookup key
+  currencyCode:       "EUR" | "USD" | …        // ISO 4217 trading currency
+  name:               "Vanguard S&P 500 UCITS ETF USD Accumulation" | …
+  priceMinDate:       date string              // earliest date with a quoted price
+}
+```
 
-**Symbols are not globally unique.** The same ticker can refer to different securities on different venues (e.g. `SHEL` on LSE vs NYSE), and IBKR accounts in particular trade the same symbol across multiple exchanges. Keying lookups on bare ticker would silently misroute trades to the wrong asset.
+**Symbols are not globally unique.** The same ticker can refer to different securities on different venues (e.g. `SHEL` on LSE vs NYSE). The schema confirmation above resolves the open question — **`exchangeCode` (MIC) is the venue field we key on.**
 
 **Strategy:**
 
 1. On startup, fetch all `StocksFundsAsset` docs (low volume — the user's portfolio set).
-2. Build a `Map<exchange|MIC + ":" + symbol, assetId>`. The `StocksFundsAsset` schema's exchange field name is TBD in phase 0; until confirmed, the implementation uses whichever field carries the venue (MIC code, exchange short name, or operating MIC).
-3. Each `CanonicalTxn` carries `exchange` (MIC where the trade settled). The parser is required to populate it; CSVs that omit exchange must be enriched by the parser using broker-specific rules (e.g. XTB's instrument table) or marked as parse errors.
-4. For each canonical txn, look up `(exchange, symbol)`. If found, use the `assetId`. If not found, we'd need to create a new `StocksFundsAsset` doc — **deferred to phase 0**, because we don't yet know that doc's required schema. v1 short-term path: surface "unknown asset" rows in the preview UI; user creates them once via Wallet's web UI; subsequent imports work.
+2. Build a `Map<exchangeCode + ":" + symbol, assetId>`.
+3. Each `CanonicalTxn` carries `exchange` (MIC). The parser is required to populate it; sources that omit MIC must be enriched by the parser using broker-specific rules (e.g. XTB suffix `.DE` → `XETR`; IBKR description-to-MIC table) or marked as parse errors.
+4. For each canonical txn, look up `(exchangeCode, symbol)`. If found, use the `assetId`. If not found, surface "needs asset created in Wallet" in the preview UI; user creates the asset once via Wallet's web UI (or v2 implements the `StocksFundsAsset` write path now that we have its schema); subsequent imports work.
 
-### Account selection
+**v2 candidate: programmatic asset creation.** The schema above is enough to *create* a new `StocksFundsAsset` doc ourselves — same `_bulk_docs` write path. Deferred from v1 to keep first-cut blast radius small (a wrong asset doc with bad currency/exchange would mis-render every trade against it forever). Once v1 is shaken out and we trust the lookup tables, v1.1 turns "needs asset created" into "we created it."
 
-One-time, in setup:
+### Account selection (`Account` schema confirmed)
 
-1. Fetch all `Account` docs where `accountType` is investment-related.
-2. Show the user a mapping UI: `XTB → ?`, `IBKR → ?`, `Tradeville → ?`.
-3. Persist the mapping to local SQLite (`broker_account_map`).
+```
+{
+  _id:                "-Account_<uuid>"
+  reservedModelType:  "Account"
+  reservedOwnerId:    <userId>
+  reservedAuthorId:   <userId>
+  reservedSource:     "web" | "android" | "ios"
+  reservedCreatedAt / reservedUpdatedAt: ISO timestamp
+  name:               "XTB" | …
+  color:              "#f44336" | …
+  accountType:        7                          // 7 = investment account (CONFIRMED)
+                                                 // other numeric values for cash/credit/savings/etc., not v1's concern
+  currencyId:         "-Currency_<uuid>"         // FK to a Currency doc; NOT an ISO code directly
+  excludeFromStats:   boolean
+  initAmount:         number
+  archived:           boolean
+  position:           number                      // ordering hint
+  investmentInfo:     { assetTypes: [number...] } // declares which assetType values this account accepts;
+                                                  // e.g. [1, 0] = stocks/ETFs and (other type 0)
+  initRefAmount:      number
+}
+```
+
+**Currency indirection.** `Account.currencyId` references a `Currency` doc rather than carrying an ISO 4217 code directly. Implication for our setup screen:
+
+1. Fetch all `Account` docs where `accountType === 7` (investment).
+2. Fetch the `Currency` docs referenced by their `currencyId` (one batch). Map `Currency._id → currencyCode`.
+3. Show the user a mapping UI: `XTB → [Account name + currency]`, `IBKR → ?`, `Tradeville → ?`.
+4. Persist the chosen `accountId` (and resolved `currencyCode`, for use as the canonical txn's `settlementCurrency` default) to local SQLite (`broker_account_map`).
 
 Re-runs use the persisted mapping; the user can edit it in a settings page.
+
+The `Currency` doc's exact schema is one open phase-0 capture — see capture #6 below — but the key field we need (`currencyCode`) is name-self-evident; capturing one such doc confirms it.
 
 ## Sync algorithm
 
@@ -243,7 +303,12 @@ function sync(broker: BrokerId, input: ParserInput, accountId: string) {
   1. const { txns, unsupported } = parsers[broker].parse(input)
   2. Resolve assets: for each unique (exchange, symbol), lookup or surface as "needs creation"
   3. Map to AssetTransaction docs (deterministic _id, custom fields, assigned assetId)
-  4. Read existing docs for this account from CouchDB (Mango query on accountId)
+  4. Read existing docs for this account from CouchDB. Two viable endpoints:
+       - `POST /_find` with selector `{reservedModelType: "AssetTransaction", accountId: "<id>"}`
+         (cleanest; may need a Mango index — empirical)
+       - `GET /_changes?include_docs=true&style=main_only&since=0&limit=1000` paginated by
+         `last_seq`, filtered client-side. Confirmed-working in observed traffic.
+       Default to `_find`; fall back to `_changes` if Mango is restricted.
   5. Diff:
        - existing = set of _id already present
        - new      = docs whose _id not in existing
@@ -281,34 +346,33 @@ This avoids reverse-engineering the asset-creation document schema in v1. v2 can
 
 Before writing sync code, the user performs small captures from the Wallet web UI with DevTools open. Each capture is a curl/HAR for one operation; the spec is updated with confirmed enum values, scaling, and doc shapes. Captures live under `docs/superpowers/captures/` (gitignored — they contain auth tokens) and are summarized into redacted excerpts in this spec.
 
-| # | Operation | Resolves |
-|---|---|---|
-| 1 | Buy 0.001 of an existing low-cost asset (e.g. €1 trade) | `transactionType` for buy; `price` scaling at small-decimal scale |
-| 2 | Sell 0.001 of same asset | `transactionType` for sell |
-| 3 | A buy on an asset priced in a foreign currency (USD asset, EUR account) | FX field shape: separate `priceCurrencyCode` vs `cashAmountCurrencyCode`, `fxRate` storage location |
-| 4 | A buy that triggers a "Charges, Fees" line | Fee = separate doc? Capture its `reservedModelType` and full fields |
-| 5 | View any existing trade and copy its `assetId` and `StocksFundsAsset` doc | `StocksFundsAsset` schema (incl. exchange/MIC field name) for asset lookup and v2 creation |
-| 6 | Fetch all `Account` docs via `_all_docs?include_docs=true&startkey="-Account_"&endkey="-Account_￰"` | `Account` schema; specifically the field that distinguishes investment accounts from regular ones |
-| 7 | A trade on a different timezone (e.g. US market hours from a CET account) | Timezone normalization: is `date` stored as UTC, local, or with offset? Cross-check web vs mobile if possible |
-| 8 | Login flow on the web app | How the Basic-auth token is acquired; whether there's a refresh path or it's pinned for the session |
-| 9 | A `_bulk_docs` call with 100 docs (synthetic, e.g. via re-export of historic data triggering bulk replication) | Max practical batch size, presence of payload-size limits, observed rate-limiting headers |
-| 10 | Open `sources/tradeville.pdf` with `pdfjs-dist`; dump all text items with `(text, x, y, page)` triplets | Tradeville PDF layout: column x-positions, header row y-position per page, separator/noise text to ignore. **Output**: a `parsers/tradeville-layout.ts` constants file describing column geometry. |
-| 11 *(dry-run, not network capture)* | Open `sources/xtb.xlsx` and `sources/ibkr.csv` with the implementation parsers in dry-run mode | Sanity-check parsers against real data before writing to CouchDB; produce a JSON dump of `CanonicalTxn[]` for human review. |
-| 12 | Write **one** synthetic `AssetTransaction` doc to CouchDB with a deterministic v4-looking `_id` (e.g. `-AssetTransaction_<uuidv5-with-flipped-version>`), `accountId` pointing to a sandbox-acceptable account, and minimal valid fields; immediately read it back via `_find`. | Confirms BudgetBakers' `validate_doc_update` accepts a deterministic-but-v4-shaped `_id`. **If accepted**: deterministic-`_id` dedup is green-lit, proceed as designed. **If rejected** with a UUID-version error: investigate the actual constraint and adjust the `deterministicV4LookingUuid` function. **If rejected** with a more general "not a valid id format" error: fall back to mirror-mode dedup (random `_id`s + `externalId` field as the dedup key, queried via `_find`). Document the chosen path in this spec. The test doc is then deleted (PUT with `_deleted: true`) to keep Wallet clean. |
+**Status legend:** ✅ resolved · ⏳ pending
 
-**Outputs of phase 0** (committed to the spec, not the captures themselves):
+| # | Operation | Resolves | Status |
+|---|---|---|---|
+| 1 | Capture an existing buy doc | `transactionType: 0 = buy` | ✅ Confirmed via `_changes` feed (VUAA + FLTR buys) |
+| 2 | Capture an existing sell doc | `transactionType` for sell | ⏳ No sell observed yet — folded into capture #12 (write a synthetic sell) |
+| 3 | A buy on a foreign-currency asset (USD asset, EUR account) | FX field shape | ✅ Confirmed: `priceCurrencyCode` and `cashAmountCurrencyCode` differ on the doc; **no `fxRate` field** |
+| 4 | Capture the "Charges, Fees" Record doc | Fee = separate doc shape (`reservedModelType`, fields) | ⏳ Still needed — one capture of any fee row visible in any account |
+| 5 | `StocksFundsAsset` schema (incl. exchange/MIC) | Asset lookup key + v2 creation schema | ✅ Confirmed: `exchangeCode` (MIC) is the venue key |
+| 6 | `Account` schema + investment discriminator + Currency indirection | Account doc shape, currency lookup | ✅ Mostly confirmed: `accountType: 7 = investment`; `currencyId → Currency._id`. Still need one `Currency` doc capture to confirm its `currencyCode` field name |
+| 7 | Timezone of `date` field | UTC vs local | ✅ Confirmed UTC (Z-suffixed ISO with ms precision) |
+| 8 | Login flow | How basic-auth token is acquired | ✅ Confirmed: tRPC `user.getUser` returns `replication.{login, token, dbName, url}` after next-auth session is established |
+| 9 | `_bulk_docs` batch ceiling | Max safe batch size, rate limits | ⏳ Not yet probed; default to 50/batch and adjust empirically |
+| 10 | Tradeville PDF layout | Column geometry constants | ⏳ To be done locally with `pdfjs-dist` (no browser involved) |
+| 11 *(dry-run, not network capture)* | Run XTB + IBKR parsers on `sources/` | Sanity-check before writes | ⏳ Done as part of plan Step 2 |
+| 12 | Write 1 synthetic buy + 1 synthetic sell `AssetTransaction` to CouchDB with deterministic v5 `_id`s and read back; then delete | Confirms `validate_doc_update` accepts our `_id` shape AND confirms `transactionType: 1 = sell` | ⏳ First executable step in the plan |
 
-- `transactionType` enum table: `0=buy, 1=sell, ?=fee, ?=…` — fully filled in
-- `assetType` enum table — fully filled in for stocks/ETFs (other types deferred)
-- `price` field encoding: decimal vs integer scaling, with example
-- Fee doc shape: model type, fields, relationship to its parent trade
-- `StocksFundsAsset` schema: fields needed to resolve and (eventually) create
-- `Account` schema: investment-account discriminator field
-- Timezone convention
-- Reserved audit fields required on writes: confirmed list of `reservedCreatedAt`, `reservedUpdatedAt`, `reservedSource`, `reservedOwnerId`, `reservedAuthorId`, plus any others observed
-- Safe `_bulk_docs` batch size
+**Remaining unknowns gating implementation:**
 
-The implementation plan does not begin until phase 0 captures are filed and this spec's TBDs are resolved.
+- Sell `transactionType` (assumed `1`; verified by capture #12 writing a synthetic sell)
+- Fee `Record` doc shape (capture #4) — non-blocking for v1 buys/sells; folded fees handled meanwhile
+- `Currency` doc shape (one capture during account-fetch) — non-blocking; we just need `currencyCode`
+- `_id` validator acceptance (capture #12) — blocks first real write but not parser/UI work
+- Tradeville PDF layout (capture #10) — blocks Tradeville parser only; XTB and IBKR can ship without it
+- `_bulk_docs` batch ceiling (capture #9) — empirical post-implementation; non-blocking
+
+The implementation plan can begin now. Phase-0 captures #4, #6 (Currency), #9, #10, #12 become explicit early steps in the plan.
 
 ## Parser layer details
 
