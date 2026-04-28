@@ -3,7 +3,7 @@ import { z } from 'zod'
 import { db, runMigrations } from '@/src/storage/db'
 import { config, brokerAccountMap } from '@/src/storage/schema'
 import { saveCouchCreds, loadCouchCreds, deleteCouchCreds } from '@/src/storage/credentials'
-import { eq, inArray } from 'drizzle-orm'
+import { inArray } from 'drizzle-orm'
 import { formatError } from '@/src/sync/format-error'
 
 // Run migrations on first import
