@@ -36,7 +36,7 @@ export async function GET() {
 
 const ConnectionSchema = z.object({
   kind: z.literal('connection'),
-  couchUrl: z.string().url(),
+  couchUrl: z.url(),
   dbName: z.string().min(1),
   login: z.string().min(1),
   token: z.string().min(1),
