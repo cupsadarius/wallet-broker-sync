@@ -687,7 +687,7 @@ export class CouchClient {
 ```bash
 npx vitest run tests/sync/couch.test.ts
 ```
-Expected: PASS, 3 tests.
+Expected: PASS, 4 tests.
 
 - [ ] **Step 5.4: Commit**
 
@@ -1522,9 +1522,37 @@ git add app/setup/ && git commit -m "feat: setup screen for CouchDB credentials 
 
 ## Task 14: UI — Upload + parser detection
 
-**Files:** `app/upload/page.tsx`, `app/upload/UploadDropzone.tsx`
+**Files:** `app/upload/page.tsx`, `app/upload/UploadDropzone.tsx`, `src/ui/store.ts`
 
-State flow: drop file → client computes broker hint from extension → POST `/api/sync?dryRun=true` (multipart) → server returns parsed result → store in `sessionStorage` → navigate to `/preview`.
+**Cross-screen state:** the upload → preview → result flow needs to keep the original `File` bytes available for the confirm step (the preview screen must POST the *same* file to `/api/sync` without `dryRun`). `sessionStorage` only holds strings and JSON-encoding `Uint8Array` for an XLSX/PDF is awkward. We use a tiny in-memory store via Zustand instead, scoped to the client root layout.
+
+`src/ui/store.ts`:
+```ts
+import { create } from 'zustand'
+import type { BrokerId } from '@/src/types'
+
+type Wizard = {
+  file: File | null
+  broker: BrokerId | null
+  dryRun: any | null            // SyncResult preview
+  result: any | null            // SyncResult final
+  set: (v: Partial<Omit<Wizard, 'set'>>) => void
+  reset: () => void
+}
+
+export const useWizard = create<Wizard>((set) => ({
+  file: null, broker: null, dryRun: null, result: null,
+  set: (v) => set(v),
+  reset: () => set({ file: null, broker: null, dryRun: null, result: null }),
+}))
+```
+
+Add `zustand` to deps:
+```bash
+npm install --save zustand
+```
+
+State flow: drop file → store `File` + suggested `broker` in Zustand → POST `/api/sync?dryRun=true` (multipart) → store result in Zustand as `dryRun` → navigate to `/preview`.
 
 - [ ] **Step 14.1: Dropzone component (client)**
 
@@ -1538,9 +1566,9 @@ shadcn `Select` populated with all three brokers. Pre-selects the auto-detected 
 
 On "Parse" click: build `FormData` with `file` + `broker`, POST `/api/sync?dryRun=true`. Show loading state.
 
-- [ ] **Step 14.4: Persist result and navigate**
+- [ ] **Step 14.4: Persist result in Zustand store and navigate**
 
-On 200: write `{ broker, result }` to `sessionStorage` under a known key (e.g. `wbs:dryrun`). `router.push('/preview')`.
+On 200: `useWizard.getState().set({ file, broker, dryRun: result })`. Then `router.push('/preview')`. The `File` object is held in memory; preview consumes it for the confirm step.
 
 - [ ] **Step 14.5: Error states**
 
@@ -1548,7 +1576,9 @@ On 200: write `{ broker, result }` to `sessionStorage` under a known key (e.g. `
 
 - [ ] **Step 14.6: Manual smoke**
 
-Drop `sources/xtb.xlsx` → verify navigation to `/preview` with non-empty result in sessionStorage.
+Drop `sources/xtb.xlsx` → verify navigation to `/preview` with the wizard store populated (`useWizard.getState().dryRun` non-null).
+
+**Caveat:** Zustand state is lost on hard refresh of `/preview`. If the user reloads, redirect them back to `/upload`. This is acceptable for a personal tool; alternative would be IndexedDB persistence, deferred to v2.
 
 - [ ] **Step 14.7: Commit**
 
@@ -1564,7 +1594,7 @@ git add app/upload/ && git commit -m "feat: upload screen with parser detection 
 
 - [ ] **Step 15.1: Preview page shell (client)**
 
-`app/preview/page.tsx`. Reads `sessionStorage.wbs:dryrun`. If absent, redirect to `/upload`.
+`app/preview/page.tsx`. Reads `useWizard()` for `{ file, broker, dryRun }`. If `dryRun` is null (e.g. user hard-refreshed and lost in-memory state), `router.push('/upload')`.
 
 - [ ] **Step 15.2: Preview table component**
 
@@ -1579,11 +1609,11 @@ Top of page: "X new, Y already in Wallet, Z unsupported". Disabled "Sync" button
 
 - [ ] **Step 15.4: Confirm action**
 
-On "Sync" click: POST `/api/sync` (without `dryRun`) using the same broker + file from sessionStorage. *Implementation detail: store the original `File` blob in sessionStorage as `Uint8Array`, or re-prompt for re-upload if blob too large.* Show loading state.
+On "Sync" click: read `{ file, broker }` from the wizard store, POST `/api/sync` (without `dryRun`) with the same `FormData`. Show loading state; disable the button.
 
 - [ ] **Step 15.5: Hand off to /result**
 
-On 200: write `wbs:result` to sessionStorage with the `SyncResult`; `router.push('/result')`.
+On 200: `useWizard.getState().set({ result })`; `router.push('/result')`. The result page reads from the store same as preview.
 
 - [ ] **Step 15.6: Commit**
 
@@ -1599,7 +1629,7 @@ git add app/preview/ && git commit -m "feat: preview screen with diff table and 
 
 - [ ] **Step 16.1: Result page**
 
-Reads `sessionStorage.wbs:result`. Renders summary counts + per-doc table from `result.preview.new` joined with the per-doc results. Link to Wallet web UI for the synced account.
+Reads `result` from the wizard store. Renders summary counts + per-doc table from `result.preview.new` joined with the per-doc results. Link to Wallet web UI for the synced account. If `result` is null (hard-refresh), redirect to `/upload`.
 
 - [ ] **Step 16.2: History API**
 
