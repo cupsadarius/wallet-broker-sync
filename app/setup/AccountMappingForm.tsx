@@ -97,7 +97,7 @@ export default function AccountMappingForm({ existingMappings }: Props) {
     }
   }
 
-  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+  async function handleSubmit(e: { preventDefault: () => void }) {
     e.preventDefault()
     setSaveError(null)
 

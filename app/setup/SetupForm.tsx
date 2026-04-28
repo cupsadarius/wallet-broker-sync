@@ -25,7 +25,7 @@ export default function SetupForm() {
     }
   }
 
-  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+  async function handleSubmit(e: { preventDefault: () => void }) {
     e.preventDefault()
     setError(null)
 
