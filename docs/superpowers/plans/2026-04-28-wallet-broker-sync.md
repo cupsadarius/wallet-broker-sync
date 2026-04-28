@@ -1065,7 +1065,7 @@ describe('LookupService', () => {
   it('resolves accountId → currencyCode via Currency indirection', async () => {
     const svc = new LookupService(couchOf([
       { _id: '-Account_a', reservedModelType: 'Account', accountType: 7, name: 'XTB', currencyId: '-Currency_eur' },
-      { _id: '-Currency_eur', reservedModelType: 'Currency', currencyCode: 'EUR' },
+      { _id: '-Currency_eur', reservedModelType: 'Currency', code: 'EUR' },
     ]))
     await svc.refresh()
     expect(svc.investmentAccounts()[0]).toMatchObject({ id: '-Account_a', name: 'XTB', currencyCode: 'EUR' })
@@ -1103,10 +1103,10 @@ export class LookupService {
   async refresh() {
     const [accounts, currencies, assets] = await Promise.all([
       this.couch.listByModelType<{ _id: string; accountType: number; name: string; currencyId: string; investmentInfo?: { assetTypes?: number[] } }>('Account'),
-      this.couch.listByModelType<{ _id: string; currencyCode: string }>('Currency'),
+      this.couch.listByModelType<{ _id: string; code: string }>('Currency'),
       this.couch.listByModelType<{ _id: string; symbol: string; exchangeCode: string }>('StocksFundsAsset'),
     ])
-    const currencyMap = new Map(currencies.map(c => [c._id, c.currencyCode]))
+    const currencyMap = new Map(currencies.map(c => [c._id, c.code]))
     this.accounts = accounts.filter(a => a.accountType === 7).map(a => ({
       id: a._id, name: a.name,
       currencyCode: currencyMap.get(a.currencyId) ?? 'EUR',

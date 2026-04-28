@@ -288,13 +288,26 @@ The canonicalization function is part of the public parser contract and tested a
 **Currency indirection.** `Account.currencyId` references a `Currency` doc rather than carrying an ISO 4217 code directly. Implication for our setup screen:
 
 1. Fetch all `Account` docs where `accountType === 7` (investment).
-2. Fetch the `Currency` docs referenced by their `currencyId` (one batch). Map `Currency._id → currencyCode`.
+2. Fetch the `Currency` docs referenced by their `currencyId` (one batch). Map `Currency._id → code` (the field is named `code`, NOT `currencyCode` — confirmed via capture).
 3. Show the user a mapping UI: `XTB → [Account name + currency]`, `IBKR → ?`, `Tradeville → ?`.
-4. Persist the chosen `accountId` (and resolved `currencyCode`, for use as the canonical txn's `settlementCurrency` default) to local SQLite (`broker_account_map`).
+4. Persist the chosen `accountId` (and resolved currency code, for use as the canonical txn's `settlementCurrency` default) to local SQLite (`broker_account_map`).
 
 Re-runs use the persisted mapping; the user can edit it in a settings page.
 
-The `Currency` doc's exact schema is one open phase-0 capture — see capture #6 below — but the key field we need (`currencyCode`) is name-self-evident; capturing one such doc confirms it.
+The `Currency` doc's actual schema (confirmed via capture):
+
+```
+{
+  _id:                "-Currency_<uuid>"
+  reservedModelType:  "Currency"
+  reservedOwnerId:    <userId>
+  code:               "EUR" | "USD" | "RON" | …      // ISO 4217 — NOTE: field name is "code", not "currencyCode"
+  ratioToReferential: number
+  referential:        boolean                         // true on the user's reference currency
+  position:           number
+  reservedSource / reservedCreatedAt / reservedUpdatedAt
+}
+```
 
 ## Sync algorithm
 
@@ -355,7 +368,7 @@ Before writing sync code, the user performs small captures from the Wallet web U
 | 3 | A buy on a foreign-currency asset (USD asset, EUR account) | FX field shape | ✅ Confirmed: `priceCurrencyCode` and `cashAmountCurrencyCode` differ on the doc; **no `fxRate` field** |
 | 4 | Capture the "Charges, Fees" Record doc | Fee = separate doc shape (`reservedModelType`, fields) | ⏳ Still needed — one capture of any fee row visible in any account |
 | 5 | `StocksFundsAsset` schema (incl. exchange/MIC) | Asset lookup key + v2 creation schema | ✅ Confirmed: `exchangeCode` (MIC) is the venue key |
-| 6 | `Account` schema + investment discriminator + Currency indirection | Account doc shape, currency lookup | ✅ Mostly confirmed: `accountType: 7 = investment`; `currencyId → Currency._id`. Still need one `Currency` doc capture to confirm its `currencyCode` field name |
+| 6 | `Account` schema + investment discriminator + Currency indirection | Account doc shape, currency lookup | ✅ Confirmed: `accountType: 7 = investment`; `currencyId → Currency._id`; `Currency.code` (NOT `currencyCode`) holds the ISO 4217 code |
 | 7 | Timezone of `date` field | UTC vs local | ✅ Confirmed UTC (Z-suffixed ISO with ms precision) |
 | 8 | Login flow | How basic-auth token is acquired | ✅ Confirmed: tRPC `user.getUser` returns `replication.{login, token, dbName, url}` after next-auth session is established |
 | 9 | `_bulk_docs` batch ceiling | Max safe batch size, rate limits | ⏳ Not yet probed; default to 50/batch and adjust empirically |
@@ -365,14 +378,14 @@ Before writing sync code, the user performs small captures from the Wallet web U
 
 **Remaining unknowns gating implementation:**
 
-- Sell `transactionType` (assumed `1`; verified by capture #12 writing a synthetic sell)
+- ~~Sell `transactionType`~~ ✅ Confirmed `1` via probe (Task 6)
+- ~~`_id` validator acceptance~~ ✅ Confirmed: deterministic UUIDv5 accepted by `validate_doc_update` (Task 6 probe)
+- ~~`Currency` doc shape~~ ✅ Confirmed: field is `code`, not `currencyCode` (Task 6 discovery)
 - Fee `Record` doc shape (capture #4) — non-blocking for v1 buys/sells; folded fees handled meanwhile
-- `Currency` doc shape (one capture during account-fetch) — non-blocking; we just need `currencyCode`
-- `_id` validator acceptance (capture #12) — blocks first real write but not parser/UI work
 - Tradeville PDF layout (capture #10) — blocks Tradeville parser only; XTB and IBKR can ship without it
 - `_bulk_docs` batch ceiling (capture #9) — empirical post-implementation; non-blocking
 
-The implementation plan can begin now. Phase-0 captures #4, #6 (Currency), #9, #10, #12 become explicit early steps in the plan.
+Implementation can proceed. v5 is the chosen `_id` shape (no v4-flip needed). LookupService reads `Currency.code`, not `Currency.currencyCode`.
 
 ## Parser layer details
 
