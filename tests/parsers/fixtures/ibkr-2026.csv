@@ -1,0 +1,279 @@
+Statement,Header,Field Name,Field Value
+Statement,Data,Title,Transaction History
+Statement,Data,Period,"December 12, 2024 - April 27, 2026"
+Statement,Data,WhenGenerated,"2026-04-28, 07:26:26 EDT"
+Summary,Header,Field Name,Field Value
+Summary,Data,Base Currency,EUR
+Summary,Data,Starting Cash,0.0
+Summary,Data,Change,2.629079604
+Summary,Data,Ending Cash,2.629079604
+Transaction History,Header,Date,Account,Description,Transaction Type,Symbol,Quantity,Price,Price Currency,Gross Amount ,Commission,Net Amount
+Transaction History,Data,2026-04-27,U***22945,FX Translations P&L,Adjustment,-,-,-,-,0.009920965654845126,-,0.009920965654845126
+Transaction History,Data,2026-04-02,U***22945,NVIDIA CORP,Buy,NVDA,5.0E-4,172.33,USD,-0.07467317395,-7.481443464000001E-5,-0.07474798838464
+Transaction History,Data,2026-04-02,U***22945,Net Amount in Base from Forex Trade: -0.08 EUR.USD,Forex Trade Component,EUR.USD,-0.08,1.15205,USD,-1.2791268000000855E-4,-,-1.2791268000000855E-4
+Transaction History,Data,2026-04-02,U***22945,Net Amount in Base from Forex Trade: 0.00519853 EUR.USD,Forex Trade Component,EUR.USD,0.00519853,1.15398096,USD,-3.833699999998899E-7,-,-3.833699999998899E-7
+Transaction History,Data,2026-04-02,U***22945,Net Amount in Base from Forex Trade: -0.00007486 EUR.USD,Forex Trade Component,EUR.USD,-7.486E-5,1.15323576,USD,-4.643198999999777E-8,-,-4.643198999999777E-8
+Transaction History,Data,2026-04-01,U***22945,NVDA(US67066G1040) Cash Dividend USD 0.01 per Share (Ordinary Dividend),Dividend,NVDA,-,-,-,0.08628000000000001,-,0.08628000000000001
+Transaction History,Data,2026-04-01,U***22945,NVDA(US67066G1040) Cash Dividend USD 0.01 per Share - US Tax,Foreign Tax Withholding,NVDA,-,-,-,-0.008628,-,-0.008628
+Transaction History,Data,2026-04-01,U***22945,Net Amount in Base from Forex Trade: 0.07765388 EUR.USD,Forex Trade Component,EUR.USD,0.07765388,1.15898907,USD,1.879999999995774E-6,-,1.879999999995774E-6
+Transaction History,Data,2026-02-03,U***22945,AT&T INC,Buy,T,0.2946,26.37,USD,-6.57324721026,-0.006627932592160001,-6.579875142852161
+Transaction History,Data,2026-02-03,U***22945,Net Amount in Base from Forex Trade: -0.00544717 EUR.USD,Forex Trade Component,EUR.USD,-0.00544717,1.18139032,USD,-2.127147839999996E-6,-,-2.127147839999996E-6
+Transaction History,Data,2026-02-02,U***22945,T(US00206R1023) Cash Dividend USD 0.2775 per Share (Ordinary Dividend),Dividend,T,-,-,-,7.3195345000000005,-,7.3195345000000005
+Transaction History,Data,2026-02-02,U***22945,T(US00206R1023) Cash Dividend USD 0.2775 per Share - US Tax,Foreign Tax Withholding,T,-,-,-,-0.729409,-,-0.729409
+Transaction History,Data,2025-12-29,U***22945,Net Amount in Base from Forex Trade: -0.06 EUR.USD,Forex Trade Component,EUR.USD,-0.06,1.17784,USD,2.8144463999998925E-5,-,2.8144463999998925E-5
+Transaction History,Data,2025-12-29,U***22945,NVIDIA CORP,Buy,NVDA,4.0E-4,186.4,USD,-0.0633320096,-6.344667995E-5,-0.06339545627995
+Transaction History,Data,2025-12-29,U***22945,Net Amount in Base from Forex Trade: -0.00330497 EUR.USD,Forex Trade Component,EUR.USD,-0.00330497,1.17689364,USD,-1.1040145900002504E-6,-,-1.1040145900002504E-6
+Transaction History,Data,2025-12-29,U***22945,Net Amount in Base from Forex Trade: -0.00006347 EUR.USD,Forex Trade Component,EUR.USD,-6.347E-5,1.17684047,USD,-2.3320049999994014E-8,-,-2.3320049999994014E-8
+Transaction History,Data,2025-12-26,U***22945,NVDA(US67066G1040) Cash Dividend USD 0.01 per Share (Ordinary Dividend),Dividend,NVDA,-,-,-,0.084953,-,0.084953
+Transaction History,Data,2025-12-26,U***22945,NVDA(US67066G1040) Cash Dividend USD 0.01 per Share - US Tax,Foreign Tax Withholding,NVDA,-,-,-,-0.0084953,-,-0.0084953
+Transaction History,Data,2025-12-26,U***22945,Net Amount in Base from Forex Trade: 0.07644998 EUR.USD,Forex Trade Component,EUR.USD,0.07644998,1.17724034,USD,-7.720000000002725E-6,-,-7.720000000002725E-6
+Transaction History,Data,2025-11-04,U***22945,AT&T INC,Buy,T,0.3151,24.4,USD,-6.6960930492,-0.00676193796999,-6.70285498716999
+Transaction History,Data,2025-11-04,U***22945,Net Amount in Base from Forex Trade: -0.00540518 EUR.USD,Forex Trade Component,EUR.USD,-0.00540518,1.14779687,USD,-1.8919590799998387E-6,-,-1.8919590799998387E-6
+Transaction History,Data,2025-11-03,U***22945,T(US00206R1023) Cash Dividend USD 0.2775 per Share (Ordinary Dividend),Dividend,T,-,-,-,7.413488599999999,-,7.413488599999999
+Transaction History,Data,2025-11-03,U***22945,T(US00206R1023) Cash Dividend USD 0.2775 per Share - US Tax,Foreign Tax Withholding,T,-,-,-,-0.7378765,-,-0.7378765
+Transaction History,Data,2025-10-03,U***22945,NVIDIA CORP,Buy,NVDA,4.0E-4,189.1,USD,-0.0644157804,-6.453841224E-5,-0.06448031881223999
+Transaction History,Data,2025-10-03,U***22945,Net Amount in Base from Forex Trade: -0.06 EUR.USD,Forex Trade Component,EUR.USD,-0.06,1.17327,USD,-4.989211799999449E-5,-,-4.989211799999449E-5
+Transaction History,Data,2025-10-03,U***22945,Net Amount in Base from Forex Trade: -0.00006458 EUR.USD,Forex Trade Component,EUR.USD,-6.458E-5,1.17357227,USD,-4.243936999998824E-8,-,-4.243936999998824E-8
+Transaction History,Data,2025-10-03,U***22945,Net Amount in Base from Forex Trade: -0.00446745 EUR.USD,Forex Trade Component,EUR.USD,-0.00446745,1.17377888,USD,-1.7774820000003577E-6,-,-1.7774820000003577E-6
+Transaction History,Data,2025-10-02,U***22945,NVDA(US67066G1040) Cash Dividend USD 0.01 per Share (Ordinary Dividend),Dividend,NVDA,-,-,-,0.085352,-,0.085352
+Transaction History,Data,2025-10-02,U***22945,NVDA(US67066G1040) Cash Dividend USD 0.01 per Share - US Tax,Foreign Tax Withholding,NVDA,-,-,-,-0.0085352,-,-0.0085352
+Transaction History,Data,2025-10-02,U***22945,Net Amount in Base from Forex Trade: 0.07681344 EUR.USD,Forex Trade Component,EUR.USD,0.07681344,1.17166993,USD,-3.3599999999939234E-6,-,-3.3599999999939234E-6
+Transaction History,Data,2025-08-04,U***22945,AT&T INC,Buy,T,0.2741,27.8,USD,-6.5846533174,-0.0066432594781299995,-6.59129657687813
+Transaction History,Data,2025-08-04,U***22945,Net Amount in Base from Forex Trade: -0.00662859 EUR.USD,Forex Trade Component,EUR.USD,-0.00662859,1.15677691,USD,-2.6131218700004705E-6,-,-2.6131218700004705E-6
+Transaction History,Data,2025-08-01,U***22945,T(US00206R1023) Cash Dividend USD 0.2775 per Share (Ordinary Dividend),Dividend,T,-,-,-,7.309525300000001,-,7.309525300000001
+Transaction History,Data,2025-08-01,U***22945,T(US00206R1023) Cash Dividend USD 0.2775 per Share - US Tax,Foreign Tax Withholding,T,-,-,-,-0.7335415,-,-0.7335415
+Transaction History,Data,2025-07-07,U***22945,NVIDIA CORP,Buy,NVDA,5.0E-4,158.28,USD,-0.06759268260000001,-6.773958608E-5,-0.06766042218608
+Transaction History,Data,2025-07-07,U***22945,Net Amount in Base from Forex Trade: -0.06 EUR.USD,Forex Trade Component,EUR.USD,-0.06,1.17332,USD,1.2725272800000187E-4,-,1.2725272800000187E-4
+Transaction History,Data,2025-07-07,U***22945,Net Amount in Base from Forex Trade: -0.00746838 EUR.USD,Forex Trade Component,EUR.USD,-0.00746838,1.17037445,USD,-2.9501280000001837E-6,-,-2.9501280000001837E-6
+Transaction History,Data,2025-07-07,U***22945,Net Amount in Base from Forex Trade: -0.00006777 EUR.USD,Forex Trade Component,EUR.USD,-6.777E-5,1.17030013,USD,-3.041391999999857E-8,-,-3.041391999999857E-8
+Transaction History,Data,2025-07-03,U***22945,NVDA(US67066G1040) Cash Dividend USD 0.01 per Share (Ordinary Dividend),Dividend,NVDA,-,-,-,0.08505200000000002,-,0.08505200000000002
+Transaction History,Data,2025-07-03,U***22945,NVDA(US67066G1040) Cash Dividend USD 0.01 per Share - US Tax,Foreign Tax Withholding,NVDA,-,-,-,-0.008505200000000001,-,-0.008505200000000001
+Transaction History,Data,2025-07-03,U***22945,Net Amount in Base from Forex Trade: 0.07653984 EUR.USD,Forex Trade Component,EUR.USD,0.07653984,1.17585821,USD,-6.960000000000299E-6,-,-6.960000000000299E-6
+Transaction History,Data,2025-05-02,U***22945,AT&T INC,Buy,T,0.2725,27.7,USD,-6.680352215,-0.00674458962166,-6.68709680462166
+Transaction History,Data,2025-05-02,U***22945,Net Amount in Base from Forex Trade: -0.00519782 EUR.USD,Forex Trade Component,EUR.USD,-0.00519782,1.12947895,USD,-2.0153783400001304E-6,-,-2.0153783400001304E-6
+Transaction History,Data,2025-05-01,U***22945,T(US00206R1023) Cash Dividend USD 0.2775 per Share (Ordinary Dividend),Dividend,T,-,-,-,7.4307713,-,7.4307713
+Transaction History,Data,2025-05-01,U***22945,T(US00206R1023) Cash Dividend USD 0.2775 per Share - US Tax,Foreign Tax Withholding,T,-,-,-,-0.7439627999999999,-,-0.7439627999999999
+Transaction History,Data,2025-04-03,U***22945,NVIDIA CORP,Buy,NVDA,8.0E-4,104.84,USD,-0.07589074048,-7.612418919999999E-5,-0.0759668646692
+Transaction History,Data,2025-04-03,U***22945,Net Amount in Base from Forex Trade: -0.08 EUR.USD,Forex Trade Component,EUR.USD,-0.08,1.10789,USD,1.970550079999911E-4,-,1.970550079999911E-4
+Transaction History,Data,2025-04-03,U***22945,Net Amount in Base from Forex Trade: 0.00430555 EUR.USD,Forex Trade Component,EUR.USD,0.00430555,1.10536502,USD,-7.645279999999449E-7,-,-7.645279999999449E-7
+Transaction History,Data,2025-04-03,U***22945,Net Amount in Base from Forex Trade: -0.00007616 EUR.USD,Forex Trade Component,EUR.USD,-7.616E-5,1.1046465,USD,-3.581080000001095E-8,-,-3.581080000001095E-8
+Transaction History,Data,2025-04-02,U***22945,NVDA(US67066G1040) Cash Dividend USD 0.01 per Share (Ordinary Dividend),Dividend,NVDA,-,-,-,0.09211200000000001,-,0.09211200000000001
+Transaction History,Data,2025-04-02,U***22945,NVDA(US67066G1040) Cash Dividend USD 0.01 per Share - US Tax,Foreign Tax Withholding,NVDA,-,-,-,-0.009211200000000001,-,-0.009211200000000001
+Transaction History,Data,2025-04-02,U***22945,D********SA:Global Snapshot PNP for Mar 2025,Other Fee,-,-,-,-,-0.08,-,-0.08
+Transaction History,Data,2025-04-02,U***22945,D********SA:Global Snapshot PNP for Mar 2025,Other Fee,-,-,-,-,0.08,-,0.08
+Transaction History,Data,2025-04-02,U***22945,Net Amount in Base from Forex Trade: 0.08355324 EUR.USD,Forex Trade Component,EUR.USD,0.08355324,1.08581421,USD,-1.3805174879991111E-5,-,-1.3805174879991111E-5
+Transaction History,Data,2025-04-02,U***22945,VAT d********sa:Global Snapshot PnP,Sales Tax,-,-,-,-,-0.0128,-,-0.0128
+Transaction History,Data,2025-03-31,U***22945,Net Amount in Base from Forex Trade: -48.72 EUR.USD,Forex Trade Component,EUR.USD,-48.72,1.08332,USD,0.08137076035199442,-,0.08137076035199442
+Transaction History,Data,2025-03-31,U***22945,Net Amount in Base from Forex Trade: -1.57 EUR.USD,Forex Trade Component,EUR.USD,-1.57,1.08321,USD,0.002462485810999837,-,0.002462485810999837
+Transaction History,Data,2025-03-31,U***22945,Net Amount in Base from Forex Trade: -0.01 EUR.USD,Forex Trade Component,EUR.USD,-0.01,1.08332,USD,1.670171599999805E-5,-,1.670171599999805E-5
+Transaction History,Data,2025-03-31,U***22945,VANG S&P500 USDA,Buy,VUAA,0.5,105.58,USD,-48.81121769999999,-1.571963463,-50.383181162999996
+Transaction History,Data,2025-03-17,U***22945,VANG S&P500 USDA,Buy,VUAA,0.93,107.517985,USD,-91.54584449999999,-1.5577884392539998,-93.103632939254
+Transaction History,Data,2025-03-17,U***22945,Net Amount in Base from Forex Trade: -91.61 EUR.USD,Forex Trade Component,EUR.USD,-91.61,1.09147,USD,-0.06455220781499804,-,-0.06455220781499804
+Transaction History,Data,2025-03-17,U***22945,Net Amount in Base from Forex Trade: -1.56 EUR.USD,Forex Trade Component,EUR.USD,-1.56,1.09135,USD,-0.001270631699999969,-,-0.001270631699999969
+Transaction History,Data,2025-03-17,U***22945,Net Amount in Base from Forex Trade: 0.00094078 EUR.USD,Forex Trade Component,EUR.USD,9.4078E-4,1.09241322,USD,-1.4996155000006513E-7,-,-1.4996155000006513E-7
+Transaction History,Data,2025-03-17,U***22945,Net Amount in Base from Forex Trade: -0.00039684 EUR.USD,Forex Trade Component,EUR.USD,-3.9684E-4,1.09187234,USD,-1.321849999999839E-7,-,-1.321849999999839E-7
+Transaction History,Data,2025-03-14,U***22945,VANG S&P500 USDA,Buy,VUAA,0.9395,106.431006,USD,-91.90980809999999,-1.56398396834023,-93.47379206834022
+Transaction History,Data,2025-03-14,U***22945,Net Amount in Base from Forex Trade: -1.57 EUR.USD,Forex Trade Component,EUR.USD,-1.57,1.08799,USD,1.0915911699993508E-4,-,1.0915911699993508E-4
+Transaction History,Data,2025-03-14,U***22945,Net Amount in Base from Forex Trade: -0.01 EUR.USD,Forex Trade Component,EUR.USD,-0.01,1.08822,USD,2.809417999998648E-6,-,2.809417999998648E-6
+Transaction History,Data,2025-03-14,U***22945,Net Amount in Base from Forex Trade: -91.87 EUR.USD,Forex Trade Component,EUR.USD,-91.87,1.08822,USD,0.02581012316598219,-,0.02581012316598219
+Transaction History,Data,2025-03-14,U***22945,Net Amount in Base from Forex Trade: 0.00612472 EUR.USD,Forex Trade Component,EUR.USD,0.00612472,1.08799813,USD,-4.707767699996951E-7,-,-4.707767699996951E-7
+Transaction History,Data,2025-03-14,U***22945,Net Amount in Base from Forex Trade: -0.00399642 EUR.USD,Forex Trade Component,EUR.USD,-0.00399642,1.08757363,USD,-1.2525839999995986E-6,-,-1.2525839999995986E-6
+Transaction History,Data,2025-03-10,U***22945,VANG S&P500 USDA,Buy,VUAA,0.9216,108.503034,USD,-92.294,-1.5703604569491598,-93.86436045694916
+Transaction History,Data,2025-03-10,U***22945,Net Amount in Base from Forex Trade: -1.58 EUR.USD,Forex Trade Component,EUR.USD,-1.58,1.08262,USD,-0.0012745815760002444,-,-0.0012745815760002444
+Transaction History,Data,2025-03-10,U***22945,Net Amount in Base from Forex Trade: -92 EUR.USD,Forex Trade Component,EUR.USD,-92.0,1.08115,USD,-0.1990345480000002,-,-0.1990345480000002
+Transaction History,Data,2025-03-10,U***22945,Net Amount in Base from Forex Trade: -0.34 EUR.USD,Forex Trade Component,EUR.USD,-0.34,1.08115,USD,-7.355624600000055E-4,-,-7.355624600000055E-4
+Transaction History,Data,2025-03-10,U***22945,Net Amount in Base from Forex Trade: -0.15 EUR.USD,Forex Trade Component,EUR.USD,-0.15,1.08115,USD,-3.245128499999861E-4,-,-3.245128499999861E-4
+Transaction History,Data,2025-03-10,U***22945,Net Amount in Base from Forex Trade: 0.00836316 EUR.USD,Forex Trade Component,EUR.USD,0.00836316,1.08372684,USD,-1.8014748399998448E-6,-,-1.8014748399998448E-6
+Transaction History,Data,2025-03-10,U***22945,Net Amount in Base from Forex Trade: -0.00409583 EUR.USD,Forex Trade Component,EUR.USD,-0.00409583,1.08317495,USD,-1.2066899999999686E-6,-,-1.2066899999999686E-6
+Transaction History,Data,2025-03-07,U***22945,Net Amount in Base from Forex Trade: -92.1 EUR.USD,Forex Trade Component,EUR.USD,-92.1,1.08567,USD,0.19496066928000744,-,0.19496066928000744
+Transaction History,Data,2025-03-07,U***22945,Net Amount in Base from Forex Trade: -1.57 EUR.USD,Forex Trade Component,EUR.USD,-1.57,1.08547,USD,0.0030335992159997716,-,0.0030335992159997716
+Transaction History,Data,2025-03-07,U***22945,VANG S&P500 USDA,Buy,VUAA,0.9138,109.428069,USD,-92.304,-1.5705288332568,-93.87452883325679
+Transaction History,Data,2025-03-07,U***22945,Net Amount in Base from Forex Trade: -0.00904185 EUR.USD,Forex Trade Component,EUR.USD,-0.00904185,1.08307498,USD,-2.519280000001789E-6,-,-2.519280000001789E-6
+Transaction History,Data,2025-03-07,U***22945,Net Amount in Base from Forex Trade: 1.54376258 EUR.USD,Forex Trade Component,EUR.USD,1.54376258,1.08353035,USD,-2.1898595919989106E-4,-,-2.1898595919989106E-4
+Transaction History,Data,2025-03-03,U***22945,Net Amount in Base from Forex Trade: -3.82 EUR.USD,Forex Trade Component,EUR.USD,-3.82,1.04891,USD,3.5804325200050613E-4,-,3.5804325200050613E-4
+Transaction History,Data,2025-03-03,U***22945,Net Amount in Base from Forex Trade: -95.31 EUR.USD,Forex Trade Component,EUR.USD,-95.31,1.04903,USD,0.01983818557799566,-,0.01983818557799566
+Transaction History,Data,2025-03-03,U***22945,VANG S&P500 USDA,Buy,VUAA,0.8797,113.665597,USD,-95.3364654,-3.8138785827123596,-99.15034398271236
+Transaction History,Data,2025-03-03,U***22945,Net Amount in Base from Forex Trade: 0.00647833 EUR.USD,Forex Trade Component,EUR.USD,0.00647833,1.04899531,USD,-1.1305396400004483E-6,-,-1.1305396400004483E-6
+Transaction History,Data,2025-03-03,U***22945,Net Amount in Base from Forex Trade: -0.00662928 EUR.USD,Forex Trade Component,EUR.USD,-0.00662928,1.04848536,USD,-2.0655780000010393E-6,-,-2.0655780000010393E-6
+Transaction History,Data,2025-02-28,U***22945,Net Amount in Base from Forex Trade: -3.85 EUR.USD,Forex Trade Component,EUR.USD,-3.85,1.03964,USD,0.007559268640000116,-,0.007559268640000116
+Transaction History,Data,2025-02-28,U***22945,Net Amount in Base from Forex Trade: -96.15 EUR.USD,Forex Trade Component,EUR.USD,-96.15,1.03983,USD,0.20639182091998975,-,0.20639182091998975
+Transaction History,Data,2025-02-28,U***22945,VANG S&P500 USDA,Buy,VUAA,0.8929,111.98572,USD,-96.36636239999999,-3.85507958451448,-100.22144198451447
+Transaction History,Data,2025-02-28,U***22945,Net Amount in Base from Forex Trade: -0.0099736 EUR.USD,Forex Trade Component,EUR.USD,-0.0099736,1.03728872,USD,-3.0209199999992054E-6,-,-3.0209199999992054E-6
+Transaction History,Data,2025-02-28,U***22945,Net Amount in Base from Forex Trade: 0.0024794 EUR.USD,Forex Trade Component,EUR.USD,0.0024794,1.03772159,USD,-2.8412551999991084E-7,-,-2.8412551999991084E-7
+Transaction History,Data,2025-02-24,U***22945,VANG S&P500 USDA,Buy,VUAA,0.8718,114.699012,USD,-95.5184472,-3.82115830959384,-99.33960550959384
+Transaction History,Data,2025-02-24,U***22945,Net Amount in Base from Forex Trade: -3.83 EUR.USD,Forex Trade Component,EUR.USD,-3.83,1.04654,USD,-0.0010006595040001898,-,-0.0010006595040001898
+Transaction History,Data,2025-02-24,U***22945,Net Amount in Base from Forex Trade: -95.52 EUR.USD,Forex Trade Component,EUR.USD,-95.52,1.04663,USD,-0.016744044671995084,-,-0.016744044671995084
+Transaction History,Data,2025-02-24,U***22945,Net Amount in Base from Forex Trade: -0.01 EUR.USD,Forex Trade Component,EUR.USD,-0.01,1.04663,USD,-1.7529360000004268E-6,-,-1.7529360000004268E-6
+Transaction History,Data,2025-02-24,U***22945,Net Amount in Base from Forex Trade: 0.00783948 EUR.USD,Forex Trade Component,EUR.USD,0.00783948,1.04702022,USD,-1.5509021600006861E-6,-,-1.5509021600006861E-6
+Transaction History,Data,2025-02-24,U***22945,Net Amount in Base from Forex Trade: -0.00519462 EUR.USD,Forex Trade Component,EUR.USD,-0.00519462,1.04648596,USD,-1.6223919999990358E-6,-,-1.6223919999990358E-6
+Transaction History,Data,2025-02-21,U***22945,Net Amount in Base from Forex Trade: -3 EUR.USD,Forex Trade Component,EUR.USD,-3.0,1.04364,USD,-0.006777861599999824,-,-0.006777861599999824
+Transaction History,Data,2025-02-21,U***22945,Net Amount in Base from Forex Trade: -0.83 EUR.USD,Forex Trade Component,EUR.USD,-0.83,1.04349,USD,-0.0019942328659999786,-,-0.0019942328659999786
+Transaction History,Data,2025-02-21,U***22945,Net Amount in Base from Forex Trade: -95 EUR.USD,Forex Trade Component,EUR.USD,-95.0,1.04383,USD,-0.19737612300001217,-,-0.19737612300001217
+Transaction History,Data,2025-02-21,U***22945,Net Amount in Base from Forex Trade: -0.08 EUR.USD,Forex Trade Component,EUR.USD,-0.08,1.04368,USD,-1.7768371200001243E-4,-,-1.7768371200001243E-4
+Transaction History,Data,2025-02-21,U***22945,Net Amount in Base from Forex Trade: -0.71 EUR.USD,Forex Trade Component,EUR.USD,-0.71,1.04368,USD,-0.0015769429439999039,-,-0.0015769429439999039
+Transaction History,Data,2025-02-21,U***22945,VANG S&P500 USDA,Buy,VUAA,0.8597,116.309478,USD,-95.5924398,-3.82411780676692,-99.41655760676692
+Transaction History,Data,2025-02-21,U***22945,Net Amount in Base from Forex Trade: -0.00157103 EUR.USD,Forex Trade Component,EUR.USD,-0.00157103,1.0456862,USD,-4.803439999998948E-7,-,-4.803439999998948E-7
+Transaction History,Data,2025-02-21,U***22945,Net Amount in Base from Forex Trade: -0.0028913 EUR.USD,Forex Trade Component,EUR.USD,-0.0028913,1.04549733,USD,-1.3987670799998908E-6,-,-1.3987670799998908E-6
+Transaction History,Data,2025-02-20,U***22945,ISHARES NASDAQ 100 USD ACC,Buy,CNDX,0.5,1212.6,EUR,-606.3,-1.25,-607.55
+Transaction History,Data,2025-02-20,U***22945,Electronic Fund Transfer,Deposit,-,-,-,-,1000.0,-,1000.0
+Transaction History,Data,2025-02-20,U***22945,ISHARES NASDAQ 100 USD ACC,Buy,CNDX,0.5,1198.8,EUR,-599.4,-1.25,-600.65
+Transaction History,Data,2025-02-17,U***22945,VANG S&P500 USDA,Buy,VUAA,0.8574,116.628792,USD,-95.383,-3.8153576190552,-99.19835761905519
+Transaction History,Data,2025-02-17,U***22945,Net Amount in Base from Forex Trade: -3.82 EUR.USD,Forex Trade Component,EUR.USD,-3.82,1.04744,USD,-0.0035155643360003097,-,-0.0035155643360003097
+Transaction History,Data,2025-02-17,U***22945,Net Amount in Base from Forex Trade: -95.45 EUR.USD,Forex Trade Component,EUR.USD,-95.45,1.04753,USD,-0.07964921654500756,-,-0.07964921654500756
+Transaction History,Data,2025-02-17,U***22945,Net Amount in Base from Forex Trade: 0.00112659 EUR.USD,Forex Trade Component,EUR.USD,0.00112659,1.04861938,USD,-2.266087999998681E-7,-,-2.266087999998681E-7
+Transaction History,Data,2025-02-17,U***22945,Net Amount in Base from Forex Trade: -0.01265307 EUR.USD,Forex Trade Component,EUR.USD,-0.01265307,1.04808548,USD,-3.85345500000106E-6,-,-3.85345500000106E-6
+Transaction History,Data,2025-02-14,U***22945,Net Amount in Base from Forex Trade: -3 EUR.USD,Forex Trade Component,EUR.USD,-3.0,1.04808,USD,-0.0032562984000001904,-,-0.0032562984000001904
+Transaction History,Data,2025-02-14,U***22945,VANG S&P500 USDA,Buy,VUAA,0.8585,116.479838,USD,-95.309,-3.81239763847719,-99.12139763847719
+Transaction History,Data,2025-02-14,U***22945,Net Amount in Base from Forex Trade: -0.82 EUR.USD,Forex Trade Component,EUR.USD,-0.82,1.04808,USD,-8.900548959999144E-4,-,-8.900548959999144E-4
+Transaction History,Data,2025-02-14,U***22945,Net Amount in Base from Forex Trade: -95.25 EUR.USD,Forex Trade Component,EUR.USD,-95.25,1.04988,USD,0.06001980629999082,-,0.06001980629999082
+Transaction History,Data,2025-02-14,U***22945,Net Amount in Base from Forex Trade: 0.00345566 EUR.USD,Forex Trade Component,EUR.USD,0.00345566,1.04932431,USD,-3.482268099998763E-7,-,-3.482268099998763E-7
+Transaction History,Data,2025-02-14,U***22945,Net Amount in Base from Forex Trade: 0.00101947 EUR.USD,Forex Trade Component,EUR.USD,0.00101947,1.04956236,USD,-3.362999999999717E-7,-,-3.362999999999717E-7
+Transaction History,Data,2025-02-10,U***22945,Net Amount in Base from Forex Trade: -3.89 EUR.USD,Forex Trade Component,EUR.USD,-3.89,1.03064,USD,-3.6443387199991406E-4,-,-3.6443387199991406E-4
+Transaction History,Data,2025-02-10,U***22945,Net Amount in Base from Forex Trade: -96.99 EUR.USD,Forex Trade Component,EUR.USD,-96.99,1.03074,USD,3.232870680136557E-4,-,3.232870680136557E-4
+Transaction History,Data,2025-02-10,U***22945,Net Amount in Base from Forex Trade: -0.01 EUR.USD,Forex Trade Component,EUR.USD,-0.01,1.03074,USD,3.333200000038561E-8,-,3.333200000038561E-8
+Transaction History,Data,2025-02-10,U***22945,VANG S&P500 USDA,Buy,VUAA,0.8673,115.292314,USD,-97.0082982,-3.88075870630128,-100.88905690630128
+Transaction History,Data,2025-02-10,U***22945,Net Amount in Base from Forex Trade: -0.00797756 EUR.USD,Forex Trade Component,EUR.USD,-0.00797756,1.03039079,USD,-2.680399999999833E-6,-,-2.680399999999833E-6
+Transaction History,Data,2025-02-10,U***22945,Net Amount in Base from Forex Trade: 0.00887533 EUR.USD,Forex Trade Component,EUR.USD,0.00887533,1.0309142,USD,-1.5298267199998633E-6,-,-1.5298267199998633E-6
+Transaction History,Data,2025-02-07,U***22945,VANG S&P500 USDA,Buy,VUAA,0.8641,115.721607,USD,-96.834,-3.8733984905466596,-100.70739849054665
+Transaction History,Data,2025-02-07,U***22945,Net Amount in Base from Forex Trade: -0.87 EUR.USD,Forex Trade Component,EUR.USD,-0.87,1.0345,USD,0.001520525100000003,-,0.001520525100000003
+Transaction History,Data,2025-02-07,U***22945,Net Amount in Base from Forex Trade: -3 EUR.USD,Forex Trade Component,EUR.USD,-3.0,1.0348,USD,0.0061146960000000306,-,0.0061146960000000306
+Transaction History,Data,2025-02-07,U***22945,Net Amount in Base from Forex Trade: -0.54 EUR.USD,Forex Trade Component,EUR.USD,-0.54,1.03468,USD,0.0010378968479999306,-,0.0010378968479999306
+Transaction History,Data,2025-02-07,U***22945,Net Amount in Base from Forex Trade: -96 EUR.USD,Forex Trade Component,EUR.USD,-96.0,1.03498,USD,0.21240318719999607,-,0.21240318719999607
+Transaction History,Data,2025-02-07,U***22945,Net Amount in Base from Forex Trade: -0.08 EUR.USD,Forex Trade Component,EUR.USD,-0.08,1.03468,USD,1.537624959999928E-4,-,1.537624959999928E-4
+Transaction History,Data,2025-02-07,U***22945,Net Amount in Base from Forex Trade: -0.00040527 EUR.USD,Forex Trade Component,EUR.USD,-4.0527E-4,1.03239019,USD,-1.165440000000322E-7,-,-1.165440000000322E-7
+Transaction History,Data,2025-02-07,U***22945,Net Amount in Base from Forex Trade: 0.00423621 EUR.USD,Forex Trade Component,EUR.USD,0.00423621,1.03282149,USD,-5.205533400000698E-7,-,-5.205533400000698E-7
+Transaction History,Data,2025-02-04,U***22945,Net Amount in Base from Forex Trade: -5.64 EUR.USD,Forex Trade Component,EUR.USD,-5.64,1.03454,USD,-0.018223152455999703,-,-0.018223152455999703
+Transaction History,Data,2025-02-04,U***22945,D********SA:US Consolidated Snapshot for Jan 2025,Other Fee,-,-,-,-,-0.07,-,-0.07
+Transaction History,Data,2025-02-04,U***22945,D********SA:US Consolidated Snapshot for Jan 2025,Other Fee,-,-,-,-,0.07,-,0.07
+Transaction History,Data,2025-02-04,U***22945,Net Amount in Base from Forex Trade: 0.00482348 EUR.USD,Forex Trade Component,EUR.USD,0.00482348,1.03817231,USD,-1.2925240000004681E-6,-,-1.2925240000004681E-6
+Transaction History,Data,2025-02-04,U***22945,Net Amount in Base from Forex Trade: -0.00562972 EUR.USD,Forex Trade Component,EUR.USD,-0.00562972,1.03751056,USD,-2.0818573900002746E-6,-,-2.0818573900002746E-6
+Transaction History,Data,2025-02-04,U***22945,VAT d********sa:US Consolidated Snapshot,Sales Tax,-,-,-,-,-0.0112,-,-0.0112
+Transaction History,Data,2025-02-04,U***22945,AT&T INC,Buy,T,0.2411,24.18,USD,-5.61695207502,-0.00562763814261,-5.62257971316261
+Transaction History,Data,2025-02-03,U***22945,T(US00206R1023) Cash Dividend USD 0.2775 per Share - US Tax,Foreign Tax Withholding,T,-,-,-,-2.416975,-,-2.416975
+Transaction History,Data,2025-02-03,U***22945,VANG S&P500 USDA,Buy,VUAA,0.8821,113.365721,USD,-96.679,-3.8671992294378303,-100.54619922943783
+Transaction History,Data,2025-02-03,U***22945,Net Amount in Base from Forex Trade: -95.2 EUR.USD,Forex Trade Component,EUR.USD,-95.2,1.03114,USD,-0.29551597487999004,-,-0.29551597487999004
+Transaction History,Data,2025-02-03,U***22945,Net Amount in Base from Forex Trade: -1.77513565 EUR.USD,Forex Trade Component,EUR.USD,-1.77513565,1.03398971,USD,-6.196751199998296E-4,-,-6.196751199998296E-4
+Transaction History,Data,2025-02-03,U***22945,Net Amount in Base from Forex Trade: 1.76955444 EUR.USD,Forex Trade Component,EUR.USD,1.76955444,1.03452901,USD,-3.0490190031984277E-4,-,-3.0490190031984277E-4
+Transaction History,Data,2025-02-03,U***22945,Net Amount in Base from Forex Trade: -0.00067313 EUR.USD,Forex Trade Component,EUR.USD,-6.7313E-4,1.0339491,USD,-2.586618499999865E-7,-,-2.586618499999865E-7
+Transaction History,Data,2025-02-03,U***22945,T(US00206R1023) Cash Dividend USD 0.2775 per Share (Ordinary Dividend),Dividend,T,-,-,-,8.0533607,-,8.0533607
+Transaction History,Data,2025-02-03,U***22945,T(US00206R1023) Cash Dividend USD 0.2775 per Share - US Tax,Foreign Tax Withholding,T,-,-,-,2.3076,-,2.3076
+Transaction History,Data,2025-02-03,U***22945,T(US00206R1023) Cash Dividend USD 0.2775 per Share - US Tax,Foreign Tax Withholding,T,-,-,-,-0.7661231999999999,-,-0.7661231999999999
+Transaction History,Data,2025-01-31,U***22945,Net Amount in Base from Forex Trade: -96.46 EUR.USD,Forex Trade Component,EUR.USD,-96.46,1.03653,USD,0.02825421435200326,-,0.02825421435200326
+Transaction History,Data,2025-01-31,U***22945,Net Amount in Base from Forex Trade: -0.0054255 EUR.USD,Forex Trade Component,EUR.USD,-0.0054255,1.03588914,USD,-1.7677163999998274E-6,-,-1.7677163999998274E-6
+Transaction History,Data,2025-01-31,U***22945,VANG S&P500 USDA,Buy,VUAA,0.8612,116.108967,USD,-96.49434959999999,-3.8601982300596003,-100.3545478300596
+Transaction History,Data,2025-01-31,U***22945,Net Amount in Base from Forex Trade: -3.86 EUR.USD,Forex Trade Component,EUR.USD,-3.86,1.03646,USD,8.69883423999962E-4,-,8.69883423999962E-4
+Transaction History,Data,2025-01-28,U***22945,Net Amount in Base from Forex Trade: -0.96 EUR.USD,Forex Trade Component,EUR.USD,-0.96,1.04287,USD,-1.9250976000007025E-4,-,-1.9250976000007025E-4
+Transaction History,Data,2025-01-28,U***22945,Net Amount in Base from Forex Trade: -929.66 EUR.USD,Forex Trade Component,EUR.USD,-929.66,1.04284,USD,-0.21316360072000862,-,-0.21316360072000862
+Transaction History,Data,2025-01-28,U***22945,Net Amount in Base from Forex Trade: -0.11 EUR.USD,Forex Trade Component,EUR.USD,-0.11,1.04284,USD,-2.5222120000001347E-5,-,-2.5222120000001347E-5
+Transaction History,Data,2025-01-28,U***22945,Net Amount in Base from Forex Trade: 0.00103293 EUR.USD,Forex Trade Component,EUR.USD,0.00103293,1.04337239,USD,-2.8879229999989424E-7,-,-2.8879229999989424E-7
+Transaction History,Data,2025-01-28,U***22945,VANG FTSE AW USDA,Buy,VWCE,2.0,136.44,EUR,-272.88,-3.0,-275.88
+Transaction History,Data,2025-01-28,U***22945,Net Amount in Base from Forex Trade: 0.00109675 EUR.USD,Forex Trade Component,EUR.USD,0.00109675,1.04333185,USD,-2.626076999999189E-7,-,-2.626076999999189E-7
+Transaction History,Data,2025-01-28,U***22945,NVIDIA CORP,Buy,NVDA,8.0,121.2,USD,-929.55552,-0.958968436,-930.514488436
+Transaction History,Data,2025-01-27,U***22945,Net Amount in Base from Forex Trade: -3.81 EUR.USD,Forex Trade Component,EUR.USD,-3.81,1.04995,USD,0.0027349875450002337,-,0.0027349875450002337
+Transaction History,Data,2025-01-27,U***22945,Net Amount in Base from Forex Trade: -95.22 EUR.USD,Forex Trade Component,EUR.USD,-95.22,1.05008,USD,0.08015132073599318,-,0.08015132073599318
+Transaction History,Data,2025-01-27,U***22945,Net Amount in Base from Forex Trade: -0.01059537 EUR.USD,Forex Trade Component,EUR.USD,-0.01059537,1.04888524,USD,-3.14499680999919E-6,-,-3.14499680999919E-6
+Transaction History,Data,2025-01-27,U***22945,VANG S&P500 USDA,Buy,VUAA,0.8789,113.774906,USD,-95.311,-3.81247853328419,-99.12347853328419
+Transaction History,Data,2025-01-24,U***22945,Net Amount in Base from Forex Trade: 0.00556591 EUR.USD,Forex Trade Component,EUR.USD,0.00556591,1.04954673,USD,-8.078399799998567E-7,-,-8.078399799998567E-7
+Transaction History,Data,2025-01-24,U***22945,Net Amount in Base from Forex Trade: -0.00389082 EUR.USD,Forex Trade Component,EUR.USD,-0.00389082,1.04908518,USD,-1.1503260000001077E-6,-,-1.1503260000001077E-6
+Transaction History,Data,2025-01-24,U***22945,VANG S&P500 USDA,Buy,VUAA,0.859,116.406039,USD,-95.2834707,-3.81175765407602,-99.09522835407601
+Transaction History,Data,2025-01-24,U***22945,Net Amount in Base from Forex Trade: -3.82 EUR.USD,Forex Trade Component,EUR.USD,-3.82,1.04866,USD,-0.0026756280839994595,-,-0.0026756280839994595
+Transaction History,Data,2025-01-24,U***22945,Net Amount in Base from Forex Trade: -95.33 EUR.USD,Forex Trade Component,EUR.USD,-95.33,1.04873,USD,-0.06041263246298456,-,-0.06041263246298456
+Transaction History,Data,2025-01-24,U***22945,Net Amount in Base from Forex Trade: -0.01 EUR.USD,Forex Trade Component,EUR.USD,-0.01,1.04873,USD,-6.3372109999990794E-6,-,-6.3372109999990794E-6
+Transaction History,Data,2025-01-20,U***22945,Net Amount in Base from Forex Trade: -96.18 EUR.USD,Forex Trade Component,EUR.USD,-96.18,1.03953,USD,-0.1982842359540058,-,-0.1982842359540058
+Transaction History,Data,2025-01-20,U***22945,Net Amount in Base from Forex Trade: -3.85 EUR.USD,Forex Trade Component,EUR.USD,-3.85,1.03945,USD,-0.008232818825000265,-,-0.008232818825000265
+Transaction History,Data,2025-01-20,U***22945,Net Amount in Base from Forex Trade: -0.00768648 EUR.USD,Forex Trade Component,EUR.USD,-0.00768648,1.04138749,USD,-2.1440459999988795E-6,-,-2.1440459999988795E-6
+Transaction History,Data,2025-01-20,U***22945,Net Amount in Base from Forex Trade: 0.00176813 EUR.USD,Forex Trade Component,EUR.USD,0.00176813,1.04192882,USD,-4.2885732000016476E-7,-,-4.2885732000016476E-7
+Transaction History,Data,2025-01-20,U***22945,VANG S&P500 USDA,Buy,VUAA,0.8746,114.325601,USD,-95.9894001,-3.83999862231768,-99.82939872231768
+Transaction History,Data,2025-01-17,U***22945,Net Amount in Base from Forex Trade: -97.2 EUR.USD,Forex Trade Component,EUR.USD,-97.2,1.02878,USD,0.14948442432000775,-,0.14948442432000775
+Transaction History,Data,2025-01-17,U***22945,Net Amount in Base from Forex Trade: -3.89 EUR.USD,Forex Trade Component,EUR.USD,-3.89,1.02857,USD,0.005187184296000069,-,0.005187184296000069
+Transaction History,Data,2025-01-17,U***22945,VANG S&P500 USDA,Buy,VUAA,0.8795,113.700245,USD,-97.352,-3.89411938569864,-101.24611938569865
+Transaction History,Data,2025-01-17,U***22945,Net Amount in Base from Forex Trade: -0.00251623 EUR.USD,Forex Trade Component,EUR.USD,-0.00251623,1.02693307,USD,-6.543199999996946E-7,-,-6.543199999996946E-7
+Transaction History,Data,2025-01-17,U***22945,Net Amount in Base from Forex Trade: 0.00106765 EUR.USD,Forex Trade Component,EUR.USD,0.00106765,1.02734309,USD,-1.4859735999995204E-7,-,-1.4859735999995204E-7
+Transaction History,Data,2025-01-13,U***22945,VANG S&P500 USDA,Buy,VUAA,0.9076,110.175669,USD,-97.88799999999999,-3.91556086824,-101.80356086824
+Transaction History,Data,2025-01-13,U***22945,Net Amount in Base from Forex Trade: -3.93 EUR.USD,Forex Trade Component,EUR.USD,-3.93,1.01956,USD,-0.007754311296000349,-,-0.007754311296000349
+Transaction History,Data,2025-01-13,U***22945,Net Amount in Base from Forex Trade: -98.06 EUR.USD,Forex Trade Component,EUR.USD,-98.06,1.01959,USD,-0.19060322284801146,-,-0.19060322284801146
+Transaction History,Data,2025-01-13,U***22945,Net Amount in Base from Forex Trade: -0.01860836 EUR.USD,Forex Trade Component,EUR.USD,-0.01860836,1.02129352,USD,-5.137152000001671E-6,-,-5.137152000001671E-6
+Transaction History,Data,2025-01-13,U***22945,Electronic Fund Transfer,Deposit,-,-,-,-,1038.0,-,1038.0
+Transaction History,Data,2025-01-13,U***22945,Net Amount in Base from Forex Trade: 0.00668319 EUR.USD,Forex Trade Component,EUR.USD,0.00668319,1.02182454,USD,-1.630463999998874E-6,-,-1.630463999998874E-6
+Transaction History,Data,2025-01-10,U***22945,VANG S&P500 USDA,Buy,VUAA,0.895,111.720595,USD,-97.5942396,-3.9042001835668003,-101.4984397835668
+Transaction History,Data,2025-01-10,U***22945,Net Amount in Base from Forex Trade: -3.91 EUR.USD,Forex Trade Component,EUR.USD,-3.91,1.02282,USD,-0.00659525975200026,-,-0.00659525975200026
+Transaction History,Data,2025-01-10,U***22945,Net Amount in Base from Forex Trade: -97.74 EUR.USD,Forex Trade Component,EUR.USD,-97.74,1.02299,USD,-0.14864694069599693,-,-0.14864694069599693
+Transaction History,Data,2025-01-10,U***22945,Net Amount in Base from Forex Trade: -0.00079577 EUR.USD,Forex Trade Component,EUR.USD,-7.9577E-4,1.02412561,USD,-3.266811999999824E-7,-,-3.266811999999824E-7
+Transaction History,Data,2025-01-10,U***22945,Net Amount in Base from Forex Trade: -0.00288726 EUR.USD,Forex Trade Component,EUR.USD,-0.00288726,1.02429262,USD,-7.193040000002399E-7,-,-7.193040000002399E-7
+Transaction History,Data,2025-01-06,U***22945,Net Amount in Base from Forex Trade: -3.86 EUR.USD,Forex Trade Component,EUR.USD,-3.86,1.03835,USD,-0.002430483739999989,-,-0.002430483739999989
+Transaction History,Data,2025-01-06,U***22945,Net Amount in Base from Forex Trade: -96.27 EUR.USD,Forex Trade Component,EUR.USD,-96.27,1.03695,USD,-0.19033570580999992,-,-0.19033570580999992
+Transaction History,Data,2025-01-06,U***22945,Net Amount in Base from Forex Trade: -0.16 EUR.USD,Forex Trade Component,EUR.USD,-0.16,1.03705,USD,-3.0093712000001105E-4,-,-3.0093712000001105E-4
+Transaction History,Data,2025-01-06,U***22945,VANG S&P500 USDA,Buy,VUAA,0.8783,113.85363,USD,-96.246,-3.84987888530892,-100.09587888530892
+Transaction History,Data,2025-01-06,U***22945,Net Amount in Base from Forex Trade: -0.00663866 EUR.USD,Forex Trade Component,EUR.USD,-0.00663866,1.0386883,USD,-2.0170700000005787E-6,-,-2.0170700000005787E-6
+Transaction History,Data,2025-01-06,U***22945,Net Amount in Base from Forex Trade: 0.00768892 EUR.USD,Forex Trade Component,EUR.USD,0.00768892,1.03923602,USD,-1.7109510799997313E-6,-,-1.7109510799997313E-6
+Transaction History,Data,2025-01-03,U***22945,VAT d********sa:Global Snapshot PnP,Sales Tax,-,-,-,-,-0.0224,-,-0.0224
+Transaction History,Data,2025-01-03,U***22945,Net Amount in Base from Forex Trade: -0.02 EUR.USD,Forex Trade Component,EUR.USD,-0.02,1.02865,USD,-4.274988999999896E-5,-,-4.274988999999896E-5
+Transaction History,Data,2025-01-03,U***22945,Net Amount in Base from Forex Trade: -0.89 EUR.USD,Forex Trade Component,EUR.USD,-0.89,1.0271,USD,-0.0032405816699999646,-,-0.0032405816699999646
+Transaction History,Data,2025-01-03,U***22945,D********SA:Global Snapshot PNP for Dec 2024,Other Fee,-,-,-,-,-0.14,-,-0.14
+Transaction History,Data,2025-01-03,U***22945,D********SA:Global Snapshot PNP for Dec 2024,Other Fee,-,-,-,-,0.14,-,0.14
+Transaction History,Data,2025-01-03,U***22945,Net Amount in Base from Forex Trade: 0.00491316 EUR.USD,Forex Trade Component,EUR.USD,0.00491316,1.03120927,USD,-1.6996550000003899E-6,-,-1.6996550000003899E-6
+Transaction History,Data,2025-01-03,U***22945,Net Amount in Base from Forex Trade: -0.00448557 EUR.USD,Forex Trade Component,EUR.USD,-0.00448557,1.03042113,USD,-1.8802681100004576E-6,-,-1.8802681100004576E-6
+Transaction History,Data,2025-01-03,U***22945,Net Amount in Base from Forex Trade: -3 EUR.USD,Forex Trade Component,EUR.USD,-3.0,1.0271,USD,-0.010923308999999826,-,-0.010923308999999826
+Transaction History,Data,2025-01-03,U***22945,VANG S&P500 USDA,Buy,VUAA,0.8919,112.110342,USD,-96.9972993,-3.88031979906189,-100.87761909906187
+Transaction History,Data,2025-01-03,U***22945,Net Amount in Base from Forex Trade: -97.19 EUR.USD,Forex Trade Component,EUR.USD,-97.19,1.02865,USD,-0.20774309045501127,-,-0.20774309045501127
+Transaction History,Data,2025-01-02,U***22945,Net Amount in Base from Forex Trade: -0.00263886 EUR.USD,Forex Trade Component,EUR.USD,-0.00263886,1.02639199,USD,-8.080849999998058E-7,-,-8.080849999998058E-7
+Transaction History,Data,2025-01-02,U***22945,Net Amount in Base from Forex Trade: 0.00813504 EUR.USD,Forex Trade Component,EUR.USD,0.00813504,1.02673123,USD,-2.1147500000109898E-7,-,-2.1147500000109898E-7
+Transaction History,Data,2025-01-02,U***22945,Net Amount in Base from Forex Trade: -3.87 EUR.USD,Forex Trade Component,EUR.USD,-3.87,1.03575,USD,0.03409525147500014,-,0.03409525147500014
+Transaction History,Data,2025-01-02,U***22945,Net Amount in Base from Forex Trade: -0.01 EUR.USD,Forex Trade Component,EUR.USD,-0.01,1.03585,USD,8.907541499999887E-5,-,8.907541499999887E-5
+Transaction History,Data,2025-01-02,U***22945,Net Amount in Base from Forex Trade: -18.34 EUR.USD,Forex Trade Component,EUR.USD,-18.34,1.03605,USD,0.16693690642999925,-,0.16693690642999925
+Transaction History,Data,2025-01-02,U***22945,VANG S&P500 USDA,Buy,VUAA,0.1687,112.58,USD,-18.49825768154,-,-18.49825768154
+Transaction History,Data,2025-01-02,U***22945,VANG S&P500 USDA,Buy,VUAA,1.0,112.5,USD,-109.573875,-3.89596,-113.469835
+Transaction History,Data,2025-01-02,U***22945,Net Amount in Base from Forex Trade: -108.58 EUR.USD,Forex Trade Component,EUR.USD,-108.58,1.0359,USD,0.9724686477800049,-,0.9724686477800049
+Transaction History,Data,2024-12-30,U***22945,Electronic Fund Transfer,Deposit,-,-,-,-,2734.0,-,2734.0
+Transaction History,Data,2024-12-19,U***22945,Net Amount in Base from Forex Trade: 0.00509111 EUR.USD,Forex Trade Component,EUR.USD,0.00509111,1.03661089,USD,-1.5719499999993641E-6,-,-1.5719499999993641E-6
+Transaction History,Data,2024-12-19,U***22945,Net Amount in Base from Forex Trade: -0.00220738 EUR.USD,Forex Trade Component,EUR.USD,-0.00220738,1.0358458,USD,-9.532300000001E-7,-,-9.532300000001E-7
+Transaction History,Data,2024-12-19,U***22945,Net Amount in Base from Forex Trade: -0.00362764 EUR.USD,Forex Trade Component,EUR.USD,-0.00362764,1.03579801,USD,-1.727650000000417E-6,-,-1.727650000000417E-6
+Transaction History,Data,2024-12-19,U***22945,Net Amount in Base from Forex Trade: -0.01 EUR.USD,Forex Trade Component,EUR.USD,-0.01,1.0381,USD,1.7457379999998718E-5,-,1.7457379999998718E-5
+Transaction History,Data,2024-12-19,U***22945,Net Amount in Base from Forex Trade: -1.63 EUR.USD,Forex Trade Component,EUR.USD,-1.63,1.03805,USD,0.0027669070700000464,-,0.0027669070700000464
+Transaction History,Data,2024-12-19,U***22945,Net Amount in Base from Forex Trade: -55.4 EUR.USD,Forex Trade Component,EUR.USD,-55.4,1.03825,USD,0.10473286899999579,-,0.10473286899999579
+Transaction History,Data,2024-12-19,U***22945,Net Amount in Base from Forex Trade: -0.08 EUR.USD,Forex Trade Component,EUR.USD,-0.08,1.03825,USD,1.512387999999948E-4,-,1.512387999999948E-4
+Transaction History,Data,2024-12-19,U***22945,Net Amount in Base from Forex Trade: -0.03 EUR.USD,Forex Trade Component,EUR.USD,-0.03,1.03845,USD,6.250442999999883E-5,-,6.250442999999883E-5
+Transaction History,Data,2024-12-19,U***22945,Net Amount in Base from Forex Trade: -0.02 EUR.USD,Forex Trade Component,EUR.USD,-0.02,1.03855,USD,4.359958000000122E-5,-,4.359958000000122E-5
+Transaction History,Data,2024-12-19,U***22945,Net Amount in Base from Forex Trade: -0.96 EUR.USD,Forex Trade Component,EUR.USD,-0.96,1.0392,USD,0.002694927359999988,-,0.002694927359999988
+Transaction History,Data,2024-12-19,U***22945,Net Amount in Base from Forex Trade: -488.34 EUR.USD,Forex Trade Component,EUR.USD,-488.34,1.03935,USD,1.4415616114200134,-,1.4415616114200134
+Transaction History,Data,2024-12-19,U***22945,NVIDIA CORP,Buy,NVDA,2.0,131.68,USD,-254.1371328,-0.96507263808,-255.10220543807998
+Transaction History,Data,2024-12-19,U***22945,Net Amount in Base from Forex Trade: -0.96 EUR.USD,Forex Trade Component,EUR.USD,-0.96,1.03935,USD,0.002833884479999993,-,0.002833884479999993
+Transaction History,Data,2024-12-19,U***22945,VANG S&P500 USDA,Buy,VUAA,0.511,112.72,USD,-55.58277080159999,-1.640466,-57.223236801599995
+Transaction History,Data,2024-12-19,U***22945,Net Amount in Base from Forex Trade: -752.72 EUR.USD,Forex Trade Component,EUR.USD,-752.72,1.04145,USD,3.7473570551200055,-,3.7473570551200055
+Transaction History,Data,2024-12-19,U***22945,Net Amount in Base from Forex Trade: -0.05 EUR.USD,Forex Trade Component,EUR.USD,-0.05,1.04145,USD,2.4892104999999637E-4,-,2.4892104999999637E-4
+Transaction History,Data,2024-12-19,U***22945,VANG S&P500 USDA,Buy,VUAA,7.0,111.9984,USD,-756.5346701999999,-3.85992,-760.3945901999999
+Transaction History,Data,2024-12-19,U***22945,ADVANCED MICRO DEVICES,Buy,AMD,2.0,122.12,USD,-235.6867152,-0.96507263808,-236.65178783808
+Transaction History,Data,2024-12-19,U***22945,Electronic Fund Transfer,Deposit,-,-,-,-,1288.0,-,1288.0
+Transaction History,Data,2024-12-19,U***22945,Net Amount in Base from Forex Trade: -3.85 EUR.USD,Forex Trade Component,EUR.USD,-3.85,1.0413,USD,0.018609644899999722,-,0.018609644899999722
+Transaction History,Data,2024-12-18,U***22945,Net Amount in Base from Forex Trade: 0.00130665 EUR.USD,Forex Trade Component,EUR.USD,0.00130665,1.03547056,USD,-2.9388000000012127E-7,-,-2.9388000000012127E-7
+Transaction History,Data,2024-12-18,U***22945,Net Amount in Base from Forex Trade: 0.00259775 EUR.USD,Forex Trade Component,EUR.USD,0.00259775,1.03551056,USD,-6.824000000002495E-7,-,-6.824000000002495E-7
+Transaction History,Data,2024-12-18,U***22945,Net Amount in Base from Forex Trade: -443.83 EUR.USD,Forex Trade Component,EUR.USD,-443.83,1.0483,USD,5.599300694440046,-,5.599300694440046
+Transaction History,Data,2024-12-18,U***22945,Net Amount in Base from Forex Trade: -0.06 EUR.USD,Forex Trade Component,EUR.USD,-0.06,1.04835,USD,7.59849960000003E-4,-,7.59849960000003E-4
+Transaction History,Data,2024-12-18,U***22945,Net Amount in Base from Forex Trade: -0.00341754 EUR.USD,Forex Trade Component,EUR.USD,-0.00341754,1.03480949,USD,-1.4224599999999518E-6,-,-1.4224599999999518E-6
+Transaction History,Data,2024-12-18,U***22945,VANG S&P500 USDA,Buy,VUAA,0.04,115.18,USD,-4.450370912,-1.642132,-6.0925029120000005
+Transaction History,Data,2024-12-18,U***22945,VANG S&P500 USDA,Buy,VUAA,4.0,115.18,USD,-445.0370912,-2.221708,-447.25879920000006
+Transaction History,Data,2024-12-18,U***22945,Net Amount in Base from Forex Trade: -3.81 EUR.USD,Forex Trade Component,EUR.USD,-3.81,1.04825,USD,0.04788244170000011,-,0.04788244170000011
+Transaction History,Data,2024-12-18,U***22945,Net Amount in Base from Forex Trade: -0.01 EUR.USD,Forex Trade Component,EUR.USD,-0.01,1.04825,USD,1.256757000000011E-4,-,1.256757000000011E-4
+Transaction History,Data,2024-12-18,U***22945,Net Amount in Base from Forex Trade: -0.05 EUR.USD,Forex Trade Component,EUR.USD,-0.05,1.04845,USD,6.380380999999949E-4,-,6.380380999999949E-4
+Transaction History,Data,2024-12-18,U***22945,TESLA INC,Buy,TSLA,1.0,461.93,USD,-446.20590280000005,-0.9660063660800001,-447.17190916608
+Transaction History,Data,2024-12-18,U***22945,Net Amount in Base from Forex Trade: -0.96 EUR.USD,Forex Trade Component,EUR.USD,-0.96,1.04845,USD,0.012250331520000102,-,0.012250331520000102
+Transaction History,Data,2024-12-18,U***22945,Net Amount in Base from Forex Trade: -440.52 EUR.USD,Forex Trade Component,EUR.USD,-440.52,1.04845,USD,5.621370876240064,-,5.621370876240064
+Transaction History,Data,2024-12-18,U***22945,Net Amount in Base from Forex Trade: -0.95 EUR.USD,Forex Trade Component,EUR.USD,-0.95,1.04845,USD,0.012122723900000021,-,0.012122723900000021
+Transaction History,Data,2024-12-18,U***22945,Net Amount in Base from Forex Trade: -0.13 EUR.USD,Forex Trade Component,EUR.USD,-0.13,1.0484,USD,0.0016526203199999923,-,0.0016526203199999923
+Transaction History,Data,2024-12-18,U***22945,Net Amount in Base from Forex Trade: -652.59 EUR.USD,Forex Trade Component,EUR.USD,-652.59,1.0484,USD,8.296026881759985,-,8.296026881759985
+Transaction History,Data,2024-12-18,U***22945,"Net Amount in Base from Forex Trade: -1,329.5 EUR.USD",Forex Trade Component,EUR.USD,-1329.5,1.0485,USD,17.029645269999946,-,17.029645269999946
+Transaction History,Data,2024-12-18,U***22945,SHOPIFY INC - CLASS A,Buy,SHOP,4.0,118.73,USD,-458.7537232,-0.96614546432,-459.7198686643201
+Transaction History,Data,2024-12-18,U***22945,Net Amount in Base from Forex Trade: -0.06 EUR.USD,Forex Trade Component,EUR.USD,-0.06,1.0476,USD,7.163817600000025E-4,-,7.163817600000025E-4
+Transaction History,Data,2024-12-18,U***22945,AT&T INC,Buy,T,30.0,22.81,USD,-661.006428,-0.9680464736,-661.9744744736
+Transaction History,Data,2024-12-18,U***22945,NETFLIX INC,Buy,NFLX,1.0,919.13,USD,-887.8428148,-0.9660063660800001,-888.8088211660801
+Transaction History,Data,2024-12-18,U***22945,Net Amount in Base from Forex Trade: -0.95 EUR.USD,Forex Trade Component,EUR.USD,-0.95,1.04845,USD,0.012122723900000021,-,0.012122723900000021
+Transaction History,Data,2024-12-18,U***22945,Electronic Fund Transfer,Deposit,-,-,-,-,2890.0,-,2890.0
+Transaction History,Data,2024-12-18,U***22945,Net Amount in Base from Forex Trade: -0.96 EUR.USD,Forex Trade Component,EUR.USD,-0.96,1.04845,USD,0.012250331520000102,-,0.012250331520000102
+Transaction History,Data,2024-12-12,U***22945,VANG S&P500 USDA,Buy,VUAA,0.8303,115.5,USD,-91.6215666135,-1.6241629999999998,-93.24572961349999
+Transaction History,Data,2024-12-12,U***22945,Net Amount in Base from Forex Trade: -0.00018062 EUR.USD,Forex Trade Component,EUR.USD,-1.8062E-4,1.04638599,USD,-5.128999999999659E-8,-,-5.128999999999659E-8
+Transaction History,Data,2024-12-12,U***22945,Net Amount in Base from Forex Trade: -0.00012808 EUR.USD,Forex Trade Component,EUR.USD,-1.2808E-4,1.04622748,USD,-5.774000000000057E-8,-,-5.774000000000057E-8
+Transaction History,Data,2024-12-12,U***22945,Net Amount in Base from Forex Trade: -98 EUR.USD,Forex Trade Component,EUR.USD,-98.0,1.04985,USD,-1.6098132329999968,-1.9054,-1.6098132329999968
+Transaction History,Data,2024-12-12,U***22945,Net Amount in Base from Forex Trade: 96.2 EUR.USD,Forex Trade Component,EUR.USD,96.2,1.04985,USD,-2.195557622300001,-1.9054,-2.195557622300001
+Transaction History,Data,2024-12-12,U***22945,Net Amount in Base from Forex Trade: -1.62 EUR.USD,Forex Trade Component,EUR.USD,-1.62,1.0493,USD,0.004034977739999945,-,0.004034977739999945
+Transaction History,Data,2024-12-12,U***22945,Net Amount in Base from Forex Trade: -89.58 EUR.USD,Forex Trade Component,EUR.USD,-89.58,1.04945,USD,0.23595690009000236,-,0.23595690009000236
+Transaction History,Data,2024-12-12,U***22945,Electronic Fund Transfer,Deposit,-,-,-,-,100.0,-,100.0
