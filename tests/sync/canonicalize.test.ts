@@ -37,6 +37,7 @@ describe('canonicalContentHash', () => {
     expect(canonicalContentHash(base)).not.toBe(canonicalContentHash({ ...base, cashAmount: -2.19 }))
     expect(canonicalContentHash(base)).not.toBe(canonicalContentHash({ ...base, symbol: 'VUAB' }))
     expect(canonicalContentHash(base)).not.toBe(canonicalContentHash({ ...base, exchange: 'XLON' }))
+    expect(canonicalContentHash(base)).not.toBe(canonicalContentHash({ ...base, date: '2026-04-29T10:09:20.103Z' }))
     expect(canonicalContentHash(base)).not.toBe(canonicalContentHash({ ...base, quantity: 0.2 }))
     expect(canonicalContentHash(base)).not.toBe(canonicalContentHash({ ...base, price: 25.53 }))
   })
