@@ -147,10 +147,10 @@ export async function POST(req: Request) {
 
     if (runRow) {
       const docRows = [
-        ...result.preview.new.map(d => ({
+        ...result.preview.new.map(p => ({
           runId: runRow.id,
-          externalId: d.externalId,
-          docId: d._id,
+          externalId: p.doc.externalId,
+          docId: p.doc._id,
           status: 'inserted',
           errorMessage: null,
         })),

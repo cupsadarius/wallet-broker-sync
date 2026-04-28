@@ -24,6 +24,8 @@ import type { CanonicalTxn } from '@/src/types'
 
 type UnsupportedRow = { row: string | number; reason: string; raw?: Record<string, unknown> }
 
+type PreparedDoc = { doc: AssetTransactionDoc; source: CanonicalTxn }
+
 type SyncResult = {
   total: number
   inserted: number
@@ -32,7 +34,7 @@ type SyncResult = {
   needsAsset: CanonicalTxn[]
   unsupported: UnsupportedRow[]
   preview: {
-    new: AssetTransactionDoc[]
+    new: PreparedDoc[]
     alreadyPresent: string[]
   }
 }
@@ -157,25 +159,24 @@ export default function PreviewTable() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {newTxns.map((doc) => {
+                {newTxns.map(({ doc, source }) => {
                   const side = doc.transactionType === 0 ? 'BUY' : 'SELL'
                   const price = (doc.price / 100).toFixed(2)
                   const total = (doc.cashAmount / 100).toFixed(2)
-                  // Derive symbol/exchange from externalSource — they're not on the doc directly.
-                  // We cross-reference with needsAsset or just show externalId as identifier.
+                  const dateShort = doc.date.slice(0, 10)
                   return (
                     <TableRow key={doc._id}>
-                      <TableCell>{doc.date}</TableCell>
+                      <TableCell className="font-mono text-xs">{dateShort}</TableCell>
                       <TableCell>
                         <span className={doc.transactionType === 0 ? 'text-green-600 font-medium' : 'text-red-600 font-medium'}>
                           {side}
                         </span>
                       </TableCell>
-                      <TableCell className="font-mono text-xs">{doc.externalId}</TableCell>
-                      <TableCell>{doc.externalSource.toUpperCase()}</TableCell>
+                      <TableCell className="font-mono font-medium">{source.symbol ?? '—'}</TableCell>
+                      <TableCell className="text-xs">{source.exchange ?? '—'}</TableCell>
                       <TableCell className="text-right">{doc.quantity}</TableCell>
                       <TableCell className="text-right">
-                        {price} {doc.priceCurrencyCode}/share
+                        {price} {doc.priceCurrencyCode}
                       </TableCell>
                       <TableCell className="text-right">
                         {total} {doc.cashAmountCurrencyCode}

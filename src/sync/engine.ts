@@ -11,16 +11,19 @@ export type SyncInput = {
   lookup: Pick<LookupService, 'assetByVenueSymbol'>
 }
 
+/** Pair the wire doc (what gets written) with its source canonical txn (for UI display). */
+export type PreparedDoc = { doc: AssetTransactionDoc; source: CanonicalTxn }
+
 export type SyncResult = {
   total: number; inserted: number; conflict: number
   errors: Array<{ id: string; reason: string }>
   needsAsset: CanonicalTxn[]
   unsupported: UnsupportedRow[]
-  preview: { new: AssetTransactionDoc[]; alreadyPresent: string[] }
+  preview: { new: PreparedDoc[]; alreadyPresent: string[] }
 }
 
 export type PreparedSync = {
-  toInsert: AssetTransactionDoc[]
+  toInsert: PreparedDoc[]
   alreadyPresent: string[]
   needsAsset: CanonicalTxn[]
   unsupported: UnsupportedRow[]
@@ -38,7 +41,7 @@ export async function prepareSync(
   const existingIds = new Set(existing.map((d: Record<string, unknown>) => d['_id']))
   const now = new Date().toISOString()
 
-  const toInsert: AssetTransactionDoc[] = []
+  const toInsert: PreparedDoc[] = []
   const alreadyPresent: string[] = []
   const needsAsset: CanonicalTxn[] = []
 
@@ -52,7 +55,7 @@ export async function prepareSync(
       ownerId: input.ownerId, now, toolVersion: input.toolVersion,
     })
     if (existingIds.has(doc._id)) alreadyPresent.push(doc._id)
-    else toInsert.push(doc)
+    else toInsert.push({ doc, source: t })
   }
 
   return { toInsert, alreadyPresent, needsAsset, unsupported: input.unsupported, total: input.txns.length }
@@ -69,7 +72,7 @@ export async function commitSync(
   const errors: SyncResult['errors'] = []
 
   for (let i = 0; i < prepared.toInsert.length; i += 50) {
-    const batch = prepared.toInsert.slice(i, i + 50)
+    const batch = prepared.toInsert.slice(i, i + 50).map(p => p.doc)
     const res = await couch.bulkDocs(batch)
     for (const r of res) {
       if (r.status === 'inserted') inserted++
