@@ -14,11 +14,18 @@ export type SyncInput = {
 /** Pair the wire doc (what gets written) with its source canonical txn (for UI display). */
 export type PreparedDoc = { doc: AssetTransactionDoc; source: CanonicalTxn }
 
+/** Per-doc outcome from the bulk write step. Lets the audit log report accurately. */
+export type WriteOutcome =
+  | { docId: string; externalId: string; status: 'inserted'; rev: string }
+  | { docId: string; externalId: string; status: 'conflict' }
+  | { docId: string; externalId: string; status: 'error'; reason: string }
+
 export type SyncResult = {
   total: number; inserted: number; conflict: number
   errors: Array<{ id: string; reason: string }>
   needsAsset: CanonicalTxn[]
   unsupported: UnsupportedRow[]
+  outcomes: WriteOutcome[]
   preview: { new: PreparedDoc[]; alreadyPresent: string[] }
 }
 
@@ -70,14 +77,28 @@ export async function commitSync(
 ): Promise<SyncResult> {
   let inserted = 0, conflict = 0
   const errors: SyncResult['errors'] = []
+  const outcomes: WriteOutcome[] = []
+
+  // Build a quick map from _id → externalId so per-doc outcomes carry both.
+  const externalIdById = new Map<string, string>()
+  for (const p of prepared.toInsert) externalIdById.set(p.doc._id, p.doc.externalId)
 
   for (let i = 0; i < prepared.toInsert.length; i += 50) {
     const batch = prepared.toInsert.slice(i, i + 50).map(p => p.doc)
     const res = await couch.bulkDocs(batch)
     for (const r of res) {
-      if (r.status === 'inserted') inserted++
-      else if (r.status === 'conflict') conflict++
-      else errors.push({ id: r.id, reason: (r as { id: string; status: string; reason?: string }).reason ?? 'unknown' })
+      const externalId = externalIdById.get(r.id) ?? ''
+      if (r.status === 'inserted') {
+        inserted++
+        outcomes.push({ docId: r.id, externalId, status: 'inserted', rev: r.rev })
+      } else if (r.status === 'conflict') {
+        conflict++
+        outcomes.push({ docId: r.id, externalId, status: 'conflict' })
+      } else {
+        const reason = (r as { id: string; status: string; reason?: string }).reason ?? 'unknown'
+        errors.push({ id: r.id, reason })
+        outcomes.push({ docId: r.id, externalId, status: 'error', reason })
+      }
     }
   }
 
@@ -86,6 +107,7 @@ export async function commitSync(
     inserted, conflict, errors,
     needsAsset: prepared.needsAsset,
     unsupported: prepared.unsupported,
+    outcomes,
     preview: { new: prepared.toInsert, alreadyPresent: prepared.alreadyPresent },
   }
 }

@@ -146,13 +146,15 @@ export async function POST(req: Request) {
     }).returning()
 
     if (runRow) {
+      // Single source of truth for per-doc status: the engine's write outcomes.
+      // result.errors duplicates the 'error' rows from outcomes — don't re-add them.
       const docRows = [
-        ...result.preview.new.map(p => ({
+        ...result.outcomes.map(o => ({
           runId: runRow.id,
-          externalId: p.doc.externalId,
-          docId: p.doc._id,
-          status: 'inserted',
-          errorMessage: null,
+          externalId: o.externalId || null,
+          docId: o.docId,
+          status: o.status,
+          errorMessage: o.status === 'error' ? o.reason : null,
         })),
         ...result.preview.alreadyPresent.map(id => ({
           runId: runRow.id,
@@ -160,13 +162,6 @@ export async function POST(req: Request) {
           docId: id,
           status: 'skipped',
           errorMessage: null,
-        })),
-        ...result.errors.map(e => ({
-          runId: runRow.id,
-          externalId: null,
-          docId: e.id,
-          status: 'error',
-          errorMessage: e.reason,
         })),
       ]
       if (docRows.length > 0) {

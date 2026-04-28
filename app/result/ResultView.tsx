@@ -78,27 +78,40 @@ export default function ResultView() {
 
       {/* Summary header card */}
       <div className="rounded-xl border bg-card px-5 py-6 ring-1 ring-foreground/10">
-        <h1 className="text-2xl font-semibold mb-4">Sync complete</h1>
-        <div className="flex flex-wrap gap-8">
-          <div className="flex flex-col gap-1">
-            <span className="text-4xl font-bold text-green-600">{totalWritten}</span>
-            <span className="text-sm text-muted-foreground">total written</span>
-          </div>
-          <div className="flex flex-col gap-1">
-            <span className="text-3xl font-semibold text-green-600">{inserted}</span>
-            <span className="text-sm text-muted-foreground">inserted</span>
-          </div>
-          <div className="flex flex-col gap-1">
-            <span className="text-3xl font-semibold text-zinc-500">{conflict}</span>
-            <span className="text-sm text-muted-foreground">already present (idempotent)</span>
-          </div>
-          {errors.length > 0 && (
-            <div className="flex flex-col gap-1">
-              <span className="text-3xl font-semibold text-red-600">{errors.length}</span>
-              <span className="text-sm text-muted-foreground">errors</span>
+        {submitted.length === 0 && conflicts.length > 0 && errors.length === 0 ? (
+          <>
+            <h1 className="text-2xl font-semibold mb-2">Nothing to import</h1>
+            <p className="text-muted-foreground">
+              All <span className="font-semibold text-foreground">{conflicts.length}</span>{' '}
+              parsed transaction{conflicts.length === 1 ? '' : 's'} already exist in Wallet.
+              Your data is up to date.
+            </p>
+          </>
+        ) : (
+          <>
+            <h1 className="text-2xl font-semibold mb-4">Sync complete</h1>
+            <div className="flex flex-wrap gap-8">
+              <div className="flex flex-col gap-1">
+                <span className="text-4xl font-bold text-green-600">{totalWritten}</span>
+                <span className="text-sm text-muted-foreground">total written</span>
+              </div>
+              <div className="flex flex-col gap-1">
+                <span className="text-3xl font-semibold text-green-600">{inserted}</span>
+                <span className="text-sm text-muted-foreground">inserted</span>
+              </div>
+              <div className="flex flex-col gap-1">
+                <span className="text-3xl font-semibold text-zinc-500">{conflict}</span>
+                <span className="text-sm text-muted-foreground">already present (idempotent)</span>
+              </div>
+              {errors.length > 0 && (
+                <div className="flex flex-col gap-1">
+                  <span className="text-3xl font-semibold text-red-600">{errors.length}</span>
+                  <span className="text-sm text-muted-foreground">errors</span>
+                </div>
+              )}
             </div>
-          )}
-        </div>
+          </>
+        )}
       </div>
 
       {/* Submitted transactions */}

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { Fragment, useState } from 'react'
 import { Badge } from '@/components/ui/badge'
 import {
   Table,
@@ -119,9 +119,8 @@ export default function HistoryList({ runs }: { runs: SyncRun[] }) {
               : null
 
             return (
-              <>
+              <Fragment key={run.id}>
                 <TableRow
-                  key={run.id}
                   className="cursor-pointer hover:bg-muted/50 transition-colors"
                   onClick={() => { void toggleRow(run) }}
                 >
@@ -193,7 +192,7 @@ export default function HistoryList({ runs }: { runs: SyncRun[] }) {
                     </TableCell>
                   </TableRow>
                 )}
-              </>
+              </Fragment>
             )
           })}
         </TableBody>
