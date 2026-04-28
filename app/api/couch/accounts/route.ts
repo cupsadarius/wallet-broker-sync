@@ -4,6 +4,7 @@ import { config } from '@/src/storage/schema'
 import { loadCouchCreds } from '@/src/storage/credentials'
 import { CouchClient } from '@/src/sync/couch'
 import { LookupService } from '@/src/sync/lookup'
+import { formatError } from '@/src/sync/format-error'
 
 runMigrations()
 
@@ -30,7 +31,9 @@ export async function GET() {
     const accounts = lookup.investmentAccounts()
     return NextResponse.json({ accounts })
   } catch (err) {
-    const message = err instanceof Error ? err.message : String(err)
-    return NextResponse.json({ error: message }, { status: 500 })
+    const f = formatError(err)
+    console.error('[api/couch/accounts]', f.kind, f.message, f.details)
+    const status = f.kind === 'unauthorized' ? 401 : f.kind === 'rate_limited' ? 429 : 500
+    return NextResponse.json({ error: f.message, kind: f.kind }, { status })
   }
 }

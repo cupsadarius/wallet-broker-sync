@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { db, runMigrations } from '@/src/storage/db'
 import { config, brokerAccountMap } from '@/src/storage/schema'
 import { saveCouchCreds, loadCouchCreds } from '@/src/storage/credentials'
+import { formatError } from '@/src/sync/format-error'
 
 // Run migrations on first import
 runMigrations()
@@ -29,8 +30,9 @@ export async function GET() {
       },
     })
   } catch (err) {
-    const message = err instanceof Error ? err.message : String(err)
-    return NextResponse.json({ ok: false, error: message }, { status: 500 })
+    const f = formatError(err)
+    console.error('[api/config]', f.kind, f.message, f.details)
+    return NextResponse.json({ ok: false, error: f.message, kind: f.kind }, { status: 500 })
   }
 }
 
@@ -94,7 +96,8 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ ok: true })
   } catch (err) {
-    const message = err instanceof Error ? err.message : String(err)
-    return NextResponse.json({ ok: false, error: message }, { status: 500 })
+    const f = formatError(err)
+    console.error('[api/config]', f.kind, f.message, f.details)
+    return NextResponse.json({ ok: false, error: f.message, kind: f.kind }, { status: 500 })
   }
 }

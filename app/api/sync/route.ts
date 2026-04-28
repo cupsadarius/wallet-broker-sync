@@ -9,6 +9,7 @@ import { CouchClient } from '@/src/sync/couch'
 import { LookupService } from '@/src/sync/lookup'
 import { prepareSync, commitSync } from '@/src/sync/engine'
 import { parsers } from '@/src/parsers/registry'
+import { formatError } from '@/src/sync/format-error'
 
 runMigrations()
 
@@ -175,7 +176,9 @@ export async function POST(req: Request) {
 
     return NextResponse.json(result)
   } catch (err) {
-    const message = err instanceof Error ? err.message : String(err)
-    return NextResponse.json({ ok: false, error: message }, { status: 500 })
+    const f = formatError(err)
+    console.error('[api/sync]', f.kind, f.message, f.details)
+    const status = f.kind === 'unauthorized' ? 401 : f.kind === 'rate_limited' ? 429 : 500
+    return NextResponse.json({ ok: false, error: f.message, kind: f.kind }, { status })
   }
 }
