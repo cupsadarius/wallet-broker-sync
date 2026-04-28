@@ -221,22 +221,23 @@ Re-runs use the persisted mapping; the user can edit it in a settings page.
 ## Sync algorithm
 
 ```
-function sync(broker: BrokerId, csv: string, accountId: string) {
-  1. const txns = parsers[broker].parse(csv)
-  2. Resolve assets: for each unique symbol, lookup or surface as "needs creation"
-  3. Map to AssetTransaction docs (with deterministic _id, custom fields, assigned assetId)
+function sync(broker: BrokerId, input: ParserInput, accountId: string) {
+  1. const { txns, unsupported } = parsers[broker].parse(input)
+  2. Resolve assets: for each unique (exchange, symbol), lookup or surface as "needs creation"
+  3. Map to AssetTransaction docs (deterministic _id, custom fields, assigned assetId)
   4. Read existing docs for this account from CouchDB (Mango query on accountId)
   5. Diff:
        - existing = set of _id already present
        - new      = docs whose _id not in existing
-       - changed  = docs whose _id is present but content differs (informational only — never written)
-  6. Render diff preview UI; await user confirmation
-  7. POST /_bulk_docs with new docs (new_edits: true)
+       (v1 does not compute "changed" — we never overwrite, so the comparison is dead weight.
+        Re-introduce in v2 only if a use case appears.)
+  6. Render diff preview UI (new + unsupported + needs-asset); await user confirmation
+  7. POST /_bulk_docs with new docs (new_edits: true), in batches of N (N from phase 0 capture #9)
   8. Parse per-doc response:
        - 201/200  → inserted
        - 409      → already present (treat as no-op, not an error)
        - other    → log; surface in run summary
-  9. Persist run summary to local SQLite
+  9. Persist run summary + unsupported rows to local SQLite
 }
 ```
 
@@ -274,7 +275,7 @@ Before writing sync code, the user performs small captures from the Wallet web U
 | 8 | Login flow on the web app | How the Basic-auth token is acquired; whether there's a refresh path or it's pinned for the session |
 | 9 | A `_bulk_docs` call with 100 docs (synthetic, e.g. via re-export of historic data triggering bulk replication) | Max practical batch size, presence of payload-size limits, observed rate-limiting headers |
 | 10 | Open `sources/tradeville.pdf` with `pdfjs-dist`; dump all text items with `(text, x, y, page)` triplets | Tradeville PDF layout: column x-positions, header row y-position per page, separator/noise text to ignore. **Output**: a `parsers/tradeville-layout.ts` constants file describing column geometry. |
-| 11 | Open `sources/xtb.xlsx` and `sources/ibkr.csv` with the implementation parsers in dry-run mode | Sanity-check parsers against real data before writing to CouchDB; produce a JSON dump of `CanonicalTxn[]` for human review. |
+| 11 *(dry-run, not network capture)* | Open `sources/xtb.xlsx` and `sources/ibkr.csv` with the implementation parsers in dry-run mode | Sanity-check parsers against real data before writing to CouchDB; produce a JSON dump of `CanonicalTxn[]` for human review. |
 
 **Outputs of phase 0** (committed to the spec, not the captures themselves):
 
@@ -315,7 +316,14 @@ parsers/
       tradeville-edge-cases.pdf  # synthetic
 ```
 
-Real-export fixtures are committed in **redacted** form (account numbers stripped, names anonymized) so tests can run without exposing personal data.
+**Fixture policy:**
+
+- `parsers/test/fixtures/` is committed to the repo (used by CI / local test runs).
+- Real-export fixtures must be **redacted** before being committed. Redaction procedure per format:
+  - **CSV** — straight text edit; replace `Name and surname`, `Account` numbers (`U***22945` already partially-masked by IBKR), and any unique identifiers with placeholders.
+  - **XLSX** — open in LibreOffice (or `xlsx` lib) to a fresh workbook, copy values only (no formulas, no embedded objects), strip workbook properties (`xl/docProps/core.xml`, `app.xml`) using a small build script, and verify with `unzip -p <file>.xlsx xl/sharedStrings.xml` that no PII strings remain. Save fresh to drop hidden metadata.
+  - **PDF** — extract text-only via `pdfjs-dist`, regenerate a synthetic PDF with the same layout (e.g. via `pdf-lib`), or use `exiftool -all= <file>.pdf` and a search/replace pass on the text layer. Verify with `pdftotext -layout` (or our own pdfjs dump) that no PII remains. PDFs carry XMP/Info dicts and font subsets; the cleanest path is to regenerate from extracted text rather than redact in place.
+- If a redaction procedure is impractical for a given file, commit a **synthetic fixture** instead and keep the redacted real export only under `sources/` (gitignored). Any contributor adding fixtures must document which mode was used in a sibling `<fixture>.README.md`.
 
 ### Per-parser responsibilities (general)
 
@@ -343,7 +351,7 @@ Real-export fixtures are committed in **redacted** form (account numbers strippe
 - Multi-section CSV with rows of shape `<section>,<Header|Data>,<...fields>`.
 - Read `Summary` → `Base Currency` to get account base.
 - Filter `Transaction History` data rows; **only** `Transaction Type ∈ {Buy, Sell}` for v1.
-- Skip `Transaction Type = "Forex Trade Component"` (FX bookkeeping rows generated for each USD↔EUR leg of a trade — they are not user-actionable transactions).
+- Skip `Transaction Type = "Forex Trade Component"`. These rows are IBKR-internal bookkeeping that records the EUR↔USD leg auto-generated to settle a USD trade against the EUR base currency. The actual buy/sell row already carries the converted `Net Amount` (in EUR) and the unconverted `Price` + `Price Currency` (USD) — i.e. all the data v1 needs. FX components are duplicates of cash impact already reflected in the trade row, so skipping them does **not** lose buy/sell fidelity. Caveat: a standalone FX conversion (not tied to a trade) would also appear as Forex Trade Component and would be silently skipped — but standalone FX is a v2 deposits/withdrawals concern, explicitly out of v1 scope.
 - Skip `Dividend`, `Foreign Tax Withholding`, `Adjustment` for v1 — surface to `unsupported` so the user knows.
 - Numbers may be in scientific notation (e.g. `5.0E-4`) — `parseFloat` handles this.
 - `tradeCurrency` from `Price Currency` (commonly USD); `settlementCurrency` from base (EUR); `cashAmount` from `Net Amount` (in base).
@@ -359,24 +367,13 @@ Real-export fixtures are committed in **redacted** form (account numbers strippe
 - Reconstruct rows by clustering text items into y-bands; columns by x-position.
 - Extract: trade date, type (BUY/SELL or RO equivalents — `Cumpărare`/`Vânzare`?), symbol, quantity, price, fee, total.
 - `tradeCurrency = settlementCurrency = "RON"` (provisional; phase 0 confirms).
+- **Layout-validation tripwire** (mandatory): before extracting rows, the parser asserts that the captured layout still matches the file. Concretely: anchor strings declared in `tradeville-layout.ts` (e.g. expected header words like `"Simbol"`, `"Cantitate"`, `"Pret"` — confirmed during capture #10) must appear at their expected `(page, x±tolerance, y±tolerance)`. If any anchor is missing or off-position by more than tolerance, the parser **fails the import** with `"Tradeville layout drift — re-run phase-0 capture #10 and update tradeville-layout.ts"`. This guarantees layout drift produces a clean failure rather than silently wrong txns.
 - **Fragility note in code header**: PDF parsing breaks if Tradeville re-skins their statement. Recovery = re-run phase-0 capture, update the column-position constants. The parser owns a `tradeville-layout.ts` constants file specifically to make these tweaks low-cost.
 - If `pdfjs-dist` extraction is unreliable (e.g. PDF is image-based without an embedded text layer), fail the import with a clear error. v1 does not attempt OCR.
 
 ### Parser interface
 
-```ts
-type ParseResult = {
-  txns: CanonicalTxn[]
-  unsupported: Array<{ row: number, reason: string, raw: Record<string, unknown> }>
-}
-
-interface BrokerParser {
-  id: BrokerId
-  displayName: string
-  detect(csvText: string): boolean
-  parse(csvText: string): ParseResult
-}
-```
+The canonical interface is defined once, in the **Parser layer** section above. It takes `ParserInput` (bytes + filename + optional MIME hint), not a CSV string, and declares `acceptedFormats`. See `parsers/types.ts` in the file layout.
 
 ## UI flow
 
