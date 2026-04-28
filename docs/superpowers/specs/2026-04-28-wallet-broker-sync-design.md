@@ -17,7 +17,7 @@ However, network capture of the Wallet web app reveals it speaks **CouchDB repli
 
 ## Goals
 
-- Local web tool. Drag-and-drop a broker CSV; see a diff preview ("12 new, 340 already synced"); confirm; transactions appear in Wallet.
+- Local web tool. Drag-and-drop a **broker export file** (CSV / XLSX / PDF — format depends on the broker); see a diff preview ("12 new, 340 already synced"); confirm; transactions appear in Wallet.
 - **Idempotent.** Re-importing the same CSV is a no-op. Importing a superset (e.g. last year + this year) inserts only the new rows.
 - **Pluggable broker parsers.** Adding a new broker is one new file under `parsers/`; the sync engine, dedup logic, and UI are untouched.
 - **Full investment fidelity.** Buys/sells appear as proper `AssetTransaction` records in Wallet — Portfolio tab populates correctly with quantity and price-per-share.
@@ -32,19 +32,31 @@ However, network capture of the Wallet web app reveals it speaks **CouchDB repli
 - Multi-currency price translation. v1 stores `priceCurrencyCode` and `cashAmountCurrencyCode` exactly as the broker reports them; FX is Wallet's job downstream.
 - Hosted / multi-tenant. v1 is local-only.
 
+## Broker export formats (observed from real exports)
+
+The user's actual exports — committed locally under `sources/` (gitignored) — confirm the brokers ship different formats. Each parser owns its format-specific decoding:
+
+| Broker | Export format | Source of truth | Stable txn ID? | Currency posture |
+|---|---|---|---|---|
+| **XTB** | XLSX (multi-sheet workbook) | Sheet `CASH OPERATION HISTORY` (rows where `Type = "Stock purchase"` / `"Stock sale"`) | ✅ Column `ID` is a stable broker txn id (e.g. `999840114`); use directly as `externalId` | EUR-only at the cash-operation level |
+| **IBKR** | CSV (Activity Statement, multi-section) | Rows where `section = "Transaction History"` AND `Header = "Data"` AND `Transaction Type ∈ {Buy, Sell}` | ❌ Statement CSV does not include `TradeID`; we fall back to a canonicalized content hash. (Future: switch to Flex Query CSV which exposes `TradeID`.) | Trade in `Price Currency` (often USD); cash impact in account base (EUR). Multiple "Forex Trade Component" rows per trade — these are FX bookkeeping, **skipped** by v1 |
+| **Tradeville** | PDF (2 pages observed) | TBD — phase 0 inspects layout | TBD | Likely RON; phase 0 confirms |
+
+Implications for the parser interface: parsers receive **bytes + a filename hint**, not a CSV string. Each parser declares its accepted formats. Detection uses extension first, then content sniffing for ambiguous cases.
+
 ## Architecture
 
 ```
-┌──────────────┐    ┌──────────┐    ┌──────────────────┐    ┌──────────────┐    ┌──────────┐
-│  Broker CSV  │───►│  Parser  │───►│ CanonicalTxn[]   │───►│ Sync Engine  │───►│ CouchDB  │
-└──────────────┘    └──────────┘    └──────────────────┘    └──────┬───────┘    │ (Wallet) │
-                                                                    │            └──────────┘
-                                                                    │                  ▲
-                                                                    │                  │
-                                                                    └──────────────────┘
-                                                                  existing AssetTransaction
-                                                                  docs (read-side, for diff
-                                                                  preview & asset lookup)
+┌─────────────────────┐    ┌──────────┐    ┌──────────────────┐    ┌──────────────┐    ┌──────────┐
+│ Broker export file  │───►│  Parser  │───►│ CanonicalTxn[]   │───►│ Sync Engine  │───►│ CouchDB  │
+│ (CSV / XLSX / PDF)  │    │          │    │                  │    │              │    │ (Wallet) │
+└─────────────────────┘    └──────────┘    └──────────────────┘    └──────┬───────┘    └──────────┘
+                                                                          │                  ▲
+                                                                          │                  │
+                                                                          └──────────────────┘
+                                                                       existing AssetTransaction
+                                                                       docs (read-side, for diff
+                                                                       preview & asset lookup)
 ```
 
 Three hard layers, each independently testable:
@@ -54,14 +66,33 @@ Three hard layers, each independently testable:
 One module per broker. Pure function: bytes in, canonical txns out. Knows nothing about Wallet, CouchDB, or any side effects.
 
 ```ts
+type ParserInput = {
+  bytes: Uint8Array
+  filename: string         // e.g. "xtb-2026.xlsx"
+  mimeHint?: string        // from browser File.type when available
+}
+
+type ParseResult = {
+  txns: CanonicalTxn[]
+  unsupported: Array<{ row: string | number, reason: string, raw: Record<string, unknown> }>
+}
+
 interface BrokerParser {
   id: 'xtb' | 'ibkr' | 'tradeville'
-  detect(csvText: string): boolean
-  parse(csvText: string): CanonicalTxn[]
+  displayName: string
+  acceptedFormats: Array<'csv' | 'xlsx' | 'pdf'>
+  detect(input: ParserInput): boolean
+  parse(input: ParserInput): ParseResult
 }
 ```
 
-Parsers register themselves into a `parsers` map at module load. The UI uses `detect()` to suggest the right parser when a CSV is uploaded; the user can override.
+Detection is two-stage: extension first (XLSX → only XTB; PDF → only Tradeville; CSV → only IBKR for now), then content sniffing if more than one parser matches the extension (e.g. inspect headers / first rows). Parsers register themselves into a `parsers` map at module load. The user can always override the auto-detected choice.
+
+**Format dependencies** (added to `package.json`):
+
+- XLSX: [`xlsx`](https://www.npmjs.com/package/xlsx) (SheetJS) — handles multi-sheet workbooks, inline strings, Excel date serials
+- PDF: [`pdfjs-dist`](https://www.npmjs.com/package/pdfjs-dist) (Mozilla pdf.js) — text extraction with positioning info; layout-aware reconstruction is the parser's job
+- CSV: built-in (or [`papaparse`](https://www.npmjs.com/package/papaparse) if we hit edge cases)
 
 ### 2. Canonical model
 
@@ -69,21 +100,26 @@ The single shape every layer downstream of the parser speaks:
 
 ```ts
 type CanonicalTxn = {
-  externalId: string         // broker's transaction id, or hash(date|symbol|qty|price|side) if absent
+  externalId: string            // broker's transaction id, or canonicalized content hash if absent
   broker: 'xtb' | 'ibkr' | 'tradeville'
   kind: 'buy' | 'sell' | 'fee'
-  date: string               // ISO 8601 timestamp
-  symbol?: string            // ticker; required for buy/sell
-  quantity?: number          // required for buy/sell
-  pricePerShare?: number     // required for buy/sell
-  amount: number             // signed cash impact in account currency (negative = outflow)
-  currency: string           // ISO 4217
-  description: string        // human-readable summary
+  date: string                  // ISO 8601 timestamp, normalized to UTC ms-precision
+  symbol?: string               // ticker; required for buy/sell
+  exchange?: string             // MIC or operating MIC; required for buy/sell
+  quantity?: number             // required for buy/sell
+  pricePerShare?: number        // required for buy/sell, in tradeCurrency
+  tradeCurrency?: string        // ISO 4217 — currency the trade was priced in (e.g. USD on IBKR)
+  settlementCurrency: string    // ISO 4217 — currency that hit the broker cash account (e.g. EUR)
+  fxRate?: number               // tradeCurrency → settlementCurrency; required if currencies differ
+  cashAmount: number            // signed cash impact in settlementCurrency (negative = outflow)
+  description: string           // human-readable summary
   raw: Record<string, unknown>  // original CSV row, for debugging
 }
 ```
 
-`fee` rows are emitted by the parser when the broker reports them as separate line items. When fees are bundled into the trade row (e.g. as a "commission" column), the parser folds them into `amount` and emits no separate fee txn.
+`fee` rows are emitted by the parser when the broker reports them as separate line items. When fees are bundled into the trade row (e.g. as a "commission" column), the parser folds them into `cashAmount` and emits no separate fee txn.
+
+**FX-aware single-currency mapping (v1):** when `tradeCurrency !== settlementCurrency`, v1 maps the trade onto Wallet using `priceCurrencyCode = tradeCurrency`, `cashAmountCurrencyCode = settlementCurrency`, with `price = pricePerShare` (in trade currency) and `cashAmount = cashAmount` (in settlement currency). The two-currency story is preserved on-disk; v1 does not perform FX translation. Wallet renders the values; if Wallet shows the trade in tradeCurrency that's fine.
 
 ### 3. Sync engine
 
@@ -111,11 +147,11 @@ Broker-agnostic. Workflow:
   reservedUpdatedAt:  ISO timestamp
   assetId:            "-StocksFundsAsset_<uuid>"
   accountId:          "-Account_<uuid>"
-  assetType:          number   // 1 = stock/ETF (verify in phase 0)
-  transactionType:    number   // 0 = buy, 1 = sell (verify in phase 0)
-  date:               ISO timestamp
+  assetType:          number   // TBD — phase 0 captures the full enum (provisional: 1 = stock/ETF)
+  transactionType:    number   // TBD — phase 0 captures the full enum (provisional: 0 = buy, 1 = sell)
+  date:               ISO timestamp   // TBD — phase 0 confirms timezone convention
   quantity:           number
-  price:              number   // per-unit, encoding TBD (verify in phase 0)
+  price:              number   // TBD — phase 0 confirms encoding (decimal vs scaled integer)
   cashAmount:         number   // total cash impact incl. fee
   cashAmountCurrencyCode: ISO 4217
   priceCurrencyCode:  ISO 4217
@@ -136,23 +172,41 @@ CouchDB ignores fields the official clients don't know about. They round-trip ac
 _id = "-AssetTransaction_" + uuidv5(NAMESPACE_WALLET_SYNC, broker + ":" + externalId)
 ```
 
-Where `NAMESPACE_WALLET_SYNC` is a hard-coded UUID v5 namespace constant for this tool. Properties:
+`NAMESPACE_WALLET_SYNC` is **pinned for the lifetime of this tool**:
+
+```
+NAMESPACE_WALLET_SYNC = "dda5a242-7458-4066-9b2b-5c551d9753e3"
+```
+
+Changing this constant after any sync run has shipped would orphan every previously-written doc — re-imports would generate fresh `_id`s and produce duplicates. The constant lives in `src/sync/namespace.ts` and must never be edited.
+
+Properties:
 
 - Same input → same `_id`. Re-importing yields a CouchDB conflict, not a duplicate.
 - Different brokers can't collide (broker is part of the input).
 - We never need to query before writing to know whether something exists; CouchDB's response tells us.
 
-For brokers that don't supply a stable transaction id, the parser computes a content hash from `(date, symbol, quantity, price, side)` and uses that as `externalId`. Two identical orders on the same timestamp would collide — accepted limitation; document in the parser.
+For brokers that don't supply a stable transaction id, the parser computes a content hash from a **canonicalized** form of `(date, exchange|MIC, symbol, quantity, price, side, cashAmount)`:
+
+- `date` is normalized to UTC ISO-8601 with millisecond precision (`2026-04-28T10:11:20.382Z`).
+- Numeric fields are formatted with a fixed locale (`.` decimal separator, no thousands separator) to a fixed precision matching the parser's source-of-truth precision (declared per-parser; e.g. XTB → 4 decimal places for price, 6 for quantity).
+- Symbol is uppercased; exchange/MIC is required (see Asset lookup) so two listings of the same ticker on different venues hash differently.
+- `cashAmount` is included so a parser bug that produces the right trade fields with a wrong cash amount can be detected as a *new* doc rather than silently colliding with the correct one.
+
+The canonicalization function is part of the public parser contract and tested against fixtures. Two identical orders on the same millisecond timestamp on the same venue would still collide — accepted limitation, documented per parser.
 
 ### Asset lookup
 
 Each `AssetTransaction` requires an `assetId` pointing to an existing `StocksFundsAsset` doc.
 
+**Symbols are not globally unique.** The same ticker can refer to different securities on different venues (e.g. `SHEL` on LSE vs NYSE), and IBKR accounts in particular trade the same symbol across multiple exchanges. Keying lookups on bare ticker would silently misroute trades to the wrong asset.
+
 **Strategy:**
 
 1. On startup, fetch all `StocksFundsAsset` docs (low volume — the user's portfolio set).
-2. Build a `Map<symbol, assetId>` keyed by ticker.
-3. For each canonical txn, look up `symbol`. If found, use the `assetId`. If not found, we'd need to create a new `StocksFundsAsset` doc — **deferred to phase 0**, because we don't yet know that doc's required schema. v1 short-term path: surface "unknown asset" rows in the preview UI; user creates them once via Wallet's web UI; subsequent imports work.
+2. Build a `Map<exchange|MIC + ":" + symbol, assetId>`. The `StocksFundsAsset` schema's exchange field name is TBD in phase 0; until confirmed, the implementation uses whichever field carries the venue (MIC code, exchange short name, or operating MIC).
+3. Each `CanonicalTxn` carries `exchange` (MIC where the trade settled). The parser is required to populate it; CSVs that omit exchange must be enriched by the parser using broker-specific rules (e.g. XTB's instrument table) or marked as parse errors.
+4. For each canonical txn, look up `(exchange, symbol)`. If found, use the `assetId`. If not found, we'd need to create a new `StocksFundsAsset` doc — **deferred to phase 0**, because we don't yet know that doc's required schema. v1 short-term path: surface "unknown asset" rows in the preview UI; user creates them once via Wallet's web UI; subsequent imports work.
 
 ### Account selection
 
@@ -206,18 +260,35 @@ This avoids reverse-engineering the asset-creation document schema in v1. v2 can
 
 ## Phase 0: empirical capture
 
-Before writing sync code, the user performs ~6 small captures from the Wallet web UI with DevTools open. Each capture is a curl/HAR for one operation; the spec is updated with confirmed enum values, scaling, and doc shapes.
+Before writing sync code, the user performs small captures from the Wallet web UI with DevTools open. Each capture is a curl/HAR for one operation; the spec is updated with confirmed enum values, scaling, and doc shapes. Captures live under `docs/superpowers/captures/` (gitignored — they contain auth tokens) and are summarized into redacted excerpts in this spec.
 
 | # | Operation | Resolves |
 |---|---|---|
-| 1 | Buy 0.001 of an existing low-cost asset | `transactionType` for buy; `price` scaling at small-decimal scale |
+| 1 | Buy 0.001 of an existing low-cost asset (e.g. €1 trade) | `transactionType` for buy; `price` scaling at small-decimal scale |
 | 2 | Sell 0.001 of same asset | `transactionType` for sell |
-| 3 | Edit a buy to add a fee column | Fee shape: separate doc vs embedded field |
-| 4 | A buy that triggers a "Charges, Fees" line | Confirms fee = separate doc; capture its model type and fields |
-| 5 | View any existing trade and copy its `assetId` and `Asset` doc | `StocksFundsAsset` schema for v2 |
-| 6 | Login flow | How the Basic-auth token is acquired and refreshed |
+| 3 | A buy on an asset priced in a foreign currency (USD asset, EUR account) | FX field shape: separate `priceCurrencyCode` vs `cashAmountCurrencyCode`, `fxRate` storage location |
+| 4 | A buy that triggers a "Charges, Fees" line | Fee = separate doc? Capture its `reservedModelType` and full fields |
+| 5 | View any existing trade and copy its `assetId` and `StocksFundsAsset` doc | `StocksFundsAsset` schema (incl. exchange/MIC field name) for asset lookup and v2 creation |
+| 6 | Fetch all `Account` docs via `_all_docs?include_docs=true&startkey="-Account_"&endkey="-Account_￰"` | `Account` schema; specifically the field that distinguishes investment accounts from regular ones |
+| 7 | A trade on a different timezone (e.g. US market hours from a CET account) | Timezone normalization: is `date` stored as UTC, local, or with offset? Cross-check web vs mobile if possible |
+| 8 | Login flow on the web app | How the Basic-auth token is acquired; whether there's a refresh path or it's pinned for the session |
+| 9 | A `_bulk_docs` call with 100 docs (synthetic, e.g. via re-export of historic data triggering bulk replication) | Max practical batch size, presence of payload-size limits, observed rate-limiting headers |
+| 10 | Open `sources/tradeville.pdf` with `pdfjs-dist`; dump all text items with `(text, x, y, page)` triplets | Tradeville PDF layout: column x-positions, header row y-position per page, separator/noise text to ignore. **Output**: a `parsers/tradeville-layout.ts` constants file describing column geometry. |
+| 11 | Open `sources/xtb.xlsx` and `sources/ibkr.csv` with the implementation parsers in dry-run mode | Sanity-check parsers against real data before writing to CouchDB; produce a JSON dump of `CanonicalTxn[]` for human review. |
 
-The implementation plan does not begin until Phase 0 captures are checked in (redacted) under `docs/superpowers/captures/` and the spec section "Data model — Wallet AssetTransaction" has its TBDs filled in.
+**Outputs of phase 0** (committed to the spec, not the captures themselves):
+
+- `transactionType` enum table: `0=buy, 1=sell, ?=fee, ?=…` — fully filled in
+- `assetType` enum table — fully filled in for stocks/ETFs (other types deferred)
+- `price` field encoding: decimal vs integer scaling, with example
+- Fee doc shape: model type, fields, relationship to its parent trade
+- `StocksFundsAsset` schema: fields needed to resolve and (eventually) create
+- `Account` schema: investment-account discriminator field
+- Timezone convention
+- Reserved audit fields required on writes: confirmed list of `reservedCreatedAt`, `reservedUpdatedAt`, `reservedSource`, `reservedOwnerId`, `reservedAuthorId`, plus any others observed
+- Safe `_bulk_docs` batch size
+
+The implementation plan does not begin until phase 0 captures are filed and this spec's TBDs are resolved.
 
 ## Parser layer details
 
@@ -226,22 +297,70 @@ The implementation plan does not begin until Phase 0 captures are checked in (re
 ```
 parsers/
   index.ts          # registry, detect()
-  xtb.ts            # XTB parser
-  ibkr.ts           # Interactive Brokers parser (post-v1)
-  tradeville.ts     # Tradeville parser (post-v1)
+  types.ts          # ParserInput, ParseResult, CanonicalTxn types shared with sync engine
+  hash.ts           # canonical content-hash helpers (per parser-contract numeric formatting)
+  xtb.ts            # XTB parser  (XLSX, sheet "CASH OPERATION HISTORY", uses xlsx pkg)
+  ibkr.ts           # IBKR parser (CSV Activity Statement, multi-section)
+  tradeville.ts     # Tradeville parser (PDF, uses pdfjs-dist)
   test/
     xtb.test.ts
+    ibkr.test.ts
+    tradeville.test.ts
     fixtures/
-      xtb-2026.csv
-      xtb-edge-cases.csv
+      xtb-2026.xlsx          # redacted real export
+      xtb-edge-cases.xlsx    # synthetic
+      ibkr-2026.csv          # redacted real export
+      ibkr-edge-cases.csv    # synthetic (multi-currency, FX components, dividends to skip)
+      tradeville-2026.pdf    # redacted real export
+      tradeville-edge-cases.pdf  # synthetic
 ```
 
-### Per-parser responsibilities
+Real-export fixtures are committed in **redacted** form (account numbers stripped, names anonymized) so tests can run without exposing personal data.
 
-- Strip BOMs, normalize line endings, accept both `,` and `;` delimiters where the broker varies.
-- Reject malformed input with structured errors (`row N, column X: <reason>`) — surfaced in the UI.
-- Emit `kind: 'fee'` only when the broker reports fees as standalone rows. Trade-embedded fees get folded into `amount`.
-- Never silently drop rows. Unknown row types must produce a structured `unsupportedRows` array returned alongside the parsed txns; the UI surfaces them so the user knows nothing was hidden.
+### Per-parser responsibilities (general)
+
+- **Charset detection and decoding** for text-based formats. Probe BOM (UTF-8, UTF-16 LE/BE); fall back to broker-specific defaults. Misdetection must error, not silently mojibake.
+- **Decimal separator handling.** Locales vary: `1,234.56` (US) vs `1.234,56` (EU) vs `1234,56` (RO). Each parser declares its source format and uses a strict numeric parser that rejects ambiguous inputs.
+- **Excel date serial conversion** (XTB sheets store timestamps as serial floats like `45964.5607831481`).
+- **Exchange/MIC enrichment.** When the source omits the venue, the parser uses broker-specific tables to fill `exchange`. A row that cannot be resolved to a venue is a parse error, not a soft warning.
+- **Reject malformed input with structured errors** (`row N, column X: <reason>`, or `page N, line: ...` for PDF) — surfaced in the UI.
+- Emit `kind: 'fee'` only when the broker reports fees as standalone rows. Trade-embedded fees get folded into `cashAmount`.
+- **Never silently drop rows.** Unknown row types must produce a structured `unsupported` array returned alongside the parsed txns; the UI surfaces them.
+
+### Per-parser specifics
+
+**XTB (XLSX):**
+- Open the workbook; locate sheet named `CASH OPERATION HISTORY` (defensive lookup; tolerate trailing spaces, e.g. `'PENDING ORDERS HISTORY '`).
+- Skip metadata rows; the data table starts after a header row whose first column is `ID` (typically row 11).
+- Filter rows where `Type` is `Stock purchase` (→ buy) or `Stock sale` (→ sell). Other types (`deposit`, `withdrawal`, `dividend`, etc.) go to `unsupported` for v1.
+- Parse `Comment` field with regex (e.g. `^OPEN BUY (\d+(?:\.\d+)?) @ (\d+(?:\.\d+)?)$`) to extract `quantity` and `pricePerShare`.
+- Time field is an Excel serial (days since 1900-01-01 with the historic leap-year bug); convert via `xlsx.SSF.parse_date_code` or `(serial - 25569) * 86400 * 1000` ms.
+- `externalId` = the `ID` column value (stable across re-exports).
+- `tradeCurrency = settlementCurrency = "EUR"` (XTB account base).
+- Map `Symbol` (e.g. `VUAA.DE`) — the suffix (`.DE`) hints at the venue; an exchange-suffix → MIC table lives in `parsers/xtb-venues.ts`.
+
+**IBKR (CSV Activity Statement):**
+- Multi-section CSV with rows of shape `<section>,<Header|Data>,<...fields>`.
+- Read `Summary` → `Base Currency` to get account base.
+- Filter `Transaction History` data rows; **only** `Transaction Type ∈ {Buy, Sell}` for v1.
+- Skip `Transaction Type = "Forex Trade Component"` (FX bookkeeping rows generated for each USD↔EUR leg of a trade — they are not user-actionable transactions).
+- Skip `Dividend`, `Foreign Tax Withholding`, `Adjustment` for v1 — surface to `unsupported` so the user knows.
+- Numbers may be in scientific notation (e.g. `5.0E-4`) — `parseFloat` handles this.
+- `tradeCurrency` from `Price Currency` (commonly USD); `settlementCurrency` from base (EUR); `cashAmount` from `Net Amount` (in base).
+- `pricePerShare` from `Price` (in tradeCurrency).
+- Fees: `Commission` column on the trade row → folded into `cashAmount` (since `Net Amount = Gross + Commission` in the source). v1 emits no separate fee txn for IBKR.
+- Account is masked in the source (`U***22945`) — no PII handling needed; we don't store it on the doc.
+- **No stable transaction ID** in this CSV format → fall back to canonicalized content hash for `externalId`. Document this in `parsers/ibkr.ts` header.
+- `exchange` is **not** in the source; resolve from `Symbol` via a curated table. This is the weakest link for IBKR; if the user trades the same ticker on multiple venues, the table needs per-user overrides (deferred to v2).
+
+**Tradeville (PDF):**
+- Use `pdfjs-dist` to extract text items with positions (`(text, x, y, page)`).
+- Phase 0 inspection (see Phase 0 capture #10) determines the layout: column boundaries, header row position per page, footer/header noise to strip.
+- Reconstruct rows by clustering text items into y-bands; columns by x-position.
+- Extract: trade date, type (BUY/SELL or RO equivalents — `Cumpărare`/`Vânzare`?), symbol, quantity, price, fee, total.
+- `tradeCurrency = settlementCurrency = "RON"` (provisional; phase 0 confirms).
+- **Fragility note in code header**: PDF parsing breaks if Tradeville re-skins their statement. Recovery = re-run phase-0 capture, update the column-position constants. The parser owns a `tradeville-layout.ts` constants file specifically to make these tweaks low-cost.
+- If `pdfjs-dist` extraction is unreliable (e.g. PDF is image-based without an embedded text layer), fail the import with a clear error. v1 does not attempt OCR.
 
 ### Parser interface
 
@@ -264,7 +383,7 @@ interface BrokerParser {
 Single-page Next.js app, runs locally on `localhost:3000`. Five screens:
 
 1. **Setup** (first run only): paste CouchDB URL + Basic auth token; test connection; map XTB/IBKR/Tradeville to Wallet investment accounts.
-2. **Upload**: drop CSV → broker auto-detected from headers → user confirms broker + target account.
+2. **Upload**: drop file (CSV / XLSX / PDF) → broker auto-detected from extension + content sniff → user confirms broker + target account.
 3. **Preview**: table of parsed rows with per-row status badge:
    - ✅ Will insert
    - ⏭️ Already in Wallet (matched by `_id`)
@@ -295,8 +414,8 @@ sync_run
   finished_at      INTEGER (epoch ms)
   broker           TEXT
   account_id       TEXT
-  csv_filename     TEXT
-  csv_sha256       TEXT
+  source_filename  TEXT       -- e.g. "xtb.xlsx", "ibkr.csv", "tradeville.pdf"
+  source_sha256    TEXT       -- hash of input bytes
   parsed_count     INTEGER
   inserted_count   INTEGER
   conflict_count   INTEGER
@@ -314,9 +433,11 @@ Local state is purely an audit/UX cache. **CouchDB remains the source of truth**
 
 ## Configuration & secrets
 
-- `.env.local` (gitignored) holds `COUCH_URL` and `COUCH_BASIC_AUTH` for development.
-- For end-user storage at runtime, the Basic auth token is encrypted using the OS keychain via `keytar` and stored in SQLite. The decryption key never touches disk in plaintext.
-- The token can be rotated by logging out/in via the Wallet web UI; the tool surfaces a "re-paste credentials" flow on `401`.
+- **Runtime credentials live in the OS keychain only**, accessed via `keytar`. Stored under service `wallet-broker-sync`, account `couch-basic-auth`. SQLite never holds credential material.
+- **Non-secret config** (CouchDB URL, user id, broker→account mappings) lives in SQLite.
+- **Development**: a `.env.local` (gitignored) may hold `COUCH_URL` for convenience, but the auth token must always come from the keychain — there is no fallback to plaintext env. First-run setup writes the token to the keychain; subsequent runs read it.
+- **Rotation**: the Wallet web UI logout/login rotates the sync token. The tool surfaces a "re-paste credentials" flow on `401` and writes the new token back to the keychain.
+- **Never logged.** Auth headers are redacted by a logger middleware; the redaction is verified by a unit test that snapshots logger output for a representative request.
 
 ## Error handling
 
@@ -338,7 +459,13 @@ Local state is purely an audit/UX cache. **CouchDB remains the source of truth**
 - The CouchDB endpoint is undocumented but used by every official Wallet client. Direct writes from a personal tool, on the user's own data, are functionally indistinguishable from the official web app's writes. Operationally: fine for personal use; not redistributable as a product without BudgetBakers' blessing.
 - The repo is private. The tool is not published. Documentation explicitly notes the unofficial protocol use and the rotation path if BudgetBakers changes the schema.
 - Credentials never leave the user's machine. No telemetry. No analytics.
-- The basic auth token captured during phase 0 must be rotated before the repo goes public (if it ever does).
+
+### Git-leak prevention (proactive)
+
+- `.gitignore` includes: `.env`, `.env.*`, `.env.local`, `*.har`, `docs/superpowers/captures/`, `*.sqlite`, `*.sqlite-journal`, `node_modules/`, `.next/`.
+- A pre-commit hook (`pre-commit` framework or husky + a small custom script) scans staged content for: the user-id UUID format, the basic-auth pattern (`Authorization: Basic [A-Za-z0-9+/=]+`), and `couch-prod-eu-1.budgetbakers.com/bb-` followed by a UUID. Any match aborts the commit.
+- The basic-auth token captured during phase 0 must be rotated immediately after captures are filed, regardless of whether the repo ever goes public — captures are gitignored but local copies still exist.
+- README documents the "if you committed a token by mistake" rotation path: log out everywhere from Wallet, log back in, update keychain.
 
 ## Open risks
 
