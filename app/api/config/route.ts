@@ -2,7 +2,8 @@ import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { db, runMigrations } from '@/src/storage/db'
 import { config, brokerAccountMap } from '@/src/storage/schema'
-import { saveCouchCreds, loadCouchCreds } from '@/src/storage/credentials'
+import { saveCouchCreds, loadCouchCreds, deleteCouchCreds } from '@/src/storage/credentials'
+import { eq, inArray } from 'drizzle-orm'
 import { formatError } from '@/src/sync/format-error'
 
 // Run migrations on first import
@@ -98,6 +99,32 @@ export async function POST(req: Request) {
   } catch (err) {
     const f = formatError(err)
     console.error('[api/config]', f.kind, f.message, f.details)
+    return NextResponse.json({ ok: false, error: f.message, kind: f.kind }, { status: 500 })
+  }
+}
+
+/**
+ * DELETE /api/config?scope=connection — wipes keychain creds + couchUrl/dbName from SQLite,
+ *   leaves broker→account mappings alone.
+ * DELETE /api/config?scope=mappings   — clears mappings, keeps connection.
+ * DELETE /api/config?scope=all        — full reset.
+ */
+export async function DELETE(req: Request) {
+  try {
+    const url = new URL(req.url)
+    const scope = url.searchParams.get('scope') ?? 'connection'
+
+    if (scope === 'connection' || scope === 'all') {
+      await deleteCouchCreds()
+      await db.delete(config).where(inArray(config.key, ['couchUrl', 'dbName']))
+    }
+    if (scope === 'mappings' || scope === 'all') {
+      await db.delete(brokerAccountMap)
+    }
+    return NextResponse.json({ ok: true })
+  } catch (err) {
+    const f = formatError(err)
+    console.error('[api/config DELETE]', f.kind, f.message, f.details)
     return NextResponse.json({ ok: false, error: f.message, kind: f.kind }, { status: 500 })
   }
 }

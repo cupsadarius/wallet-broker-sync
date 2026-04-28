@@ -97,6 +97,21 @@ export default function AccountMappingForm({ existingMappings }: Props) {
     }
   }
 
+  async function handleResetConnection() {
+    if (!confirm('Clear saved CouchDB credentials and connection details? You will return to the setup form.')) return
+    try {
+      const res = await fetch('/api/config?scope=connection', { method: 'DELETE' })
+      const data = await res.json()
+      if (!res.ok || !data.ok) {
+        setLoadError(data.error ?? 'Reset failed')
+        return
+      }
+      router.refresh()
+    } catch (err) {
+      setLoadError(err instanceof Error ? err.message : 'Network error during reset')
+    }
+  }
+
   async function handleSubmit(e: { preventDefault: () => void }) {
     e.preventDefault()
     setSaveError(null)
@@ -137,9 +152,16 @@ export default function AccountMappingForm({ existingMappings }: Props) {
         </CardHeader>
         <CardContent>
           {loadError && (
-            <p className="mb-4 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700 border border-red-200">
-              Failed to load accounts: {loadError}
-            </p>
+            <div className="mb-4 rounded-md bg-red-50 px-3 py-2 text-sm text-red-700 border border-red-200">
+              <p>Failed to load accounts: {loadError}</p>
+              <button
+                type="button"
+                onClick={handleResetConnection}
+                className="mt-2 underline text-red-800 hover:text-red-900"
+              >
+                Reset connection and re-enter credentials
+              </button>
+            </div>
           )}
 
           {!accounts && !loadError && (
@@ -176,13 +198,22 @@ export default function AccountMappingForm({ existingMappings }: Props) {
                 </p>
               )}
 
-              <Button
-                type="submit"
-                disabled={isPending || BROKERS.some(b => !selections[b.key])}
-                className="mt-1"
-              >
-                {isPending ? 'Saving…' : 'Save and continue'}
-              </Button>
+              <div className="flex items-center gap-3 mt-1">
+                <Button
+                  type="submit"
+                  disabled={isPending || BROKERS.some(b => !selections[b.key])}
+                >
+                  {isPending ? 'Saving…' : 'Save and continue'}
+                </Button>
+                <button
+                  type="button"
+                  onClick={handleResetConnection}
+                  disabled={isPending}
+                  className="text-sm text-zinc-500 hover:text-zinc-700 underline"
+                >
+                  Reset connection
+                </button>
+              </div>
             </form>
           )}
         </CardContent>
