@@ -300,22 +300,31 @@ describe('canonicalDate', () => {
 })
 
 describe('canonicalContentHash', () => {
-  it('is stable for equivalent inputs', () => {
-    const base = {
-      date: '2026-04-28T10:09:20.103Z', exchange: 'XETR', symbol: 'VUAA',
-      side: 'buy' as const, quantity: 0.1, price: 25.52, cashAmount: -2.18,
-      pricePrecision: 4, quantityPrecision: 6,
-    }
-    expect(canonicalContentHash(base)).toBe(canonicalContentHash({ ...base, symbol: 'vuaa', quantity: 0.10000000, price: 25.520 }))
+  const base = {
+    date: '2026-04-28T10:09:20.103Z', exchange: 'XETR', symbol: 'VUAA',
+    side: 'buy' as const, quantity: 0.1, price: 25.52, cashAmount: -2.18,
+    pricePrecision: 4, quantityPrecision: 6,
+  }
+  it('is stable across input variations that produce the same canonical form', () => {
+    // case-insensitive symbol, exchange casing, equal-but-trailing-zero numbers, timezone-equivalent date
+    expect(canonicalContentHash(base)).toBe(canonicalContentHash({
+      ...base, symbol: 'vuaa', exchange: 'xetr',
+      quantity: 0.10000000, price: 25.520,
+      date: '2026-04-28T12:09:20.103+02:00',  // same instant
+    }))
   })
-  it('differs when any field differs', () => {
-    const base = {
-      date: '2026-04-28T10:09:20.103Z', exchange: 'XETR', symbol: 'VUAA',
-      side: 'buy' as const, quantity: 0.1, price: 25.52, cashAmount: -2.18,
-      pricePrecision: 4, quantityPrecision: 6,
-    }
+  it('differs when side, cashAmount, symbol, exchange, date, quantity, or price differ', () => {
     expect(canonicalContentHash(base)).not.toBe(canonicalContentHash({ ...base, side: 'sell' }))
     expect(canonicalContentHash(base)).not.toBe(canonicalContentHash({ ...base, cashAmount: -2.19 }))
+    expect(canonicalContentHash(base)).not.toBe(canonicalContentHash({ ...base, symbol: 'VUAB' }))
+    expect(canonicalContentHash(base)).not.toBe(canonicalContentHash({ ...base, exchange: 'XLON' }))
+    expect(canonicalContentHash(base)).not.toBe(canonicalContentHash({ ...base, quantity: 0.2 }))
+    expect(canonicalContentHash(base)).not.toBe(canonicalContentHash({ ...base, price: 25.53 }))
+  })
+  it('different precision parameters produce different hashes when they affect the formatted output', () => {
+    // 25.5249 → at precision 2 = "25.52"; at precision 4 = "25.5249"
+    expect(canonicalContentHash({ ...base, price: 25.5249, pricePrecision: 2 }))
+      .not.toBe(canonicalContentHash({ ...base, price: 25.5249, pricePrecision: 4 }))
   })
 })
 ```
@@ -407,7 +416,7 @@ describe('toAssetTransactionDoc', () => {
     expect(doc.assetType).toBe(1)
     expect(doc.transactionType).toBe(0)
     expect(doc.price).toBe(11804)
-    expect(doc.cashAmount).toBeCloseTo(-11805, 2)
+    expect(doc.cashAmount).toBe(-11805)        // exact, no float drift
     expect(doc.priceCurrencyCode).toBe('EUR')
     expect(doc.cashAmountCurrencyCode).toBe('EUR')
     expect(doc.externalSource).toBe('xtb')
@@ -423,7 +432,7 @@ describe('toAssetTransactionDoc', () => {
     expect(doc.priceCurrencyCode).toBe('USD')
     expect(doc.cashAmountCurrencyCode).toBe('EUR')
     expect(doc.price).toBe(2552)
-    expect(doc.cashAmount).toBeCloseTo(-218, 2)
+    expect(doc.cashAmount).toBe(-218)
   })
   it('rounds price to nearest integer × 100', () => {
     expect(toAssetTransactionDoc({ ...baseTxn, pricePerShare: 25.525 }, ctx).price).toBe(2553)
@@ -490,7 +499,9 @@ export function toAssetTransactionDoc(txn: CanonicalTxn, ctx: MapperContext): As
     date: txn.date,
     quantity: txn.quantity,
     price: Math.round(txn.pricePerShare * 100),
-    cashAmount: txn.cashAmount * 100,
+    // Round to 4 decimals (sub-cent precision) to avoid float drift like
+    // -2.18 * 100 = -217.99999999999997. Spec encoding is "decimal × 100".
+    cashAmount: Number((txn.cashAmount * 100).toFixed(4)),
     priceCurrencyCode: txn.tradeCurrency,
     cashAmountCurrencyCode: txn.settlementCurrency,
     externalSource: txn.broker,
@@ -566,6 +577,23 @@ describe('CouchClient', () => {
     const docs = await client().listAssetTransactions('A')
     expect(docs).toHaveLength(1)
     expect(docs[0]._id).toBe('-AssetTransaction_1')
+  })
+
+  it('listAssetTransactions terminates when last_seq advances but predicate filters everything', async () => {
+    ;(fetch as any)
+      .mockResolvedValueOnce(new Response(JSON.stringify({
+        results: [{ id: 'x', doc: { _id: 'x', reservedModelType: 'Other', accountId: 'A' } }],
+        last_seq: 1,
+      })))
+      .mockResolvedValueOnce(new Response(JSON.stringify({
+        results: [{ id: 'y', doc: { _id: 'y', reservedModelType: 'Other', accountId: 'A' } }],
+        last_seq: 2,
+      })))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ results: [], last_seq: 2 })))
+    const docs = await client().listAssetTransactions('A')
+    expect(docs).toHaveLength(0)
+    // terminates after at most 3 calls (no infinite loop)
+    expect((fetch as any).mock.calls.length).toBeLessThanOrEqual(3)
   })
 })
 ```
@@ -742,7 +770,42 @@ main().catch(err => { console.error(err); process.exit(99) })
 
 In `package.json` `"scripts"`: `"probe:couch": "tsx scripts/couch-probe.ts"`
 
-- [ ] **Step 6.3: Run probe with creds (user, manual)**
+- [ ] **Step 6.3: Discover the test account and asset IDs (if not already known)**
+
+If the user doesn't already know which `-Account_<uuid>` and `-StocksFundsAsset_<uuid>` to use, run a one-off list against their CouchDB:
+
+```bash
+COUCH_URL=https://couch-prod-eu-1.budgetbakers.com \
+COUCH_DB=bb-<userId> \
+COUCH_LOGIN=<userId> \
+COUCH_TOKEN=<token> \
+npx tsx -e "
+import { CouchClient } from './src/sync/couch'
+const c = new CouchClient({ url: process.env.COUCH_URL!, dbName: process.env.COUCH_DB!,
+  auth: { login: process.env.COUCH_LOGIN!, token: process.env.COUCH_TOKEN! } })
+const accounts = await c.listByModelType('Account')
+const assets = await c.listByModelType('StocksFundsAsset')
+console.log('Investment accounts:', accounts.filter((a: any) => a.accountType === 7).map((a: any) => ({ id: a._id, name: a.name })))
+console.log('Assets:', assets.slice(0, 5).map((a: any) => ({ id: a._id, symbol: a.symbol, exchange: a.exchangeCode })))
+console.log('Currency field name on first Account:', accounts[0])
+"
+```
+
+Note also the field name on a `Currency` doc to confirm the spec's TBD on `currencyCode`:
+
+```bash
+npx tsx -e "
+import { CouchClient } from './src/sync/couch'
+const c = new CouchClient({ url: process.env.COUCH_URL!, dbName: process.env.COUCH_DB!,
+  auth: { login: process.env.COUCH_LOGIN!, token: process.env.COUCH_TOKEN! } })
+const ccs = await c.listByModelType('Currency')
+console.log('Sample Currency doc:', ccs[0])
+"
+```
+
+Expected: confirms `currencyCode` is the field name. If different, update `LookupService` in Task 8.
+
+- [ ] **Step 6.4: Run probe with creds (user, manual)**
 
 Set env vars (NOT committed):
 ```
@@ -750,21 +813,21 @@ COUCH_URL=https://couch-prod-eu-1.budgetbakers.com
 COUCH_DB=bb-<userId>
 COUCH_LOGIN=<userId>
 COUCH_TOKEN=<token>
-COUCH_TEST_ACCOUNT=-Account_<one of their investment accounts>
-COUCH_TEST_ASSET=-StocksFundsAsset_<any existing asset>
+COUCH_TEST_ACCOUNT=-Account_<from step 6.3>
+COUCH_TEST_ASSET=-StocksFundsAsset_<from step 6.3>
 ```
 
 Run: `npm run probe:couch`
 
 Expected: "Both probe docs round-tripped" + the buy/sell `_rev` values.
 
-If status is not `inserted` for any doc: switch the export in `src/sync/ids.ts` from `deterministicId` to `deterministicIdV4Looking`, re-run.
+**If status is not `inserted` for any doc:** the only required change is swapping the export in `src/sync/ids.ts` from `deterministicId` to `deterministicIdV4Looking`, then re-running the probe. Tasks 7–21 are unaffected by which `_id` shape is in use — the rest of the architecture is decoupled from the version nibble.
 
-- [ ] **Step 6.4: Update spec with the resolved unknowns**
+- [ ] **Step 6.5: Update spec with the resolved unknowns**
 
-Edit the spec — mark phase-0 capture #2 (sell type) and #12 (validate acceptance) as ✅ Confirmed; note which `_id` shape is in use.
+Edit the spec — mark phase-0 capture #2 (sell type), #6 (Currency field name), and #12 (validate acceptance) as ✅ Confirmed; note which `_id` shape is in use.
 
-- [ ] **Step 6.5: Commit**
+- [ ] **Step 6.6: Commit**
 
 ```bash
 git add scripts/couch-probe.ts package.json package-lock.json docs/ && git commit -m "feat: phase-0 capture #12 probe + spec update with resolved unknowns"
@@ -876,14 +939,18 @@ export const xtb: BrokerParser = {
   detect(input) {
     if (!input.filename.toLowerCase().endsWith('.xlsx')) return false
     try {
-      return XLSX.read(input.bytes, { type: 'array' }).SheetNames.includes(SHEET_CASH)
+      const wb = XLSX.read(input.bytes, { type: 'array' })
+      // Tolerate trailing/leading whitespace in sheet names — XTB has shipped variations
+      // (e.g. 'PENDING ORDERS HISTORY ' with trailing space).
+      return wb.SheetNames.some(n => n.trim() === SHEET_CASH)
     } catch { return false }
   },
 
   parse(input): ParseResult {
     const wb = XLSX.read(input.bytes, { type: 'array' })
-    const sheet = wb.Sheets[SHEET_CASH]
-    if (!sheet) throw new Error(`XTB: sheet "${SHEET_CASH}" not found`)
+    const sheetName = wb.SheetNames.find(n => n.trim() === SHEET_CASH)
+    if (!sheetName) throw new Error(`XTB: sheet "${SHEET_CASH}" not found`)
+    const sheet = wb.Sheets[sheetName]
     const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, raw: true }) as unknown[][]
 
     let headerRow = -1
@@ -1331,10 +1398,47 @@ export default {
 npx drizzle-kit generate
 ```
 
-- [ ] **Step 11.4: Commit**
+- [ ] **Step 11.4: Round-trip test**
+
+`tests/storage/db.test.ts`:
+```ts
+import { describe, it, expect, beforeAll } from 'vitest'
+import Database from 'better-sqlite3'
+import { drizzle } from 'drizzle-orm/better-sqlite3'
+import { migrate } from 'drizzle-orm/better-sqlite3/migrator'
+import { syncRun, syncRunDoc } from '@/src/storage/schema'
+import { eq } from 'drizzle-orm'
+
+describe('audit log schema', () => {
+  // In-memory DB so the test never touches the user's real audit DB
+  const sqlite = new Database(':memory:')
+  const db = drizzle(sqlite)
+
+  beforeAll(() => { migrate(db, { migrationsFolder: 'src/storage/migrations' }) })
+
+  it('inserts and reads a sync_run with detail rows', async () => {
+    const ins = await db.insert(syncRun).values({
+      startedAt: 1000, finishedAt: 2000, broker: 'xtb',
+      accountId: '-Account_a', sourceFilename: 'xtb.xlsx', sourceSha256: 'abc',
+      parsedCount: 3, insertedCount: 2, conflictCount: 1, errorCount: 0,
+    }).returning()
+    expect(ins[0].id).toBeGreaterThan(0)
+    await db.insert(syncRunDoc).values([
+      { runId: ins[0].id, externalId: 'x1', docId: '-AssetTransaction_d1', status: 'inserted' },
+      { runId: ins[0].id, externalId: 'x2', docId: '-AssetTransaction_d2', status: 'conflict' },
+    ])
+    const detail = await db.select().from(syncRunDoc).where(eq(syncRunDoc.runId, ins[0].id))
+    expect(detail).toHaveLength(2)
+  })
+})
+```
+
+Run: `npx vitest run tests/storage/db.test.ts`. Expected: PASS.
+
+- [ ] **Step 11.5: Commit**
 
 ```bash
-git add src/storage/ drizzle.config.ts && git commit -m "feat: SQLite audit log via Drizzle"
+git add src/storage/ drizzle.config.ts tests/storage/ && git commit -m "feat: SQLite audit log via Drizzle with round-trip test"
 ```
 
 ---
@@ -1380,14 +1484,39 @@ git add app/api/ && git commit -m "feat: server routes for config, accounts, syn
 
 ## Task 13: UI — Setup screen
 
-**Files:** `app/setup/page.tsx`, `app/setup/SetupForm.tsx`
+**Files:** `app/setup/page.tsx` (server component), `app/setup/SetupForm.tsx` (client component), `app/setup/AccountMappingForm.tsx` (client component)
 
-Form: paste CouchDB URL + login + token + dbName. On submit: POST `/api/config`. Then GET `/api/couch/accounts`; render mapping form (XTB → ?, IBKR → ?, Tradeville → ?). Save mappings via `/api/config`. Redirect to `/upload`.
+State flow: client form → POST `/api/config` → GET `/api/couch/accounts` → mapping form → POST `/api/config` (mappings) → `router.push('/upload')`.
 
-- [ ] **Step 13.1: Build form components**
-- [ ] **Step 13.2: Wire to API**
-- [ ] **Step 13.3: Manual end-to-end test against the user's real Wallet**
-- [ ] **Step 13.4: Commit**
+- [ ] **Step 13.1: Build the route shell**
+
+`app/setup/page.tsx` — server component. Reads existing config via `/api/config` (or directly from SQLite) and decides whether to render the connection form or the mapping form. Returns the appropriate client component.
+
+- [ ] **Step 13.2: Connection form (client component)**
+
+`app/setup/SetupForm.tsx`. Fields: CouchDB URL (default `https://couch-prod-eu-1.budgetbakers.com`), userId/login, token (password input), dbName. shadcn `Input` + `Button`. On submit: POST `/api/config` with body. On success: trigger `router.refresh()` so the parent re-renders into the mapping form.
+
+- [ ] **Step 13.3: Connection-form error states**
+
+Display server errors (`401 unauthorized` → "Invalid credentials"; `network` → "Could not reach CouchDB"). Prevent double-submit while in flight.
+
+- [ ] **Step 13.4: Account mapping form**
+
+`app/setup/AccountMappingForm.tsx`. Loads investment accounts via `fetch('/api/couch/accounts')` on mount. Renders three labeled selects — XTB, IBKR, Tradeville — each populated with `(account.name, account.currencyCode)` options. Submit POSTs the selected mappings to `/api/config`.
+
+- [ ] **Step 13.5: Redirect on completion**
+
+After mappings save, `router.push('/upload')`.
+
+- [ ] **Step 13.6: Manual end-to-end against real Wallet**
+
+Start dev server (`npm run dev`), open `http://localhost:3000/setup`, paste real CouchDB credentials, verify the mapping form populates with the user's three investment accounts, save mappings, verify redirect to `/upload`.
+
+- [ ] **Step 13.7: Commit**
+
+```bash
+git add app/setup/ && git commit -m "feat: setup screen for CouchDB credentials and broker→account mapping"
+```
 
 ---
 
@@ -1395,36 +1524,98 @@ Form: paste CouchDB URL + login + token + dbName. On submit: POST `/api/config`.
 
 **Files:** `app/upload/page.tsx`, `app/upload/UploadDropzone.tsx`
 
-Dropzone accepts CSV/XLSX/PDF. On drop: POST file to `/api/sync?dryRun=true`. Server returns parsed `CanonicalTxn[]` + `unsupported`. Render summary; "Continue to preview" navigates to `/preview` with the dryRun result in client state (or session storage).
+State flow: drop file → client computes broker hint from extension → POST `/api/sync?dryRun=true` (multipart) → server returns parsed result → store in `sessionStorage` → navigate to `/preview`.
 
-- [ ] **Step 14.1: Component + drop logic**
-- [ ] **Step 14.2: Auto-detect via extension; manual override dropdown**
-- [ ] **Step 14.3: Commit**
+- [ ] **Step 14.1: Dropzone component (client)**
+
+`app/upload/UploadDropzone.tsx`. Accepts `.csv`, `.xlsx`, `.pdf`. Renders a drop area. On drop: read `File`, compute `extension`, suggest broker via simple table (`xlsx → xtb`, `csv → ibkr`, `pdf → tradeville`).
+
+- [ ] **Step 14.2: Manual broker override**
+
+shadcn `Select` populated with all three brokers. Pre-selects the auto-detected one. User can change it.
+
+- [ ] **Step 14.3: Submit handler**
+
+On "Parse" click: build `FormData` with `file` + `broker`, POST `/api/sync?dryRun=true`. Show loading state.
+
+- [ ] **Step 14.4: Persist result and navigate**
+
+On 200: write `{ broker, result }` to `sessionStorage` under a known key (e.g. `wbs:dryrun`). `router.push('/preview')`.
+
+- [ ] **Step 14.5: Error states**
+
+`401` → "Re-paste credentials" link to `/setup`. Other errors → toast with the structured error message.
+
+- [ ] **Step 14.6: Manual smoke**
+
+Drop `sources/xtb.xlsx` → verify navigation to `/preview` with non-empty result in sessionStorage.
+
+- [ ] **Step 14.7: Commit**
+
+```bash
+git add app/upload/ && git commit -m "feat: upload screen with parser detection and dry-run preview hand-off"
+```
 
 ---
 
-## Task 15: UI — Preview + Confirm + Result
+## Task 15: UI — Preview screen
 
-**Files:** `app/preview/page.tsx`, `app/result/page.tsx`
+**Files:** `app/preview/page.tsx`, `app/preview/PreviewTable.tsx`
 
-Preview table: rows with status badges (`Will insert`, `Already in Wallet`, `Needs asset`, `Parse error`). Confirm button → POST `/api/sync` (real, not dry-run) → redirect to `/result`. Result page shows summary + per-doc result, links to Wallet web UI.
+- [ ] **Step 15.1: Preview page shell (client)**
 
-- [ ] **Step 15.1: Preview table**
-- [ ] **Step 15.2: Confirm action wiring**
-- [ ] **Step 15.3: Result page**
-- [ ] **Step 15.4: Commit**
+`app/preview/page.tsx`. Reads `sessionStorage.wbs:dryrun`. If absent, redirect to `/upload`.
+
+- [ ] **Step 15.2: Preview table component**
+
+`app/preview/PreviewTable.tsx`. Renders three sections:
+1. **Will insert** — green badge, table of `(date, symbol, side, quantity, price, total)`.
+2. **Needs asset** — yellow badge — list of unique `(exchange, symbol)` pairs with a "create in Wallet" link to `web.budgetbakers.com`.
+3. **Unsupported / parse errors** — red badge, table of reason + raw row.
+
+- [ ] **Step 15.3: Summary header**
+
+Top of page: "X new, Y already in Wallet, Z unsupported". Disabled "Sync" button if `X === 0`.
+
+- [ ] **Step 15.4: Confirm action**
+
+On "Sync" click: POST `/api/sync` (without `dryRun`) using the same broker + file from sessionStorage. *Implementation detail: store the original `File` blob in sessionStorage as `Uint8Array`, or re-prompt for re-upload if blob too large.* Show loading state.
+
+- [ ] **Step 15.5: Hand off to /result**
+
+On 200: write `wbs:result` to sessionStorage with the `SyncResult`; `router.push('/result')`.
+
+- [ ] **Step 15.6: Commit**
+
+```bash
+git add app/preview/ && git commit -m "feat: preview screen with diff table and confirm action"
+```
 
 ---
 
-## Task 16: UI — History
+## Task 16: UI — Result + History
 
-**Files:** `app/history/page.tsx`
+**Files:** `app/result/page.tsx`, `app/history/page.tsx`, `app/api/history/route.ts`
 
-Lists past `sync_run` rows, click to expand into per-doc detail from `sync_run_doc`.
+- [ ] **Step 16.1: Result page**
 
-- [ ] **Step 16.1: List view**
-- [ ] **Step 16.2: Detail expansion**
-- [ ] **Step 16.3: Commit**
+Reads `sessionStorage.wbs:result`. Renders summary counts + per-doc table from `result.preview.new` joined with the per-doc results. Link to Wallet web UI for the synced account.
+
+- [ ] **Step 16.2: History API**
+
+`app/api/history/route.ts` — GET returns rows from `sync_run` (newest first) and a per-run detail endpoint.
+
+- [ ] **Step 16.3: History page**
+
+`app/history/page.tsx` — server-rendered table of past runs. Click expands inline to show `sync_run_doc` rows for that run.
+
+- [ ] **Step 16.4: Wire result → "Sync another" CTA back to /upload**
+
+- [ ] **Step 16.5: Commit**
+
+```bash
+git add app/result/ app/history/ app/api/history/ && git commit -m "feat: result and history screens"
+```
 
 ---
 
@@ -1487,7 +1678,7 @@ Asserts: detect, parses Buy/Sell rows, skips Forex Trade Component / Dividend / 
 
 - [ ] **Step 18.3: Implement IBKR parser**
 
-Multi-section CSV: read `Summary` → `Base Currency` for settlement; filter `Transaction History` data rows; only `Transaction Type ∈ {Buy, Sell}`; venue from `ibkr-venues.ts` symbol→MIC table; `externalId` from `canonicalContentHash(...)`; `tradeCurrency = Price Currency`; `settlementCurrency = base`; `cashAmount = Net Amount` (in base).
+Multi-section CSV: read `Summary` → `Base Currency` for settlement; filter `Transaction History` data rows; only `Transaction Type ∈ {Buy, Sell}`; venue from `ibkr-venues.ts` symbol→MIC table; `externalId = canonicalContentHash({ ...fields, pricePrecision: 4, quantityPrecision: 6 })`; `tradeCurrency = Price Currency`; `settlementCurrency = base`; `cashAmount = Net Amount` (in base, signed). IBKR Statement CSV uses `.` as decimal and `,` as field separator with quoted strings — standard CSV. Numbers may appear in scientific notation (`5.0E-4`); `Number()`/`parseFloat()` handle this. Skip `Forex Trade Component`, `Dividend`, `Foreign Tax Withholding`, `Adjustment` to `unsupported`.
 
 - [ ] **Step 18.4: Register in `parsers/registry.ts`**
 - [ ] **Step 18.5: Dry-run against `sources/ibkr.csv`**
@@ -1541,7 +1732,13 @@ export const COLUMNS = {
 }
 ```
 
-- [ ] **Step 19.4: Commit (only the layout constants get committed; captures dir is gitignored)**
+- [ ] **Step 19.4: Commit at least one ANCHOR before Task 20 starts**
+
+Task 20's tripwire test asserts on `ANCHORS`. The file must contain at least one valid anchor before the test can be written.
+
+```bash
+git add src/parsers/tradeville-layout.ts && git commit -m "feat: tradeville PDF layout constants from phase-0 capture"
+```
 
 ---
 
