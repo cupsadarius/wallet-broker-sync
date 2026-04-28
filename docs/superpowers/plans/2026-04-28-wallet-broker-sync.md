@@ -791,19 +791,7 @@ console.log('Currency field name on first Account:', accounts[0])
 "
 ```
 
-Note also the field name on a `Currency` doc to confirm the spec's TBD on `currencyCode`:
-
-```bash
-npx tsx -e "
-import { CouchClient } from './src/sync/couch'
-const c = new CouchClient({ url: process.env.COUCH_URL!, dbName: process.env.COUCH_DB!,
-  auth: { login: process.env.COUCH_LOGIN!, token: process.env.COUCH_TOKEN! } })
-const ccs = await c.listByModelType('Currency')
-console.log('Sample Currency doc:', ccs[0])
-"
-```
-
-Expected: confirms `currencyCode` is the field name. If different, update `LookupService` in Task 8.
+**Resolved (post-probe):** the `Currency` doc field is `code` (NOT `currencyCode`). `LookupService` reads `c.code` from CouchDB and exposes it as `currencyCode` in our local `InvestmentAccount` shape — see Task 8.
 
 - [ ] **Step 6.4: Run probe with creds (user, manual)**
 

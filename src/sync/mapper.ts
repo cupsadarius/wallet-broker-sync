@@ -50,6 +50,9 @@ export function toAssetTransactionDoc(txn: CanonicalTxn, ctx: MapperContext): As
     transactionType: txn.kind === 'buy' ? 0 : 1,
     date: txn.date,
     quantity: txn.quantity,
+    // Math.round can be off-by-one on exact half-cents due to FP (e.g.
+    // 25.535 * 100 = 2553.4999... rounds down to 2553). Real broker prices
+    // rarely sit on those boundaries; revisit if a parser starts feeding them.
     price: Math.round(txn.pricePerShare * 100),
     // Round to 4 decimals (sub-cent precision) to avoid float drift like
     // -2.18 * 100 = -217.99999999999997. Spec encoding is "decimal × 100".

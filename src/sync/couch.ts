@@ -43,6 +43,7 @@ export class CouchClient {
   }
 
   async bulkDocs(docs: Array<Record<string, unknown>>): Promise<BulkDocResult[]> {
+    if (docs.length === 0) return []
     const res = await this.req('/_bulk_docs', { method: 'POST', body: JSON.stringify({ docs, new_edits: true }) })
     const arr = (await res.json()) as Array<{ id: string; ok?: boolean; rev?: string; error?: string; reason?: string }>
     return arr.map(r => {
