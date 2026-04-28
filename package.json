@@ -10,6 +10,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "probe:couch": "tsx scripts/couch-probe.ts",
+    "pdf:dump": "tsx scripts/pdf-dump.ts",
     "prepare": "husky"
   },
   "dependencies": {
