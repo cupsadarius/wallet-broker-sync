@@ -28,7 +28,13 @@ describe('CouchClient', () => {
 
   it('throws on 401', async () => {
     ;(fetch as any).mockResolvedValueOnce(new Response('unauth', { status: 401 }))
-    await expect(client().bulkDocs([])).rejects.toMatchObject({ kind: 'unauthorized' })
+    await expect(client().bulkDocs([{ _id: 'a' }])).rejects.toMatchObject({ kind: 'unauthorized' })
+  })
+
+  it('bulkDocs short-circuits on empty input without calling fetch', async () => {
+    const res = await client().bulkDocs([])
+    expect(res).toEqual([])
+    expect((fetch as any).mock.calls.length).toBe(0)
   })
 
   it('listAssetTransactions paginates _changes until last_seq stops moving', async () => {
