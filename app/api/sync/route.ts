@@ -13,6 +13,7 @@ import { parsers } from '@/src/parsers/registry'
 runMigrations()
 
 const TOOL_VERSION = '1.0.0'
+const MAX_UPLOAD_BYTES = 10 * 1024 * 1024  // 10 MB — XTB exports are typically <500KB; IBKR statements can be larger
 
 const BrokerSchema = z.enum(['xtb', 'ibkr', 'tradeville'])
 
@@ -20,6 +21,12 @@ export async function POST(req: Request) {
   try {
     const url = new URL(req.url)
     const dryRun = url.searchParams.get('dryRun') === 'true'
+
+    // Hard cap on body size to prevent OOM from large/hostile uploads.
+    const lenHeader = req.headers.get('content-length')
+    if (lenHeader && Number(lenHeader) > MAX_UPLOAD_BYTES) {
+      return NextResponse.json({ ok: false, error: `upload exceeds ${MAX_UPLOAD_BYTES} bytes` }, { status: 413 })
+    }
 
     // Parse multipart form
     let formData: FormData
@@ -34,6 +41,11 @@ export async function POST(req: Request) {
 
     if (!fileEntry || !(fileEntry instanceof File)) {
       return NextResponse.json({ ok: false, error: 'missing file field' }, { status: 400 })
+    }
+
+    // Belt-and-suspenders: also check size after multipart decode (Content-Length can be absent for streamed bodies)
+    if (fileEntry.size > MAX_UPLOAD_BYTES) {
+      return NextResponse.json({ ok: false, error: `upload exceeds ${MAX_UPLOAD_BYTES} bytes` }, { status: 413 })
     }
 
     const brokerParsed = BrokerSchema.safeParse(brokerEntry)

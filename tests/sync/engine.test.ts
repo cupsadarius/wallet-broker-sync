@@ -31,6 +31,29 @@ describe('runSync', () => {
     expect(r.inserted).toBe(0); expect(r.conflict).toBe(1)
   })
 
+  it('commitSync writes prepared docs and aggregates per-doc results', async () => {
+    const { prepareSync, commitSync } = await import('@/src/sync/engine')
+    const couch: any = {
+      listAssetTransactions: vi.fn(async () => []),
+      bulkDocs: vi.fn(async (docs: any[]) => [
+        { id: docs[0]._id, status: 'inserted', rev: '1-x' },
+        { id: docs[1]._id, status: 'conflict' },
+      ]),
+    }
+    const lookup: any = { assetByVenueSymbol: vi.fn(() => '-StocksFundsAsset_y') }
+    const prepared = await prepareSync({
+      broker: 'xtb',
+      txns: [baseTxn, { ...baseTxn, externalId: '2' }],
+      unsupported: [],
+      accountId: '-Account_a', ownerId: 'u', toolVersion: '1.0.0', couch, lookup,
+    })
+    expect(prepared.toInsert).toHaveLength(2)
+    const r = await commitSync(prepared, couch)
+    expect(r.inserted).toBe(1)
+    expect(r.conflict).toBe(1)
+    expect(r.errors).toHaveLength(0)
+  })
+
   it('preflight-dedups txns whose deterministic _id already exists in CouchDB (no bulkDocs call)', async () => {
     const bulkDocs = vi.fn(async () => [])
     // Compute the deterministic _id this txn will get, and pre-seed it as existing.
