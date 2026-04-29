@@ -39,18 +39,27 @@ export type PreparedSync = {
 
 /**
  * Build a content key for dedup against manually-entered existing docs.
- * Uses (assetId, transactionType, day-of-date, quantity, price) — all fields
- * that must agree for two records to represent the same trade.
+ * Uses (assetId, transactionType, day-of-date, quantity).
+ *
+ * Price is intentionally NOT in the key. Broker statements and manual
+ * Wallet entries routinely disagree by ~1 cent due to display rounding
+ * (e.g. IBKR statement: $112.00 → 11200, manual entry stores 11199).
+ * Two trades of the same asset on the same day with the same exact
+ * quantity but different prices are extremely rare — accepting that
+ * narrow false-positive risk to actually catch manual duplicates.
+ *
+ * Quantity is normalized via Number().toString() so 0.511 from a JSON
+ * doc and 0.511 from a parser produce the same key.
  */
 function contentKey(doc: {
-  assetId?: string; transactionType?: number; date?: string; quantity?: number; price?: number
+  assetId?: string; transactionType?: number; date?: string; quantity?: number
 }): string {
+  const q = doc.quantity == null ? '' : Number(doc.quantity).toString()
   return [
     doc.assetId ?? '',
     String(doc.transactionType ?? ''),
     (doc.date ?? '').slice(0, 10),
-    String(doc.quantity ?? ''),
-    String(doc.price ?? ''),
+    q,
   ].join('|')
 }
 

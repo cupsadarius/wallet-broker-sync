@@ -47,7 +47,7 @@ export default function AliasForm({
   const [toExchange, setToExchange] = useState('')
   const [err, setErr] = useState<string | null>(null)
 
-  async function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: { preventDefault: () => void }) {
     e.preventDefault()
     setErr(null)
     start(async () => {
