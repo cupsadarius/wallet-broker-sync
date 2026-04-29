@@ -67,6 +67,8 @@ export default function PreviewTable() {
   const [syncError, setSyncError] = useState<string | null>(null)
   // docId → existingDocId (user linked) or 'insert' (default)
   const [linkSelections, setLinkSelections] = useState<Record<string, string>>({})
+  // 'broker:exchange:symbol' keys that have been POSTed to record-fallback and await re-dry-run
+  const [pendingFallbacks, setPendingFallbacks] = useState<Set<string>>(new Set())
   // Shared expanded set across all sections — keys are namespaced
   const [expanded, setExpanded] = useState<Set<string>>(new Set())
 
@@ -98,6 +100,18 @@ export default function PreviewTable() {
   const recordsAlreadyCount = alreadyPresentRecords.length
   const needsAssetCount = needsAsset.length
   const unsupportedCount = unsupported.length
+
+  const hasLinkSelections = Object.values(linkSelections).some(v => v !== 'insert')
+  const hasPendingFallbacks = pendingFallbacks.size > 0
+  const syncEnabled = !isPending && (newCount > 0 || recordsNewCount > 0 || hasLinkSelections || hasPendingFallbacks)
+
+  function syncLabel(): string {
+    const parts: string[] = []
+    if (newCount > 0) parts.push(`${newCount} trade${newCount === 1 ? '' : 's'}`)
+    if (recordsNewCount > 0) parts.push(`${recordsNewCount} record${recordsNewCount === 1 ? '' : 's'}`)
+    if (linkedCount > 0) parts.push(`${linkedCount} link${linkedCount === 1 ? '' : 's'}`)
+    return parts.length ? `Sync ${parts.join(' + ')}` : 'Nothing to sync'
+  }
 
   // Deduplicate needsAsset by (exchange, symbol)
   const needsAssetUnique = needsAsset.reduce<CanonicalTxn[]>((acc, txn) => {
@@ -143,6 +157,35 @@ export default function PreviewTable() {
     router.push('/upload')
   }
 
+  async function handleCreateAsRecord(txn: CanonicalTxn) {
+    if (!broker) return
+    const exchange = (txn.exchange ?? '').toUpperCase()
+    const symbol = (txn.symbol ?? '').toUpperCase()
+    const fallbackKey = `${broker}:${exchange}:${symbol}`
+    try {
+      await fetch('/api/record-fallback', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ broker, exchange, symbol }),
+      })
+      // Mark as pending and re-issue dry run so the row re-classifies
+      setPendingFallbacks(prev => new Set(prev).add(fallbackKey))
+      if (file) {
+        const fd = new FormData()
+        fd.append('file', file)
+        fd.append('broker', broker)
+        const res = await fetch('/api/sync?dryRun=true', { method: 'POST', body: fd })
+        if (res.ok) {
+          const data = await res.json()
+          useWizard.getState().set({ dryRun: data })
+          setPendingFallbacks(new Set())
+        }
+      }
+    } catch {
+      // Silently fail — user can refresh manually
+    }
+  }
+
   return (
     <div className="space-y-6">
       {/* Summary bar */}
@@ -176,10 +219,10 @@ export default function PreviewTable() {
         <div className="ml-auto flex flex-col items-end gap-1">
           <Button
             onClick={handleConfirm}
-            disabled={(newCount === 0 && recordsNewCount === 0) || isPending}
+            disabled={!syncEnabled}
             size="lg"
           >
-            {isPending ? 'Syncing…' : `Sync ${newCount + recordsNewCount} item${newCount + recordsNewCount === 1 ? '' : 's'}`}
+            {isPending ? 'Syncing…' : syncLabel()}
           </Button>
           {syncError && (
             <p className="text-xs text-destructive">{syncError}</p>
@@ -462,7 +505,7 @@ export default function PreviewTable() {
                         <TableCell className="font-mono font-medium">{txn.symbol ?? '—'}</TableCell>
                         <TableCell className="text-muted-foreground">{txn.description}</TableCell>
                         <TableCell onClick={e => e.stopPropagation()}>
-                          <div className="flex items-center gap-3">
+                          <div className="flex items-center gap-3 flex-wrap">
                             <a
                               href={`https://web.budgetbakers.com/investments/assets`}
                               target="_blank"
@@ -477,6 +520,21 @@ export default function PreviewTable() {
                             >
                               Use existing →
                             </a>
+                            {(() => {
+                              const exchange = (txn.exchange ?? '').toUpperCase()
+                              const symbol = (txn.symbol ?? '').toUpperCase()
+                              const fallbackKey = `${broker}:${exchange}:${symbol}`
+                              const isMarked = pendingFallbacks.has(fallbackKey)
+                              return (
+                                <button
+                                  onClick={() => handleCreateAsRecord(txn)}
+                                  disabled={isMarked}
+                                  className="text-primary underline underline-offset-4 text-xs ml-2 disabled:opacity-50 disabled:cursor-default"
+                                >
+                                  {isMarked ? '✓ marked' : 'Create as record →'}
+                                </button>
+                              )
+                            })()}
                           </div>
                         </TableCell>
                       </TableRow>

@@ -49,6 +49,57 @@ export function deterministicRecordId(broker: string, externalId: string): strin
   return `Record_${uuidv5(`record:${broker}:${externalId}`, NAMESPACE_WALLET_SYNC)}`
 }
 
+/**
+ * Builds a Record doc from a buy/sell CanonicalTxn that has no asset support.
+ * type=1 (expense) for buys, type=0 (income) for sells.
+ * amount = abs(quantity * pricePerShare) — gross trade value, in tradeCurrency.
+ * note format: "Buy 100 TLV @ 26.50 RON" or "Sell 50 TLV @ 27.10 RON".
+ *   Appends observatii in parens if available.
+ *
+ * NOTE: The ctx.currencyId must correspond to the tradeCurrency (not settlementCurrency)
+ * since the amount is expressed in the trade's price currency.
+ */
+export function toRecordDocFromTrade(txn: CanonicalTxn, ctx: RecordMapperContext): RecordDoc {
+  if (txn.kind !== 'buy' && txn.kind !== 'sell') {
+    throw new Error(`toRecordDocFromTrade: unexpected kind "${txn.kind}"; expected 'buy' or 'sell'`)
+  }
+  if (txn.quantity === undefined || txn.pricePerShare === undefined) {
+    throw new Error(`toRecordDocFromTrade: quantity and pricePerShare are required`)
+  }
+  const isExpense = txn.kind === 'buy'
+  const amountAbs = Math.abs(txn.quantity * txn.pricePerShare)
+  const amountInt = Number((amountAbs * 100).toFixed(0))
+  const sideLabel = txn.kind === 'buy' ? 'Buy' : 'Sell'
+  const obs = (txn.raw['observatii'] as string | undefined) || (txn.raw['Observatii'] as string | undefined) || ''
+  const note = `${sideLabel} ${txn.quantity} ${txn.symbol ?? ''} @ ${txn.pricePerShare} ${txn.tradeCurrency ?? ''}${obs ? ' (' + obs + ')' : ''}`
+
+  return {
+    _id: deterministicRecordId(txn.broker, txn.externalId),
+    reservedModelType: 'Record',
+    reservedOwnerId: ctx.ownerId,
+    reservedAuthorId: ctx.ownerId,
+    reservedSource: 'wallet-broker-sync',
+    reservedCreatedAt: ctx.now,
+    reservedUpdatedAt: ctx.now,
+    accountId: ctx.accountId,
+    categoryId: ctx.categoryId,
+    currencyId: ctx.currencyId,
+    type: isExpense ? 1 : 0,
+    paymentType: 3,
+    amount: amountInt,
+    decimalAmount: (amountInt / 100).toFixed(2),
+    recordDate: txn.date,
+    recordState: 1,
+    note,
+    ...(isExpense ? { payee: txn.broker.toUpperCase() } : { payer: txn.broker.toUpperCase() }),
+    photos: [],
+    externalSource: txn.broker,
+    externalId: txn.externalId,
+    syncedAt: ctx.now,
+    syncToolVersion: ctx.toolVersion,
+  }
+}
+
 export function toRecordDoc(txn: CanonicalTxn, ctx: RecordMapperContext): RecordDoc {
   if (txn.kind !== 'dividend' && txn.kind !== 'fee') {
     throw new Error(`toRecordDoc: unexpected kind "${txn.kind}"; expected 'dividend' or 'fee'`)

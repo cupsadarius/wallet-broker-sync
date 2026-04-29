@@ -334,6 +334,59 @@ describe('runSync', () => {
     expect(r.preview.newRecords).toHaveLength(0)
   })
 
+  it('routes to Record when (broker, exchange, symbol) is in recordFallback', async () => {
+    const couch = makeCouchMock({ bulkDocs: vi.fn(async (docs: any[]) => docs.map((d: any) => ({ id: d._id, status: 'inserted', rev: '1-x' }))) })
+    const lookup = makeLookupMock({ assetByVenueSymbol: vi.fn(() => null) })
+    const r = await runSync({
+      broker: 'tradeville',
+      txns: [{ ...baseTxn, broker: 'tradeville', symbol: 'TLV', exchange: 'XBSE' }],
+      unsupported: [],
+      accountId: '-Account_a', ownerId: 'u', toolVersion: '1.0.0',
+      couch, lookup,
+      recordFallback: new Set(['tradeville:XBSE:TLV']),
+      manualLink: new Map(),
+    })
+    expect(r.preview.new).toHaveLength(0)          // no AssetTransaction
+    expect(r.preview.newRecords).toHaveLength(1)   // built a Record instead
+    expect(r.preview.newRecords[0].doc.type).toBe(1)  // buy → expense
+    expect(r.preview.newRecords[0].doc.note).toMatch(/Buy.*TLV/)
+    expect(r.needsAsset).toHaveLength(0)
+  })
+
+  it('routes to Record (income) for sell when (broker, exchange, symbol) is in recordFallback', async () => {
+    const couch = makeCouchMock({ bulkDocs: vi.fn(async (docs: any[]) => docs.map((d: any) => ({ id: d._id, status: 'inserted', rev: '1-x' }))) })
+    const lookup = makeLookupMock({ assetByVenueSymbol: vi.fn(() => null) })
+    const r = await runSync({
+      broker: 'tradeville',
+      txns: [{ ...baseTxn, broker: 'tradeville', symbol: 'TLV', exchange: 'XBSE', kind: 'sell' as const, cashAmount: 118.05 }],
+      unsupported: [],
+      accountId: '-Account_a', ownerId: 'u', toolVersion: '1.0.0',
+      couch, lookup,
+      recordFallback: new Set(['tradeville:XBSE:TLV']),
+      manualLink: new Map(),
+    })
+    expect(r.preview.newRecords).toHaveLength(1)
+    expect(r.preview.newRecords[0].doc.type).toBe(0)  // sell → income
+    expect(r.preview.newRecords[0].doc.note).toMatch(/Sell.*TLV/)
+  })
+
+  it('routes to alreadyPresent when (broker, externalId) is in manualLink', async () => {
+    const couch = makeCouchMock({ bulkDocs: vi.fn(async () => []) })
+    const lookup = makeLookupMock()
+    const r = await runSync({
+      broker: 'xtb',
+      txns: [{ ...baseTxn, externalId: 'IBKR-XYZ' }],
+      unsupported: [],
+      accountId: '-Account_a', ownerId: 'u', toolVersion: '1.0.0',
+      couch, lookup,
+      manualLink: new Map([['xtb:IBKR-XYZ', '-AssetTransaction_existing-1']]),
+      recordFallback: new Set(),
+    })
+    expect(r.inserted).toBe(0)
+    expect(r.preview.alreadyPresent).toContain('-AssetTransaction_existing-1')
+    expect(r.preview.new).toHaveLength(0)
+  })
+
   it('defensive filter: string transactionType from CouchDB does not appear in nearMatches for a buy', async () => {
     // Simulate a CouchDB doc whose transactionType was serialized as a string '1' (SELL)
     // instead of the number 1. It shares the same assetId and date-day as baseTxn (a BUY),

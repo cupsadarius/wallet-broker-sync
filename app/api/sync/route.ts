@@ -3,7 +3,7 @@ import crypto from 'node:crypto'
 import { z } from 'zod'
 import { eq } from 'drizzle-orm'
 import { db, runMigrations } from '@/src/storage/db'
-import { config, brokerAccountMap, syncRun, syncRunDoc, assetAlias } from '@/src/storage/schema'
+import { config, brokerAccountMap, syncRun, syncRunDoc, assetAlias, recordFallback as recordFallbackTable, manualLink as manualLinkTable } from '@/src/storage/schema'
 import { loadCouchCreds } from '@/src/storage/credentials'
 import { CouchClient } from '@/src/sync/couch'
 import { LookupService } from '@/src/sync/lookup'
@@ -105,6 +105,18 @@ export async function POST(req: Request) {
     lookup.setAliases(aliasRows)
     await lookup.refresh()
 
+    // Load record-fallback rules and manual links from SQLite
+    const [fallbackRows, linkRows] = await Promise.all([
+      db.select().from(recordFallbackTable),
+      db.select().from(manualLinkTable),
+    ])
+    const recordFallbackSet = new Set(
+      fallbackRows.map(r => `${r.broker}:${r.exchange.toUpperCase()}:${r.symbol.toUpperCase()}`),
+    )
+    const manualLinkMap = new Map(
+      linkRows.map(r => [`${r.broker}:${r.externalId}`, r.existingDocId]),
+    )
+
     const syncInput = {
       broker,
       txns,
@@ -114,6 +126,8 @@ export async function POST(req: Request) {
       toolVersion: TOOL_VERSION,
       couch,
       lookup,
+      recordFallback: recordFallbackSet,
+      manualLink: manualLinkMap,
     }
 
     if (dryRun) {
@@ -161,6 +175,26 @@ export async function POST(req: Request) {
 
     const result = await commitSync(filteredPrepared, couch)
     const finishedAt = Date.now()
+
+    // Persist any user-chosen link selections as manual_link rows so they survive re-import.
+    // skipMap: ourDocId → existingDocId.  We need (broker, externalId) from the original PreparedDoc.
+    if (Object.keys(skipMap).length > 0) {
+      // Build a lookup from ourDocId → CanonicalTxn source
+      const docIdToSource = new Map<string, { broker: string; externalId: string }>()
+      for (const p of prepared.toInsert) {
+        docIdToSource.set(p.doc._id, { broker: p.source.broker, externalId: p.source.externalId })
+      }
+      const linkRows = Object.entries(skipMap)
+        .map(([ourDocId, existingDocId]) => {
+          const src = docIdToSource.get(ourDocId)
+          if (!src) return null
+          return { broker: src.broker, externalId: src.externalId, existingDocId }
+        })
+        .filter((r): r is { broker: string; externalId: string; existingDocId: string } => r !== null)
+      if (linkRows.length > 0) {
+        await db.insert(manualLinkTable).values(linkRows).onConflictDoNothing()
+      }
+    }
 
     // Persist sync run to SQLite
     const [runRow] = await db.insert(syncRun).values({

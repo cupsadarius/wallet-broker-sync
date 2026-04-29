@@ -3,13 +3,17 @@ import type { CouchClient } from './couch'
 import type { LookupService } from './lookup'
 import type { UnsupportedRow } from '@/src/parsers/types'
 import { toAssetTransactionDoc, type AssetTransactionDoc } from './mapper'
-import { toRecordDoc, type RecordDoc } from './record-mapper'
+import { toRecordDoc, toRecordDocFromTrade, type RecordDoc } from './record-mapper'
 
 export type SyncInput = {
   broker: string; txns: CanonicalTxn[]; unsupported: UnsupportedRow[]
   accountId: string; ownerId: string; toolVersion: string
   couch: Pick<CouchClient, 'listAssetTransactions' | 'listRecords' | 'bulkDocs'>
   lookup: Pick<LookupService, 'assetByVenueSymbol' | 'assetById' | 'categoryByName' | 'currencyByCode'>
+  /** 'broker:exchange:symbol' (uppercased) — trades for these combos build a Record instead of AssetTransaction */
+  recordFallback?: Set<string>
+  /** 'broker:externalId' → existingDocId — these txns are treated as already-present */
+  manualLink?: Map<string, string>
 }
 
 /** Pair the wire doc (what gets written) with its source canonical txn (for UI display). */
@@ -116,6 +120,8 @@ export async function prepareSync(
   input: Omit<SyncInput, 'couch'> & {
     couch: Pick<CouchClient, 'listAssetTransactions' | 'listRecords'>
     lookup: Pick<LookupService, 'assetByVenueSymbol' | 'assetById' | 'categoryByName' | 'currencyByCode'>
+    recordFallback?: Set<string>
+    manualLink?: Map<string, string>
   },
 ): Promise<PreparedSync> {
   const [existing, existingRecords] = await Promise.all([
@@ -141,6 +147,9 @@ export async function prepareSync(
 
   const now = new Date().toISOString()
 
+  const recordFallback = input.recordFallback ?? new Set<string>()
+  const manualLink = input.manualLink ?? new Map<string, string>()
+
   const toInsert: PreparedDoc[] = []
   const alreadyPresent: string[] = []
   const needsAsset: CanonicalTxn[] = []
@@ -152,6 +161,13 @@ export async function prepareSync(
   const skippedRecords: Array<{ txn: CanonicalTxn; reason: string }> = []
 
   for (const t of input.txns) {
+    // Manual link check: treat as already-present without inserting anything.
+    const manualKey = `${t.broker}:${t.externalId}`
+    if (manualLink.has(manualKey)) {
+      alreadyPresent.push(manualLink.get(manualKey)!)
+      continue
+    }
+
     if (t.kind === 'dividend' || t.kind === 'fee') {
       const categoryId = pickCategoryId(t, input.lookup)
       const currencyId = input.lookup.currencyByCode(t.settlementCurrency)
@@ -177,7 +193,39 @@ export async function prepareSync(
 
     if (!t.exchange || !t.symbol) { needsAsset.push(t); continue }
     const assetId = input.lookup.assetByVenueSymbol(t.exchange, t.symbol, t.tradeCurrency, input.broker)
-    if (!assetId) { needsAsset.push(t); continue }
+    if (!assetId) {
+      // Record-fallback: if this (broker, exchange, symbol) combo is marked, build a Record instead.
+      const fallbackKey = `${t.broker}:${t.exchange.toUpperCase()}:${t.symbol.toUpperCase()}`
+      if (recordFallback.has(fallbackKey)) {
+        // Use the category for "Others" (expense for buys) or "Income" (income for sells).
+        // Prefer the same categories as fees/dividends respectively.
+        const categoryId = t.kind === 'buy'
+          ? (input.lookup.categoryByName('Others') ?? input.lookup.categoryByName('Bank fees') ?? null)
+          : (input.lookup.categoryByName('Income') ?? input.lookup.categoryByName('Investment') ?? null)
+        // Use tradeCurrency if available, fall back to settlementCurrency.
+        const currencyCode = t.tradeCurrency ?? t.settlementCurrency
+        const currencyId = input.lookup.currencyByCode(currencyCode)
+        if (!categoryId || !currencyId) {
+          skippedRecords.push({
+            txn: t,
+            reason: `record-fallback for ${t.symbol}: ${!categoryId ? 'no matching category' : `currency "${currencyCode}" not found`}`,
+          })
+          continue
+        }
+        const doc = toRecordDocFromTrade(t, {
+          accountId: input.accountId, categoryId, currencyId,
+          ownerId: input.ownerId, now, toolVersion: input.toolVersion,
+        })
+        if (existingRecordIds.has(doc._id)) {
+          alreadyPresentRecords.push(doc._id)
+        } else {
+          recordsToInsert.push({ doc, source: t })
+        }
+        continue
+      }
+      needsAsset.push(t)
+      continue
+    }
     const doc = toAssetTransactionDoc(t, {
       accountId: input.accountId, assetId,
       ownerId: input.ownerId, now, toolVersion: input.toolVersion,

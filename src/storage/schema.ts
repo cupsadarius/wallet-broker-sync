@@ -43,3 +43,19 @@ export const assetAlias = sqliteTable('asset_alias', {
 }, (t) => ({
   pk: primaryKey({ columns: [t.broker, t.fromSymbol, t.fromExchange] }),
 }))
+
+export const recordFallback = sqliteTable('record_fallback', {
+  broker: text('broker').notNull(),
+  exchange: text('exchange').notNull(),
+  symbol: text('symbol').notNull(),
+}, (t) => ({
+  pk: primaryKey({ columns: [t.broker, t.exchange, t.symbol] }),
+}))
+
+export const manualLink = sqliteTable('manual_link', {
+  broker: text('broker').notNull(),
+  externalId: text('external_id').notNull(),
+  existingDocId: text('existing_doc_id').notNull(),
+}, (t) => ({
+  pk: primaryKey({ columns: [t.broker, t.externalId] }),
+}))
