@@ -8,7 +8,7 @@ export type SyncInput = {
   broker: string; txns: CanonicalTxn[]; unsupported: UnsupportedRow[]
   accountId: string; ownerId: string; toolVersion: string
   couch: Pick<CouchClient, 'listAssetTransactions' | 'bulkDocs'>
-  lookup: Pick<LookupService, 'assetByVenueSymbol'>
+  lookup: Pick<LookupService, 'assetByVenueSymbol' | 'assetById'>
 }
 
 /** Pair the wire doc (what gets written) with its source canonical txn (for UI display). */
@@ -17,6 +17,10 @@ export type PreparedDoc = { doc: AssetTransactionDoc; source: CanonicalTxn }
 export type NearMatch = {
   docId: string
   date: string             // ISO from existing doc
+  assetId: string
+  symbol?: string          // resolved from LookupService.assetById
+  exchange?: string        // resolved from LookupService.assetById (exchangeCode)
+  transactionType: number  // 0 buy, 1 sell
   quantity: number
   price: number            // int × 100 from existing doc
   priceCurrencyCode?: string
@@ -36,13 +40,14 @@ export type SyncResult = {
   needsAsset: CanonicalTxn[]
   unsupported: UnsupportedRow[]
   outcomes: WriteOutcome[]
-  preview: { new: PreparedDoc[]; alreadyPresent: string[]; nearMatches: Record<string, NearMatch[]> }
+  preview: { new: PreparedDoc[]; alreadyPresent: string[]; nearMatches: Record<string, NearMatch[]>; unmatchedExisting: NearMatch[] }
 }
 
 export type PreparedSync = {
   toInsert: PreparedDoc[]
   alreadyPresent: string[]
   nearMatches: Record<string, NearMatch[]>   // ourDocId → candidates
+  unmatchedExisting: NearMatch[]             // ALL existing docs not in alreadyPresent (sorted by date desc)
   needsAsset: CanonicalTxn[]
   unsupported: UnsupportedRow[]
   total: number
@@ -80,7 +85,7 @@ function contentKey(doc: {
  * Does NOT write anything to CouchDB.
  */
 export async function prepareSync(
-  input: Omit<SyncInput, 'couch'> & { couch: Pick<CouchClient, 'listAssetTransactions'> },
+  input: Omit<SyncInput, 'couch'> & { couch: Pick<CouchClient, 'listAssetTransactions'>; lookup: Pick<LookupService, 'assetByVenueSymbol' | 'assetById'> },
 ): Promise<PreparedSync> {
   const existing = await input.couch.listAssetTransactions(input.accountId)
   const existingIds = new Set(existing.map((d: Record<string, unknown>) => d['_id']))
@@ -127,6 +132,31 @@ export async function prepareSync(
     }
   }
 
+  // Resolve asset metadata for a doc using the lookup service.
+  const enrich = (d: Record<string, unknown>): NearMatch => {
+    const assetId = d['assetId'] as string
+    const meta = input.lookup.assetById?.(assetId) ?? null
+    return {
+      docId: d['_id'] as string,
+      date: d['date'] as string,
+      assetId,
+      symbol: meta?.symbol,
+      exchange: meta?.exchangeCode,
+      transactionType: d['transactionType'] as number,
+      quantity: d['quantity'] as number,
+      price: d['price'] as number,
+      priceCurrencyCode: d['priceCurrencyCode'] as string | undefined,
+      cashAmount: d['cashAmount'] as number | undefined,
+      cashAmountCurrencyCode: d['cashAmountCurrencyCode'] as string | undefined,
+    }
+  }
+
+  // Existing docs not auto-matched, sorted by date desc
+  const unmatchedExisting: NearMatch[] = existing
+    .filter(d => !alreadyPresent.includes(d['_id'] as string))
+    .map(enrich)
+    .sort((a, b) => (b.date ?? '').localeCompare(a.date ?? ''))
+
   // Build nearMatches for each toInsert doc
   const nearMatches: Record<string, NearMatch[]> = {}
   for (const p of toInsert) {
@@ -141,18 +171,10 @@ export async function prepareSync(
       const db = Math.abs((b['quantity'] as number) - p.doc.quantity)
       return da - db
     })
-    nearMatches[p.doc._id] = sorted.map(d => ({
-      docId: d['_id'] as string,
-      date: d['date'] as string,
-      quantity: d['quantity'] as number,
-      price: d['price'] as number,
-      priceCurrencyCode: d['priceCurrencyCode'] as string | undefined,
-      cashAmount: d['cashAmount'] as number | undefined,
-      cashAmountCurrencyCode: d['cashAmountCurrencyCode'] as string | undefined,
-    }))
+    nearMatches[p.doc._id] = sorted.map(enrich)
   }
 
-  return { toInsert, alreadyPresent, nearMatches, needsAsset, unsupported: input.unsupported, total: input.txns.length }
+  return { toInsert, alreadyPresent, nearMatches, unmatchedExisting, needsAsset, unsupported: input.unsupported, total: input.txns.length }
 }
 
 /**
@@ -195,7 +217,7 @@ export async function commitSync(
     needsAsset: prepared.needsAsset,
     unsupported: prepared.unsupported,
     outcomes,
-    preview: { new: prepared.toInsert, alreadyPresent: prepared.alreadyPresent, nearMatches: prepared.nearMatches },
+    preview: { new: prepared.toInsert, alreadyPresent: prepared.alreadyPresent, nearMatches: prepared.nearMatches, unmatchedExisting: prepared.unmatchedExisting },
   }
 }
 

@@ -95,7 +95,13 @@ describe('runSync', () => {
       listAssetTransactions: vi.fn(async () => [existingDoc]),
       bulkDocs: vi.fn(async () => []),
     }
-    const lookup: any = { assetByVenueSymbol: vi.fn(() => '-StocksFundsAsset_y') }
+    const lookup: any = {
+      assetByVenueSymbol: vi.fn(() => '-StocksFundsAsset_y'),
+      assetById: vi.fn((id: string) => {
+        if (id === '-StocksFundsAsset_y') return { symbol: 'VUAA', exchangeCode: 'XETR', currencyCode: 'EUR' }
+        return null
+      }),
+    }
 
     const splitRow1 = { ...baseTxn, externalId: 'a', quantity: 0.04 }
     const splitRow2 = { ...baseTxn, externalId: 'b', quantity: 4 }
@@ -113,7 +119,72 @@ describe('runSync', () => {
       expect(candidates.length).toBe(1)
       expect(candidates[0].docId).toBe('-AssetTransaction_aggregate-1')
       expect(candidates[0].quantity).toBe(4.04)
+      // Enriched fields
+      expect(candidates[0].assetId).toBe('-StocksFundsAsset_y')
+      expect(candidates[0].transactionType).toBe(0)
+      expect(candidates[0].symbol).toBe('VUAA')
+      expect(candidates[0].exchange).toBe('XETR')
     }
+  })
+
+  it('returns unmatchedExisting as all-account existing docs sorted by date desc, excluding strict-matches', async () => {
+    const existingDocs = [
+      {
+        _id: '-AssetTransaction_strict-match',  // will strict-match with baseTxn
+        reservedModelType: 'AssetTransaction',
+        accountId: '-Account_a',
+        assetId: '-StocksFundsAsset_y',
+        transactionType: 0,
+        date: '2026-04-28T15:30:00.000Z',
+        quantity: 1,
+        price: 11804,  // matches baseTxn after × 100
+      },
+      {
+        _id: '-AssetTransaction_unrelated-1',
+        reservedModelType: 'AssetTransaction',
+        accountId: '-Account_a',
+        assetId: '-StocksFundsAsset_other',
+        transactionType: 1,
+        date: '2024-06-01T12:00:00.000Z',
+        quantity: 5,
+        price: 5000,
+      },
+      {
+        _id: '-AssetTransaction_unrelated-2',
+        reservedModelType: 'AssetTransaction',
+        accountId: '-Account_a',
+        assetId: '-StocksFundsAsset_other',
+        transactionType: 0,
+        date: '2025-01-15T10:00:00.000Z',
+        quantity: 2,
+        price: 8000,
+      },
+    ]
+    const couch: any = {
+      listAssetTransactions: vi.fn(async () => existingDocs),
+      bulkDocs: vi.fn(async () => []),
+    }
+    const lookup: any = {
+      assetByVenueSymbol: vi.fn(() => '-StocksFundsAsset_y'),
+      assetById: vi.fn((id: string) => {
+        if (id === '-StocksFundsAsset_y') return { symbol: 'VUAA', exchangeCode: 'XETR', currencyCode: 'EUR' }
+        if (id === '-StocksFundsAsset_other') return { symbol: 'AMD', exchangeCode: 'XNGS', currencyCode: 'USD' }
+        return null
+      }),
+    }
+    const r = await runSync({
+      broker: 'xtb', txns: [baseTxn], unsupported: [],
+      accountId: '-Account_a', ownerId: 'u', toolVersion: '1.0.0', couch, lookup,
+    })
+    // baseTxn strict-matches existingDocs[0], so 0 inserted
+    expect(r.inserted).toBe(0)
+    // unmatchedExisting should be 2 (the strict-match is excluded), sorted by date desc
+    expect(r.preview.unmatchedExisting.length).toBe(2)
+    expect(r.preview.unmatchedExisting[0].docId).toBe('-AssetTransaction_unrelated-2')   // 2025-01-15
+    expect(r.preview.unmatchedExisting[1].docId).toBe('-AssetTransaction_unrelated-1')   // 2024-06-01
+    // Symbols and exchanges should be enriched
+    expect(r.preview.unmatchedExisting[0].symbol).toBe('AMD')
+    expect(r.preview.unmatchedExisting[0].exchange).toBe('XNGS')
   })
 
   it('content-matches manually-entered existing docs (different _id, same trade)', async () => {

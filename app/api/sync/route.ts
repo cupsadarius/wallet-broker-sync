@@ -121,7 +121,7 @@ export async function POST(req: Request) {
       return NextResponse.json({
         inserted: 0,
         conflict: 0,
-        preview: { new: prepared.toInsert, alreadyPresent: prepared.alreadyPresent, nearMatches: prepared.nearMatches },
+        preview: { new: prepared.toInsert, alreadyPresent: prepared.alreadyPresent, nearMatches: prepared.nearMatches, unmatchedExisting: prepared.unmatchedExisting },
         needsAsset: prepared.needsAsset,
         unsupported: prepared.unsupported,
       })

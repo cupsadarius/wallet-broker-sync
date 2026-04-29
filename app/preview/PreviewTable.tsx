@@ -29,6 +29,10 @@ type PreparedDoc = { doc: AssetTransactionDoc; source: CanonicalTxn }
 type NearMatch = {
   docId: string
   date: string
+  assetId: string
+  symbol?: string
+  exchange?: string
+  transactionType: number
   quantity: number
   price: number
   priceCurrencyCode?: string
@@ -47,6 +51,7 @@ type SyncResult = {
     new: PreparedDoc[]
     alreadyPresent: string[]
     nearMatches?: Record<string, NearMatch[]>
+    unmatchedExisting?: NearMatch[]
   }
 }
 
@@ -64,6 +69,7 @@ export default function PreviewTable() {
   const newTxns = result.preview?.new ?? []
   const alreadyPresent = result.preview?.alreadyPresent ?? []
   const nearMatches = result.preview?.nearMatches ?? {}
+  const unmatchedExisting = result.preview?.unmatchedExisting ?? []
   const needsAsset = result.needsAsset ?? []
   const unsupported = result.unsupported ?? []
 
@@ -189,9 +195,22 @@ export default function PreviewTable() {
                   const price = (doc.price / 100).toFixed(2)
                   const total = (doc.cashAmount / 100).toFixed(2)
                   const dateShort = doc.date.slice(0, 10)
-                  const candidates = nearMatches[doc._id] ?? []
+                  const nearCandidates = nearMatches[doc._id] ?? []
+                  const nearCandidateIds = new Set(nearCandidates.map(c => c.docId))
+                  const otherCandidates = unmatchedExisting.filter(c => !nearCandidateIds.has(c.docId))
                   const selection = linkSelections[doc._id] ?? 'insert'
                   const isLinked = selection !== 'insert'
+
+                  const formatMatchLabel = (c: NearMatch) => {
+                    const sym = c.symbol ?? '?'
+                    const exch = c.exchange ?? '?'
+                    const cDate = c.date.slice(0, 10)
+                    const cSide = c.transactionType === 0 ? 'BUY' : 'SELL'
+                    const cPrice = (c.price / 100).toFixed(2)
+                    const currency = c.priceCurrencyCode ?? ''
+                    return `${sym} ${exch} · ${cDate} · ${cSide} · ${c.quantity} @ ${currency}${cPrice}`
+                  }
+
                   return (
                     <TableRow key={doc._id} className={isLinked ? 'opacity-50 line-through text-zinc-400' : undefined}>
                       <TableCell className="font-mono text-xs">{dateShort}</TableCell>
@@ -210,31 +229,34 @@ export default function PreviewTable() {
                         {total} {doc.cashAmountCurrencyCode}
                       </TableCell>
                       <TableCell>
-                        {candidates.length > 0 ? (
-                          <select
-                            value={selection}
-                            onChange={(e: { preventDefault: () => void; target: { value: string } }) => {
-                              const val = (e as unknown as React.ChangeEvent<HTMLSelectElement>).target.value
-                              setLinkSelections(prev => ({ ...prev, [doc._id]: val }))
-                            }}
-                            className="text-xs rounded border border-input bg-background px-2 py-1 text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
-                          >
-                            <option value="insert">Insert</option>
-                            {candidates.map(c => {
-                              const cPrice = (c.price / 100).toFixed(2)
-                              const cDate = c.date.slice(5, 10).replace('-', '/')
-                              const sign = doc.transactionType === 0 ? '+' : '−'
-                              const currency = c.priceCurrencyCode ? ` ${c.priceCurrencyCode}` : ''
-                              return (
+                        <select
+                          value={selection}
+                          onChange={(e: { preventDefault: () => void; target: { value: string } }) => {
+                            const val = (e as unknown as React.ChangeEvent<HTMLSelectElement>).target.value
+                            setLinkSelections(prev => ({ ...prev, [doc._id]: val }))
+                          }}
+                          className="text-xs rounded border border-input bg-background px-2 py-1 text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                        >
+                          <option value="insert">— Insert as new —</option>
+                          {nearCandidates.length > 0 && (
+                            <optgroup label="Most likely (same asset, side, day)">
+                              {nearCandidates.map(c => (
                                 <option key={c.docId} value={c.docId}>
-                                  {`Link to: ${sign}${c.quantity} ${source.symbol ?? ''} on ${cDate} @ $${cPrice}${currency}`}
+                                  {formatMatchLabel(c)}
                                 </option>
-                              )
-                            })}
-                          </select>
-                        ) : (
-                          <span className="text-xs text-muted-foreground">—</span>
-                        )}
+                              ))}
+                            </optgroup>
+                          )}
+                          {otherCandidates.length > 0 && (
+                            <optgroup label="Other unmatched trades">
+                              {otherCandidates.map(c => (
+                                <option key={c.docId} value={c.docId}>
+                                  {formatMatchLabel(c)}
+                                </option>
+                              ))}
+                            </optgroup>
+                          )}
+                        </select>
                       </TableCell>
                     </TableRow>
                   )

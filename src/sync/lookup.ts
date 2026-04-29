@@ -13,6 +13,7 @@ export class LookupService {
   private accounts: InvestmentAccount[] = []
   private assetMap = new Map<string, string>()                                         // 'XNGS:NVDA' → assetId
   private bareSymbolMap = new Map<string, Array<{ assetId: string; currencyCode: string }>>()  // 'NVDA' → [{...}, ...]
+  private assetByIdMap = new Map<string, { symbol: string; exchangeCode: string; currencyCode: string; name?: string }>()
   private aliases: AliasMap = new Map()
 
   constructor(private readonly couch: Pick<CouchClient, 'listByModelType'>) {}
@@ -31,6 +32,7 @@ export class LookupService {
     }))
     this.assetMap.clear()
     this.bareSymbolMap.clear()
+    this.assetByIdMap.clear()
     for (const a of assets) {
       const key = `${a.exchangeCode.toUpperCase()}:${a.symbol.toUpperCase()}`
       this.assetMap.set(key, a._id)
@@ -39,6 +41,12 @@ export class LookupService {
       const existing = this.bareSymbolMap.get(sym)
       if (existing) existing.push(entry)
       else this.bareSymbolMap.set(sym, [entry])
+      this.assetByIdMap.set(a._id, {
+        symbol: a.symbol,
+        exchangeCode: a.exchangeCode,
+        currencyCode: (a as Record<string, unknown>)['currencyCode'] as string ?? '',
+        name: (a as Record<string, unknown>)['name'] as string | undefined,
+      })
     }
   }
 
@@ -53,6 +61,10 @@ export class LookupService {
   }
 
   investmentAccounts(): InvestmentAccount[] { return this.accounts }
+
+  assetById(id: string): { symbol: string; exchangeCode: string; currencyCode: string; name?: string } | null {
+    return this.assetByIdMap.get(id) ?? null
+  }
 
   /**
    * Look up an asset by (MIC, symbol). If exact MIC match misses, falls back to
