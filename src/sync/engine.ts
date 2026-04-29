@@ -3,16 +3,20 @@ import type { CouchClient } from './couch'
 import type { LookupService } from './lookup'
 import type { UnsupportedRow } from '@/src/parsers/types'
 import { toAssetTransactionDoc, type AssetTransactionDoc } from './mapper'
+import { toRecordDoc, type RecordDoc } from './record-mapper'
 
 export type SyncInput = {
   broker: string; txns: CanonicalTxn[]; unsupported: UnsupportedRow[]
   accountId: string; ownerId: string; toolVersion: string
-  couch: Pick<CouchClient, 'listAssetTransactions' | 'bulkDocs'>
-  lookup: Pick<LookupService, 'assetByVenueSymbol' | 'assetById'>
+  couch: Pick<CouchClient, 'listAssetTransactions' | 'listRecords' | 'bulkDocs'>
+  lookup: Pick<LookupService, 'assetByVenueSymbol' | 'assetById' | 'categoryByName' | 'currencyByCode'>
 }
 
 /** Pair the wire doc (what gets written) with its source canonical txn (for UI display). */
 export type PreparedDoc = { doc: AssetTransactionDoc; source: CanonicalTxn }
+
+/** Pair a Record doc with its source canonical txn (dividends/fees). */
+export type PreparedRecord = { doc: RecordDoc; source: CanonicalTxn }
 
 export type NearMatch = {
   docId: string
@@ -40,7 +44,17 @@ export type SyncResult = {
   needsAsset: CanonicalTxn[]
   unsupported: UnsupportedRow[]
   outcomes: WriteOutcome[]
-  preview: { new: PreparedDoc[]; alreadyPresent: string[]; nearMatches: Record<string, NearMatch[]>; unmatchedExisting: NearMatch[] }
+  recordsInserted: number
+  recordsConflict: number
+  recordOutcomes: WriteOutcome[]
+  preview: {
+    new: PreparedDoc[]
+    alreadyPresent: string[]
+    nearMatches: Record<string, NearMatch[]>
+    unmatchedExisting: NearMatch[]
+    newRecords: PreparedRecord[]
+    alreadyPresentRecords: string[]
+  }
 }
 
 export type PreparedSync = {
@@ -51,6 +65,9 @@ export type PreparedSync = {
   needsAsset: CanonicalTxn[]
   unsupported: UnsupportedRow[]
   total: number
+  recordsToInsert: PreparedRecord[]
+  alreadyPresentRecords: string[]
+  skippedRecords: Array<{ txn: CanonicalTxn; reason: string }>
 }
 
 /**
@@ -80,14 +97,31 @@ function contentKey(doc: {
   ].join('|')
 }
 
+/** Pick a categoryId for a dividend or fee CanonicalTxn. Returns null when no category resolves. */
+function pickCategoryId(t: CanonicalTxn, lookup: Pick<LookupService, 'categoryByName'>): string | null {
+  if (t.kind === 'dividend') {
+    return lookup.categoryByName('Income') ?? lookup.categoryByName('Investment') ?? null
+  }
+  if (t.kind === 'fee') {
+    return lookup.categoryByName('Others') ?? lookup.categoryByName('Bank fees') ?? null
+  }
+  return null
+}
+
 /**
- * Steps 1-6: read existing docs, diff, build AssetTransactionDocs.
+ * Steps 1-6: read existing docs, diff, build AssetTransactionDocs and RecordDocs.
  * Does NOT write anything to CouchDB.
  */
 export async function prepareSync(
-  input: Omit<SyncInput, 'couch'> & { couch: Pick<CouchClient, 'listAssetTransactions'>; lookup: Pick<LookupService, 'assetByVenueSymbol' | 'assetById'> },
+  input: Omit<SyncInput, 'couch'> & {
+    couch: Pick<CouchClient, 'listAssetTransactions' | 'listRecords'>
+    lookup: Pick<LookupService, 'assetByVenueSymbol' | 'assetById' | 'categoryByName' | 'currencyByCode'>
+  },
 ): Promise<PreparedSync> {
-  const existing = await input.couch.listAssetTransactions(input.accountId)
+  const [existing, existingRecords] = await Promise.all([
+    input.couch.listAssetTransactions(input.accountId),
+    input.couch.listRecords(input.accountId),
+  ])
   const existingIds = new Set(existing.map((d: Record<string, unknown>) => d['_id']))
 
   // Second-pass content map: catches manually-entered docs with random _ids
@@ -111,8 +145,36 @@ export async function prepareSync(
   const alreadyPresent: string[] = []
   const needsAsset: CanonicalTxn[] = []
 
+  // Record dedup: deterministic _id is sufficient (Records rarely get manually entered)
+  const existingRecordIds = new Set(existingRecords.map((d: Record<string, unknown>) => d['_id']))
+  const recordsToInsert: PreparedRecord[] = []
+  const alreadyPresentRecords: string[] = []
+  const skippedRecords: Array<{ txn: CanonicalTxn; reason: string }> = []
+
   for (const t of input.txns) {
-    if (t.kind === 'fee') continue
+    if (t.kind === 'dividend' || t.kind === 'fee') {
+      const categoryId = pickCategoryId(t, input.lookup)
+      const currencyId = input.lookup.currencyByCode(t.settlementCurrency)
+      if (!categoryId) {
+        skippedRecords.push({ txn: t, reason: `no matching category for ${t.kind} (need "Income"/"Investment" for dividends or "Others"/"Bank fees" for fees)` })
+        continue
+      }
+      if (!currencyId) {
+        skippedRecords.push({ txn: t, reason: `currency "${t.settlementCurrency}" not found in Wallet` })
+        continue
+      }
+      const doc = toRecordDoc(t, {
+        accountId: input.accountId, categoryId, currencyId,
+        ownerId: input.ownerId, now, toolVersion: input.toolVersion,
+      })
+      if (existingRecordIds.has(doc._id)) {
+        alreadyPresentRecords.push(doc._id)
+      } else {
+        recordsToInsert.push({ doc, source: t })
+      }
+      continue
+    }
+
     if (!t.exchange || !t.symbol) { needsAsset.push(t); continue }
     const assetId = input.lookup.assetByVenueSymbol(t.exchange, t.symbol, t.tradeCurrency, input.broker)
     if (!assetId) { needsAsset.push(t); continue }
@@ -174,26 +236,26 @@ export async function prepareSync(
     nearMatches[p.doc._id] = sorted.map(enrich)
   }
 
-  return { toInsert, alreadyPresent, nearMatches, unmatchedExisting, needsAsset, unsupported: input.unsupported, total: input.txns.length }
+  return {
+    toInsert, alreadyPresent, nearMatches, unmatchedExisting,
+    needsAsset, unsupported: input.unsupported, total: input.txns.length,
+    recordsToInsert, alreadyPresentRecords, skippedRecords,
+  }
 }
 
-/**
- * Commit step: writes prepared docs to CouchDB via bulkDocs.
- */
-export async function commitSync(
-  prepared: PreparedSync,
+async function bulkWriteDocs(
+  items: Array<{ doc: { _id: string; externalId: string } }>,
   couch: Pick<CouchClient, 'bulkDocs'>,
-): Promise<SyncResult> {
+): Promise<{ inserted: number; conflict: number; errors: SyncResult['errors']; outcomes: WriteOutcome[] }> {
   let inserted = 0, conflict = 0
   const errors: SyncResult['errors'] = []
   const outcomes: WriteOutcome[] = []
 
-  // Build a quick map from _id → externalId so per-doc outcomes carry both.
   const externalIdById = new Map<string, string>()
-  for (const p of prepared.toInsert) externalIdById.set(p.doc._id, p.doc.externalId)
+  for (const p of items) externalIdById.set(p.doc._id, p.doc.externalId)
 
-  for (let i = 0; i < prepared.toInsert.length; i += 50) {
-    const batch = prepared.toInsert.slice(i, i + 50).map(p => p.doc)
+  for (let i = 0; i < items.length; i += 50) {
+    const batch = items.slice(i, i + 50).map(p => p.doc as unknown as Record<string, unknown>)
     const res = await couch.bulkDocs(batch)
     for (const r of res) {
       const externalId = externalIdById.get(r.id) ?? ''
@@ -210,14 +272,38 @@ export async function commitSync(
       }
     }
   }
+  return { inserted, conflict, errors, outcomes }
+}
+
+/**
+ * Commit step: writes prepared AssetTransaction and Record docs to CouchDB via bulkDocs.
+ */
+export async function commitSync(
+  prepared: PreparedSync,
+  couch: Pick<CouchClient, 'bulkDocs'>,
+): Promise<SyncResult> {
+  const txnResult = await bulkWriteDocs(prepared.toInsert, couch)
+  const recordResult = await bulkWriteDocs(prepared.recordsToInsert, couch)
 
   return {
     total: prepared.total,
-    inserted, conflict, errors,
+    inserted: txnResult.inserted,
+    conflict: txnResult.conflict,
+    errors: [...txnResult.errors, ...recordResult.errors],
     needsAsset: prepared.needsAsset,
     unsupported: prepared.unsupported,
-    outcomes,
-    preview: { new: prepared.toInsert, alreadyPresent: prepared.alreadyPresent, nearMatches: prepared.nearMatches, unmatchedExisting: prepared.unmatchedExisting },
+    outcomes: txnResult.outcomes,
+    recordsInserted: recordResult.inserted,
+    recordsConflict: recordResult.conflict,
+    recordOutcomes: recordResult.outcomes,
+    preview: {
+      new: prepared.toInsert,
+      alreadyPresent: prepared.alreadyPresent,
+      nearMatches: prepared.nearMatches,
+      unmatchedExisting: prepared.unmatchedExisting,
+      newRecords: prepared.recordsToInsert,
+      alreadyPresentRecords: prepared.alreadyPresentRecords,
+    },
   }
 }
 

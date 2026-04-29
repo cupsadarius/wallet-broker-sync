@@ -20,12 +20,14 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import type { AssetTransactionDoc } from '@/src/sync/mapper'
+import type { RecordDoc } from '@/src/sync/record-mapper'
 import type { CanonicalTxn } from '@/src/types'
 import JsonViewer from '@/app/components/JsonViewer'
 
 type UnsupportedRow = { row: string | number; reason: string; raw?: Record<string, unknown> }
 
 type PreparedDoc = { doc: AssetTransactionDoc; source: CanonicalTxn }
+type PreparedRecord = { doc: RecordDoc; source: CanonicalTxn }
 
 type NearMatch = {
   docId: string
@@ -53,6 +55,8 @@ type SyncResult = {
     alreadyPresent: string[]
     nearMatches?: Record<string, NearMatch[]>
     unmatchedExisting?: NearMatch[]
+    newRecords?: PreparedRecord[]
+    alreadyPresentRecords?: string[]
   }
 }
 
@@ -81,6 +85,8 @@ export default function PreviewTable() {
   const alreadyPresent = result.preview?.alreadyPresent ?? []
   const nearMatches = result.preview?.nearMatches ?? {}
   const unmatchedExisting = result.preview?.unmatchedExisting ?? []
+  const newRecords = result.preview?.newRecords ?? []
+  const alreadyPresentRecords = result.preview?.alreadyPresentRecords ?? []
   const needsAsset = result.needsAsset ?? []
   const unsupported = result.unsupported ?? []
 
@@ -88,6 +94,8 @@ export default function PreviewTable() {
   const linkedCount = Object.values(linkSelections).filter(v => v !== 'insert').length
   const newCount = newTxns.length - linkedCount
   const alreadyCount = alreadyPresent.length + linkedCount
+  const recordsNewCount = newRecords.length
+  const recordsAlreadyCount = alreadyPresentRecords.length
   const needsAssetCount = needsAsset.length
   const unsupportedCount = unsupported.length
 
@@ -141,10 +149,16 @@ export default function PreviewTable() {
       <div className="flex flex-wrap items-center gap-4 rounded-xl border bg-card px-5 py-4 text-sm ring-1 ring-foreground/10">
         <div className="flex items-center gap-2">
           <span className="text-2xl font-bold text-green-600">{newCount}</span>
-          <span className="text-muted-foreground">new</span>
+          <span className="text-muted-foreground">new trades</span>
         </div>
+        {recordsNewCount > 0 && (
+          <div className="flex items-center gap-2">
+            <span className="text-2xl font-bold text-blue-600">{recordsNewCount}</span>
+            <span className="text-muted-foreground">dividends/fees</span>
+          </div>
+        )}
         <div className="flex items-center gap-2">
-          <span className="text-xl font-semibold text-zinc-500">{alreadyCount}</span>
+          <span className="text-xl font-semibold text-zinc-500">{alreadyCount + recordsAlreadyCount}</span>
           <span className="text-muted-foreground">already in Wallet</span>
         </div>
         {needsAssetCount > 0 && (
@@ -162,10 +176,10 @@ export default function PreviewTable() {
         <div className="ml-auto flex flex-col items-end gap-1">
           <Button
             onClick={handleConfirm}
-            disabled={newCount === 0 || isPending}
+            disabled={(newCount === 0 && recordsNewCount === 0) || isPending}
             size="lg"
           >
-            {isPending ? 'Syncing…' : `Sync ${newCount} transaction${newCount === 1 ? '' : 's'}`}
+            {isPending ? 'Syncing…' : `Sync ${newCount + recordsNewCount} item${newCount + recordsNewCount === 1 ? '' : 's'}`}
           </Button>
           {syncError && (
             <p className="text-xs text-destructive">{syncError}</p>
@@ -301,19 +315,99 @@ export default function PreviewTable() {
         </CardContent>
       </Card>
 
-      {/* Section 2: Already in Wallet */}
+      {/* Section 2: Dividends & fees */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
-            <Badge variant="secondary">{alreadyCount}</Badge>
+            <Badge variant="default" className="bg-blue-600 text-white">
+              {recordsNewCount}
+            </Badge>
+            Dividends &amp; fees
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          {newRecords.length === 0 ? (
+            <p className="text-muted-foreground text-sm">No dividends or fees to insert.</p>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-6" />
+                  <TableHead>Date</TableHead>
+                  <TableHead>Kind</TableHead>
+                  <TableHead>Symbol</TableHead>
+                  <TableHead>Description</TableHead>
+                  <TableHead className="text-right">Amount</TableHead>
+                  <TableHead>Direction</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {newRecords.map(({ doc, source }) => {
+                  const isIncome = doc.type === 0
+                  const amount = (doc.amount / 100).toFixed(2)
+                  const dateShort = doc.recordDate.slice(0, 10)
+                  const key = `rec-${doc._id}`
+                  const isOpen = expanded.has(key)
+                  return (
+                    <Fragment key={doc._id}>
+                      <TableRow
+                        className="cursor-pointer hover:bg-muted/50"
+                        onClick={() => toggle(key)}
+                      >
+                        <TableCell className="w-6 text-muted-foreground select-none">{isOpen ? '▼' : '▶'}</TableCell>
+                        <TableCell className="font-mono text-xs">{dateShort}</TableCell>
+                        <TableCell>
+                          <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${isIncome ? 'bg-blue-100 text-blue-800' : 'bg-red-100 text-red-800'}`}>
+                            {source.kind}
+                          </span>
+                        </TableCell>
+                        <TableCell className="font-mono font-medium">{source.symbol ?? '—'}</TableCell>
+                        <TableCell className="text-muted-foreground text-xs max-w-xs truncate">{doc.note}</TableCell>
+                        <TableCell className="text-right font-mono">
+                          {amount}
+                        </TableCell>
+                        <TableCell>
+                          <span className={isIncome ? 'text-blue-600 font-medium' : 'text-red-600 font-medium'}>
+                            {isIncome ? 'IN' : 'OUT'}
+                          </span>
+                        </TableCell>
+                      </TableRow>
+                      {isOpen && (
+                        <TableRow>
+                          <TableCell colSpan={7} className="bg-muted/30 p-4 space-y-4">
+                            <div>
+                              <p className="text-xs font-semibold text-muted-foreground mb-1">Source (parsed CanonicalTxn):</p>
+                              <JsonViewer data={source} initialOpenDepth={3} />
+                            </div>
+                            <div>
+                              <p className="text-xs font-semibold text-muted-foreground mb-1">Wire doc (will be sent to CouchDB as Record):</p>
+                              <JsonViewer data={doc} initialOpenDepth={3} />
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </Fragment>
+                  )
+                })}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* Section 3: Already in Wallet (trades + records combined) */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Badge variant="secondary">{alreadyCount + recordsAlreadyCount}</Badge>
             Already in Wallet
           </CardTitle>
         </CardHeader>
         <CardContent>
           <p className="text-muted-foreground text-sm">
-            {alreadyCount === 0
+            {alreadyCount + recordsAlreadyCount === 0
               ? 'No duplicate transactions detected.'
-              : `${alreadyCount} transaction${alreadyCount === 1 ? '' : 's'} already exist in Wallet and will be skipped.`}
+              : `${alreadyCount + recordsAlreadyCount} item${alreadyCount + recordsAlreadyCount === 1 ? '' : 's'} already exist in Wallet and will be skipped.`}
           </p>
         </CardContent>
       </Card>

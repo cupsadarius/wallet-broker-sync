@@ -15,14 +15,18 @@ export class LookupService {
   private bareSymbolMap = new Map<string, Array<{ assetId: string; currencyCode: string }>>()  // 'NVDA' → [{...}, ...]
   private assetByIdMap = new Map<string, { symbol: string; exchangeCode: string; currencyCode: string; name?: string }>()
   private aliases: AliasMap = new Map()
+  private categoryByIdMap = new Map<string, { name: string }>()
+  private categoryByNameMap = new Map<string, string>()  // lowercased name → categoryId
+  private currencyByCodeMap = new Map<string, string>()  // ISO code → '-Currency_<uuid>'
 
   constructor(private readonly couch: Pick<CouchClient, 'listByModelType'>) {}
 
   async refresh() {
-    const [accounts, currencies, assets] = await Promise.all([
+    const [accounts, currencies, assets, categories] = await Promise.all([
       this.couch.listByModelType<{ _id: string; accountType: number; name: string; currencyId: string; investmentInfo?: { assetTypes?: number[] } }>('Account'),
       this.couch.listByModelType<{ _id: string; code: string }>('Currency'),
       this.couch.listByModelType<{ _id: string; symbol: string; exchangeCode: string; currencyCode?: string }>('StocksFundsAsset'),
+      this.couch.listByModelType<{ _id: string; name: string }>('Category'),
     ])
     const currencyMap = new Map(currencies.map(c => [c._id, c.code]))
     this.accounts = accounts.filter(a => a.accountType === 7).map(a => ({
@@ -48,6 +52,16 @@ export class LookupService {
         name: (a as Record<string, unknown>)['name'] as string | undefined,
       })
     }
+    this.categoryByIdMap.clear()
+    this.categoryByNameMap.clear()
+    for (const c of categories) {
+      this.categoryByIdMap.set(c._id, { name: c.name })
+      this.categoryByNameMap.set(c.name.toLowerCase(), c._id)
+    }
+    this.currencyByCodeMap.clear()
+    for (const c of currencies) {
+      this.currencyByCodeMap.set(c.code, c._id)
+    }
   }
 
   setAliases(aliasRows: Array<{ broker: string; fromSymbol: string; fromExchange: string; toSymbol: string; toExchange: string }>) {
@@ -61,6 +75,18 @@ export class LookupService {
   }
 
   investmentAccounts(): InvestmentAccount[] { return this.accounts }
+
+  categoryByName(name: string): string | null {
+    return this.categoryByNameMap.get(name.toLowerCase()) ?? null
+  }
+
+  categoryById(id: string): { name: string } | null {
+    return this.categoryByIdMap.get(id) ?? null
+  }
+
+  currencyByCode(code: string): string | null {
+    return this.currencyByCodeMap.get(code) ?? null
+  }
 
   assetById(id: string): { symbol: string; exchangeCode: string; currencyCode: string; name?: string } | null {
     return this.assetByIdMap.get(id) ?? null

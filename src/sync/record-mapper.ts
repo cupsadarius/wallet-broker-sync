@@ -1,0 +1,89 @@
+import { v5 as uuidv5 } from 'uuid'
+import type { CanonicalTxn } from '@/src/types'
+import { NAMESPACE_WALLET_SYNC } from './namespace'
+
+export type RecordDoc = {
+  _id: string
+  reservedModelType: 'Record'
+  reservedOwnerId: string
+  reservedAuthorId: string
+  reservedSource: 'wallet-broker-sync'
+  reservedCreatedAt: string
+  reservedUpdatedAt: string
+
+  accountId: string
+  categoryId: string
+  currencyId: string
+
+  type: 0 | 1               // 0=income, 1=expense
+  paymentType: number       // we use 3 (transfer-like) consistently
+  amount: number            // integer × 100, ALWAYS POSITIVE
+  decimalAmount: string     // string of amount/100
+  recordDate: string
+  recordState: 1
+
+  note: string
+  payer?: string
+  payee?: string
+
+  photos: []
+
+  // Custom round-trip fields (CouchDB schemaless)
+  externalSource: string
+  externalId: string
+  syncedAt: string
+  syncToolVersion: string
+}
+
+export type RecordMapperContext = {
+  accountId: string
+  categoryId: string
+  currencyId: string
+  ownerId: string
+  now: string
+  toolVersion: string
+}
+
+export function deterministicRecordId(broker: string, externalId: string): string {
+  // Note: Record IDs use 'Record_<uuid>' (NO leading dash, per Wallet's convention).
+  return `Record_${uuidv5(`record:${broker}:${externalId}`, NAMESPACE_WALLET_SYNC)}`
+}
+
+export function toRecordDoc(txn: CanonicalTxn, ctx: RecordMapperContext): RecordDoc {
+  if (txn.kind !== 'dividend' && txn.kind !== 'fee') {
+    throw new Error(`toRecordDoc: unexpected kind "${txn.kind}"; expected 'dividend' or 'fee'`)
+  }
+  const amountAbs = Math.abs(txn.cashAmount)
+  const amountInt = Number((amountAbs * 100).toFixed(0))
+
+  // Direction: dividend always income (cash IN). 'fee' kind always expense (cash OUT).
+  // (We don't trust the sign of cashAmount for direction since Wallet's data model uses
+  // type to determine direction, not signed amount.)
+  const type: 0 | 1 = txn.kind === 'dividend' ? 0 : 1
+
+  return {
+    _id: deterministicRecordId(txn.broker, txn.externalId),
+    reservedModelType: 'Record',
+    reservedOwnerId: ctx.ownerId,
+    reservedAuthorId: ctx.ownerId,
+    reservedSource: 'wallet-broker-sync',
+    reservedCreatedAt: ctx.now,
+    reservedUpdatedAt: ctx.now,
+    accountId: ctx.accountId,
+    categoryId: ctx.categoryId,
+    currencyId: ctx.currencyId,
+    type,
+    paymentType: 3,
+    amount: amountInt,
+    decimalAmount: (amountInt / 100).toFixed(2),
+    recordDate: txn.date,
+    recordState: 1,
+    note: txn.description,
+    ...(type === 0 ? { payer: txn.broker.toUpperCase() } : { payee: txn.broker.toUpperCase() }),
+    photos: [],
+    externalSource: txn.broker,
+    externalId: txn.externalId,
+    syncedAt: ctx.now,
+    syncToolVersion: ctx.toolVersion,
+  }
+}

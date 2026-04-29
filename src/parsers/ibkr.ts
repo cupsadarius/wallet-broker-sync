@@ -47,20 +47,92 @@ export const ibkr: BrokerParser = {
       const type = (row[TYPE] ?? '').trim()
       const symbol = (row[SYMBOL] ?? '').trim()
       const description = (row[DESC] ?? '').trim()
+      const dateStr = (row[DATE] ?? '').trim()
 
-      if (type !== 'Buy' && type !== 'Sell') {
+      // Skip internal IBKR bookkeeping entries entirely (no canonical representation)
+      if (type === 'Adjustment' || type === 'Forex Trade Component') {
         unsupported.push({
-          row: `${row[DATE] ?? '?'}/${type || '?'}/${symbol || '?'}`,
-          reason: `unsupported IBKR Transaction Type for v1: "${type}"`,
+          row: `${dateStr ?? '?'}/${type}/${symbol || '?'}`,
+          reason: `skipped IBKR Transaction Type (internal bookkeeping): "${type}"`,
           raw: { type, symbol, description },
         })
         continue
       }
 
-      const dateStr = (row[DATE] ?? '').trim()
       // IBKR date is "2026-04-02" — append T00:00:00.000Z to make it a valid ISO instant
       const date = dateStr ? `${dateStr}T00:00:00.000Z` : null
       if (!date) { unsupported.push({ row: i + 1, reason: 'missing Date', raw: { row } }); continue }
+
+      const rawObj = Object.fromEntries(headers.map((h, j) => [h, row[j]]))
+
+      // ── Dividend ─────────────────────────────────────────────────────────────
+      if (type === 'Dividend') {
+        const cashAmount = Number((row[NET] ?? '').trim())
+        const tradeCurrency = (row[PRICE_CCY] ?? '').trim() || baseCurrency
+        if (!Number.isFinite(cashAmount)) {
+          unsupported.push({ row: `${dateStr}/Dividend/${symbol}`, reason: `IBKR Dividend row has non-numeric net amount: ${row[NET]}`, raw: rawObj })
+          continue
+        }
+        const externalId = canonicalContentHash({
+          date, exchange: '', symbol: symbol || '',
+          side: 'buy',  // 'buy' as a stand-in; dividends are always inflows
+          quantity: 0, price: 0, cashAmount,
+          pricePrecision: 4, quantityPrecision: 6,
+        })
+        txns.push({
+          externalId, broker: 'ibkr',
+          kind: 'dividend',
+          date,
+          symbol: symbol || undefined,
+          tradeCurrency: tradeCurrency || baseCurrency,
+          settlementCurrency: baseCurrency,
+          cashAmount,
+          description,
+          raw: rawObj,
+        })
+        continue
+      }
+
+      // ── Fees / withholdings / taxes ───────────────────────────────────────────
+      if (type === 'Foreign Tax Withholding' || type === 'Other Fee' || type === 'Sales Tax') {
+        const cashAmount = Number((row[NET] ?? '').trim())
+        if (!Number.isFinite(cashAmount)) {
+          unsupported.push({ row: `${dateStr}/${type}/${symbol}`, reason: `IBKR fee row has non-numeric net amount: ${row[NET]}`, raw: rawObj })
+          continue
+        }
+        const feeKind =
+          type === 'Foreign Tax Withholding' ? 'withholding' as const :
+          type === 'Sales Tax' ? 'sales-tax' as const :
+          'other-fee' as const
+        const externalId = canonicalContentHash({
+          date, exchange: '', symbol: symbol || '',
+          side: 'fee',
+          quantity: 0, price: 0, cashAmount,
+          pricePrecision: 4, quantityPrecision: 6,
+        })
+        txns.push({
+          externalId, broker: 'ibkr',
+          kind: 'fee',
+          feeKind,
+          date,
+          symbol: symbol || undefined,
+          settlementCurrency: baseCurrency,
+          cashAmount,
+          description,
+          raw: rawObj,
+        })
+        continue
+      }
+
+      // ── Buy / Sell ────────────────────────────────────────────────────────────
+      if (type !== 'Buy' && type !== 'Sell') {
+        unsupported.push({
+          row: `${dateStr}/${type || '?'}/${symbol || '?'}`,
+          reason: `unsupported IBKR Transaction Type for v1: "${type}"`,
+          raw: { type, symbol, description },
+        })
+        continue
+      }
 
       const quantity = Number((row[QTY] ?? '').trim())
       const pricePerShare = Number((row[PRICE] ?? '').trim())
@@ -103,7 +175,7 @@ export const ibkr: BrokerParser = {
         tradeCurrency, settlementCurrency: baseCurrency,
         cashAmount,  // Net Amount is in base currency per IBKR Activity Statement
         description,
-        raw: Object.fromEntries(headers.map((h, j) => [h, row[j]])),
+        raw: rawObj,
       })
     }
 

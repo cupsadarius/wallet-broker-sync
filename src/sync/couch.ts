@@ -57,6 +57,10 @@ export class CouchClient {
     return this.list(d => d['reservedModelType'] === 'AssetTransaction' && d['accountId'] === accountId)
   }
 
+  async listRecords(accountId: string): Promise<Array<Record<string, unknown>>> {
+    return this.list(d => d['reservedModelType'] === 'Record' && d['accountId'] === accountId)
+  }
+
   async listByModelType<T extends Record<string, unknown> = Record<string, unknown>>(modelType: string): Promise<T[]> {
     return this.list(d => d['reservedModelType'] === modelType) as Promise<T[]>
   }

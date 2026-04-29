@@ -43,6 +43,39 @@ describe('LookupService', () => {
     expect(svc.assetByVenueSymbol('NOPE', 'VUAA', 'USD')).toBe('-StocksFundsAsset_xlon') // fallback + currency match
   })
 
+  it('categoryByName resolves by case-insensitive name', async () => {
+    const svc = new LookupService(couchOf([
+      { _id: '-Category_income', reservedModelType: 'Category', name: 'Income' },
+      { _id: '-Category_others', reservedModelType: 'Category', name: 'Others' },
+    ]))
+    await svc.refresh()
+    expect(svc.categoryByName('Income')).toBe('-Category_income')
+    expect(svc.categoryByName('income')).toBe('-Category_income')
+    expect(svc.categoryByName('INCOME')).toBe('-Category_income')
+    expect(svc.categoryByName('Others')).toBe('-Category_others')
+    expect(svc.categoryByName('NonExistent')).toBe(null)
+  })
+
+  it('categoryById resolves by id', async () => {
+    const svc = new LookupService(couchOf([
+      { _id: '-Category_income', reservedModelType: 'Category', name: 'Income' },
+    ]))
+    await svc.refresh()
+    expect(svc.categoryById('-Category_income')).toEqual({ name: 'Income' })
+    expect(svc.categoryById('-Category_nope')).toBe(null)
+  })
+
+  it('currencyByCode resolves ISO code to Currency doc id', async () => {
+    const svc = new LookupService(couchOf([
+      { _id: '-Currency_eur', reservedModelType: 'Currency', code: 'EUR' },
+      { _id: '-Currency_usd', reservedModelType: 'Currency', code: 'USD' },
+    ]))
+    await svc.refresh()
+    expect(svc.currencyByCode('EUR')).toBe('-Currency_eur')
+    expect(svc.currencyByCode('USD')).toBe('-Currency_usd')
+    expect(svc.currencyByCode('GBP')).toBe(null)
+  })
+
   it('applies alias when broker context provided', async () => {
     const svc = new LookupService(couchOf([
       { _id: '-StocksFundsAsset_sxrv', reservedModelType: 'StocksFundsAsset', symbol: 'SXRV', exchangeCode: 'XETR', currencyCode: 'EUR' },

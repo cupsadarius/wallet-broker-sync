@@ -121,9 +121,19 @@ export async function POST(req: Request) {
       return NextResponse.json({
         inserted: 0,
         conflict: 0,
-        preview: { new: prepared.toInsert, alreadyPresent: prepared.alreadyPresent, nearMatches: prepared.nearMatches, unmatchedExisting: prepared.unmatchedExisting },
+        recordsInserted: 0,
+        recordsConflict: 0,
+        preview: {
+          new: prepared.toInsert,
+          alreadyPresent: prepared.alreadyPresent,
+          nearMatches: prepared.nearMatches,
+          unmatchedExisting: prepared.unmatchedExisting,
+          newRecords: prepared.recordsToInsert,
+          alreadyPresentRecords: prepared.alreadyPresentRecords,
+        },
         needsAsset: prepared.needsAsset,
         unsupported: prepared.unsupported,
+        skippedRecords: prepared.skippedRecords,
       })
     }
 
@@ -177,7 +187,21 @@ export async function POST(req: Request) {
           status: o.status,
           errorMessage: o.status === 'error' ? o.reason : null,
         })),
+        ...result.recordOutcomes.map(o => ({
+          runId: runRow.id,
+          externalId: o.externalId || null,
+          docId: o.docId,
+          status: o.status,
+          errorMessage: o.status === 'error' ? o.reason : null,
+        })),
         ...result.preview.alreadyPresent.map(id => ({
+          runId: runRow.id,
+          externalId: null,
+          docId: id,
+          status: 'skipped',
+          errorMessage: null,
+        })),
+        ...result.preview.alreadyPresentRecords.map(id => ({
           runId: runRow.id,
           externalId: null,
           docId: id,

@@ -30,13 +30,59 @@ describe('ibkr parser', () => {
     expect(buy!.date).toMatch(/^\d{4}-\d{2}-\d{2}T/)
   })
 
-  it('routes Forex Trade Component, Dividend, Foreign Tax Withholding, Adjustment to unsupported', () => {
+  it('routes Forex Trade Component and Adjustment to unsupported (internal bookkeeping)', () => {
     const result = ibkr.parse(fixture('ibkr-2026.csv'))
     const reasons = result.unsupported.map(u => u.reason)
     expect(reasons.some(r => /Forex Trade Component/i.test(r))).toBe(true)
-    expect(reasons.some(r => /Dividend/i.test(r))).toBe(true)
-    expect(reasons.some(r => /Foreign Tax Withholding/i.test(r))).toBe(true)
     expect(reasons.some(r => /Adjustment/i.test(r))).toBe(true)
+    // Dividends and fees are now parsed into txns, not unsupported
+    expect(reasons.every(r => !/Dividend/i.test(r))).toBe(true)
+    expect(reasons.every(r => !/Foreign Tax Withholding/i.test(r))).toBe(true)
+  })
+
+  it('parses Dividend rows into CanonicalTxn with kind=dividend', () => {
+    const result = ibkr.parse(fixture('ibkr-2026.csv'))
+    const dividends = result.txns.filter(t => t.kind === 'dividend')
+    expect(dividends.length).toBeGreaterThan(0)
+    const d = dividends[0]
+    expect(d.broker).toBe('ibkr')
+    expect(d.kind).toBe('dividend')
+    expect(d.symbol).toBeTruthy()
+    expect(d.cashAmount).toBeGreaterThan(0)  // dividends are inflows (positive)
+    expect(d.settlementCurrency).toBe('EUR')
+    expect(d.externalId).toMatch(/^[0-9a-f]+$/)
+    expect(d.date).toMatch(/^\d{4}-\d{2}-\d{2}T/)
+  })
+
+  it('parses Foreign Tax Withholding rows into CanonicalTxn with kind=fee feeKind=withholding', () => {
+    const result = ibkr.parse(fixture('ibkr-2026.csv'))
+    const withholdings = result.txns.filter(t => t.kind === 'fee' && t.feeKind === 'withholding')
+    expect(withholdings.length).toBeGreaterThan(0)
+    const w = withholdings[0]
+    expect(w.kind).toBe('fee')
+    expect(w.feeKind).toBe('withholding')
+    expect(w.symbol).toBeTruthy()
+    expect(w.cashAmount).toBeLessThan(0)  // withholdings are outflows (negative)
+  })
+
+  it('parses Other Fee rows into CanonicalTxn with kind=fee feeKind=other-fee', () => {
+    const result = ibkr.parse(fixture('ibkr-2026.csv'))
+    const fees = result.txns.filter(t => t.kind === 'fee' && t.feeKind === 'other-fee')
+    expect(fees.length).toBeGreaterThan(0)
+  })
+
+  it('parses Sales Tax rows into CanonicalTxn with kind=fee feeKind=sales-tax', () => {
+    const result = ibkr.parse(fixture('ibkr-2026.csv'))
+    const taxes = result.txns.filter(t => t.kind === 'fee' && t.feeKind === 'sales-tax')
+    expect(taxes.length).toBeGreaterThan(0)
+  })
+
+  it('counts expected dividends and fees from fixture', () => {
+    const result = ibkr.parse(fixture('ibkr-2026.csv'))
+    const dividends = result.txns.filter(t => t.kind === 'dividend')
+    const fees = result.txns.filter(t => t.kind === 'fee')
+    expect(dividends.length).toBe(10)
+    expect(fees.length).toBeGreaterThanOrEqual(15)  // 12 withholdings + 6 other-fees + 3 sales-tax
   })
 
   it('produces stable externalId hash from canonicalized fields (re-parse yields same id)', () => {
