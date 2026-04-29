@@ -206,7 +206,7 @@ function AliasSection({ aliases: initial }: { aliases: Alias[] }) {
     if (res.ok) router.refresh()
   }
 
-  async function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: { preventDefault: () => void }) {
     e.preventDefault()
     setErr(null)
     start(async () => {
@@ -335,7 +335,7 @@ function RecordFallbackSection({ fallbacks }: { fallbacks: Fallback[] }) {
     if (res.ok) router.refresh()
   }
 
-  async function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: { preventDefault: () => void }) {
     e.preventDefault()
     setErr(null)
     start(async () => {
