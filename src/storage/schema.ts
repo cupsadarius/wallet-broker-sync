@@ -1,4 +1,4 @@
-import { sqliteTable, text, integer } from 'drizzle-orm/sqlite-core'
+import { sqliteTable, text, integer, primaryKey } from 'drizzle-orm/sqlite-core'
 
 export const config = sqliteTable('config', {
   key: text('key').primaryKey(),
@@ -33,3 +33,13 @@ export const syncRunDoc = sqliteTable('sync_run_doc', {
   status: text('status').notNull(),
   errorMessage: text('error_message'),
 })
+
+export const assetAlias = sqliteTable('asset_alias', {
+  broker: text('broker').notNull(),
+  fromSymbol: text('from_symbol').notNull(),
+  fromExchange: text('from_exchange').notNull(),
+  toSymbol: text('to_symbol').notNull(),
+  toExchange: text('to_exchange').notNull(),
+}, (t) => ({
+  pk: primaryKey({ columns: [t.broker, t.fromSymbol, t.fromExchange] }),
+}))

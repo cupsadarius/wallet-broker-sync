@@ -3,7 +3,7 @@ import crypto from 'node:crypto'
 import { z } from 'zod'
 import { eq } from 'drizzle-orm'
 import { db, runMigrations } from '@/src/storage/db'
-import { config, brokerAccountMap, syncRun, syncRunDoc } from '@/src/storage/schema'
+import { config, brokerAccountMap, syncRun, syncRunDoc, assetAlias } from '@/src/storage/schema'
 import { loadCouchCreds } from '@/src/storage/credentials'
 import { CouchClient } from '@/src/sync/couch'
 import { LookupService } from '@/src/sync/lookup'
@@ -101,6 +101,8 @@ export async function POST(req: Request) {
     // Build CouchClient + LookupService
     const couch = new CouchClient({ url: couchUrl, dbName, auth: creds })
     const lookup = new LookupService(couch)
+    const aliasRows = await db.select().from(assetAlias)
+    lookup.setAliases(aliasRows)
     await lookup.refresh()
 
     const syncInput = {

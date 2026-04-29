@@ -7,10 +7,13 @@ export type InvestmentAccount = {
   assetTypes: number[]
 }
 
+type AliasMap = Map<string, { symbol: string; exchange: string }>  // 'broker:fromSymbol:fromExchange' → target
+
 export class LookupService {
   private accounts: InvestmentAccount[] = []
   private assetMap = new Map<string, string>()                                         // 'XNGS:NVDA' → assetId
   private bareSymbolMap = new Map<string, Array<{ assetId: string; currencyCode: string }>>()  // 'NVDA' → [{...}, ...]
+  private aliases: AliasMap = new Map()
 
   constructor(private readonly couch: Pick<CouchClient, 'listByModelType'>) {}
 
@@ -39,6 +42,16 @@ export class LookupService {
     }
   }
 
+  setAliases(aliasRows: Array<{ broker: string; fromSymbol: string; fromExchange: string; toSymbol: string; toExchange: string }>) {
+    this.aliases.clear()
+    for (const a of aliasRows) {
+      this.aliases.set(`${a.broker}:${a.fromSymbol.toUpperCase()}:${a.fromExchange.toUpperCase()}`, {
+        symbol: a.toSymbol.toUpperCase(),
+        exchange: a.toExchange.toUpperCase(),
+      })
+    }
+  }
+
   investmentAccounts(): InvestmentAccount[] { return this.accounts }
 
   /**
@@ -46,15 +59,29 @@ export class LookupService {
    * symbol-only lookup. With multiple matches, prefers the one whose currencyCode
    * matches the hint. Returns null only if no symbol match at all.
    *
+   * When broker is provided, an alias for (broker, fromSymbol, fromExchange) is
+   * applied first, substituting the target symbol/exchange before lookup.
+   *
    * Note: bare-symbol fallback can pick the wrong cross-listed instrument when
    * multiple venues list the same ticker. The diff preview is the user's
    * safety net.
    */
-  assetByVenueSymbol(mic: string, symbol: string, expectedCurrency?: string): string | null {
-    const exact = this.assetMap.get(`${mic.toUpperCase()}:${symbol.toUpperCase()}`)
+  assetByVenueSymbol(mic: string, symbol: string, expectedCurrency?: string, broker?: string): string | null {
+    let lookupMic = mic.toUpperCase()
+    let lookupSymbol = symbol.toUpperCase()
+
+    if (broker) {
+      const alias = this.aliases.get(`${broker}:${lookupSymbol}:${lookupMic}`)
+      if (alias) {
+        lookupMic = alias.exchange
+        lookupSymbol = alias.symbol
+      }
+    }
+
+    const exact = this.assetMap.get(`${lookupMic}:${lookupSymbol}`)
     if (exact) return exact
 
-    const candidates = this.bareSymbolMap.get(symbol.toUpperCase())
+    const candidates = this.bareSymbolMap.get(lookupSymbol)
     if (!candidates || candidates.length === 0) return null
     if (candidates.length === 1) return candidates[0].assetId
 

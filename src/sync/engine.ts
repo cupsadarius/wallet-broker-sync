@@ -80,7 +80,7 @@ export async function prepareSync(
   for (const t of input.txns) {
     if (t.kind === 'fee') continue
     if (!t.exchange || !t.symbol) { needsAsset.push(t); continue }
-    const assetId = input.lookup.assetByVenueSymbol(t.exchange, t.symbol, t.tradeCurrency)
+    const assetId = input.lookup.assetByVenueSymbol(t.exchange, t.symbol, t.tradeCurrency, input.broker)
     if (!assetId) { needsAsset.push(t); continue }
     const doc = toAssetTransactionDoc(t, {
       accountId: input.accountId, assetId,

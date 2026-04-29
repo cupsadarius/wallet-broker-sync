@@ -241,23 +241,34 @@ export default function PreviewTable() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {needsAssetUnique.map((txn) => (
-                  <TableRow key={`${txn.exchange ?? ''}:${txn.symbol ?? ''}`}>
-                    <TableCell>{txn.exchange ?? '—'}</TableCell>
-                    <TableCell className="font-mono font-medium">{txn.symbol ?? '—'}</TableCell>
-                    <TableCell className="text-muted-foreground">{txn.description}</TableCell>
-                    <TableCell>
-                      <a
-                        href={`https://web.budgetbakers.com/investments/assets`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-primary underline underline-offset-4 text-xs"
-                      >
-                        Create →
-                      </a>
-                    </TableCell>
-                  </TableRow>
-                ))}
+                {needsAssetUnique.map((txn) => {
+                  const aliasHref = `/aliases?broker=${encodeURIComponent(broker ?? '')}&fromSymbol=${encodeURIComponent(txn.symbol ?? '')}&fromExchange=${encodeURIComponent(txn.exchange ?? '')}`
+                  return (
+                    <TableRow key={`${txn.exchange ?? ''}:${txn.symbol ?? ''}`}>
+                      <TableCell>{txn.exchange ?? '—'}</TableCell>
+                      <TableCell className="font-mono font-medium">{txn.symbol ?? '—'}</TableCell>
+                      <TableCell className="text-muted-foreground">{txn.description}</TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-3">
+                          <a
+                            href={`https://web.budgetbakers.com/investments/assets`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-primary underline underline-offset-4 text-xs"
+                          >
+                            Create →
+                          </a>
+                          <a
+                            href={aliasHref}
+                            className="text-muted-foreground underline underline-offset-4 text-xs hover:text-foreground transition-colors"
+                          >
+                            Use existing →
+                          </a>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  )
+                })}
               </TableBody>
             </Table>
           </CardContent>

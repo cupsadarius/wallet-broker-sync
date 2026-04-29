@@ -42,4 +42,19 @@ describe('LookupService', () => {
     expect(svc.assetByVenueSymbol('XETR', 'VUAA')).toBe('-StocksFundsAsset_xetr')        // exact MIC match
     expect(svc.assetByVenueSymbol('NOPE', 'VUAA', 'USD')).toBe('-StocksFundsAsset_xlon') // fallback + currency match
   })
+
+  it('applies alias when broker context provided', async () => {
+    const svc = new LookupService(couchOf([
+      { _id: '-StocksFundsAsset_sxrv', reservedModelType: 'StocksFundsAsset', symbol: 'SXRV', exchangeCode: 'XETR', currencyCode: 'EUR' },
+    ]))
+    await svc.refresh()
+    // Without alias, CNDX/XLON misses (not in CouchDB)
+    expect(svc.assetByVenueSymbol('XLON', 'CNDX', 'USD', 'ibkr')).toBe(null)
+    // Set alias: ibkr CNDX/XLON → SXRV/XETR
+    svc.setAliases([{ broker: 'ibkr', fromSymbol: 'CNDX', fromExchange: 'XLON', toSymbol: 'SXRV', toExchange: 'XETR' }])
+    // Now it resolves
+    expect(svc.assetByVenueSymbol('XLON', 'CNDX', 'USD', 'ibkr')).toBe('-StocksFundsAsset_sxrv')
+    // Aliases are broker-scoped — XTB calls don't apply IBKR's alias
+    expect(svc.assetByVenueSymbol('XLON', 'CNDX', 'USD', 'xtb')).toBe(null)
+  })
 })
