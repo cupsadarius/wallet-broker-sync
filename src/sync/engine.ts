@@ -13,7 +13,7 @@ export type SyncInput = {
   /** 'broker:exchange:symbol' (uppercased) — trades for these combos build a Record instead of AssetTransaction */
   recordFallback?: Set<string>
   /** 'broker:externalId' → existingDocId — these txns are treated as already-present */
-  manualLink?: Map<string, string>
+  manualLink?: Map<string, string[]>
 }
 
 /** Pair the wire doc (what gets written) with its source canonical txn (for UI display). */
@@ -64,6 +64,10 @@ export type SyncResult = {
 export type PreparedSync = {
   toInsert: PreparedDoc[]
   alreadyPresent: string[]
+  /** Enriched details (symbol/exchange/qty/price) for docs in `alreadyPresent`.
+   *  Empty for IDs that don't correspond to a known existing AssetTransaction
+   *  (e.g. a manualLink target whose details we didn't fetch this run). */
+  alreadyPresentDetails: NearMatch[]
   nearMatches: Record<string, NearMatch[]>   // ourDocId → candidates
   unmatchedExisting: NearMatch[]             // ALL existing docs not in alreadyPresent (sorted by date desc)
   needsAsset: CanonicalTxn[]
@@ -121,13 +125,20 @@ export async function prepareSync(
     couch: Pick<CouchClient, 'listAssetTransactions' | 'listRecords'>
     lookup: Pick<LookupService, 'assetByVenueSymbol' | 'assetById' | 'categoryByName' | 'currencyByCode'>
     recordFallback?: Set<string>
-    manualLink?: Map<string, string>
+    manualLink?: Map<string, string[]>
+    /** Pre-fetched existing AssetTransactions for this account. When provided,
+     *  skips the Couch fetch — used by the cached path. */
+    existingAssetTxns?: Array<Record<string, unknown>>
+    /** Pre-fetched existing Records for this account. */
+    existingRecords?: Array<Record<string, unknown>>
   },
 ): Promise<PreparedSync> {
-  const [existing, existingRecords] = await Promise.all([
-    input.couch.listAssetTransactions(input.accountId),
-    input.couch.listRecords(input.accountId),
-  ])
+  const [existing, existingRecords] = input.existingAssetTxns && input.existingRecords
+    ? [input.existingAssetTxns, input.existingRecords]
+    : await Promise.all([
+        input.couch.listAssetTransactions(input.accountId),
+        input.couch.listRecords(input.accountId),
+      ])
   const existingIds = new Set(existing.map((d: Record<string, unknown>) => d['_id']))
 
   // Second-pass content map: catches manually-entered docs with random _ids
@@ -148,7 +159,7 @@ export async function prepareSync(
   const now = new Date().toISOString()
 
   const recordFallback = input.recordFallback ?? new Set<string>()
-  const manualLink = input.manualLink ?? new Map<string, string>()
+  const manualLink = input.manualLink ?? new Map<string, string[]>()
 
   const toInsert: PreparedDoc[] = []
   const alreadyPresent: string[] = []
@@ -163,8 +174,11 @@ export async function prepareSync(
   for (const t of input.txns) {
     // Manual link check: treat as already-present without inserting anything.
     const manualKey = `${t.broker}:${t.externalId}`
-    if (manualLink.has(manualKey)) {
-      alreadyPresent.push(manualLink.get(manualKey)!)
+    const linkedIds = manualLink.get(manualKey)
+    if (linkedIds && linkedIds.length > 0) {
+      // A broker trade may be split across multiple manual entries (e.g. partial
+      // fills). All linked existing docs are reported as already-present.
+      for (const id of linkedIds) alreadyPresent.push(id)
       continue
     }
 
@@ -267,6 +281,23 @@ export async function prepareSync(
     .map(enrich)
     .sort((a, b) => (b.date ?? '').localeCompare(a.date ?? ''))
 
+  // Enriched details for the auto-matched ones, in the same order as
+  // alreadyPresent so the preview can show what was matched. IDs without a
+  // corresponding existing doc (rare — happens when a manualLink targets an id
+  // that's no longer in Wallet) are silently dropped.
+  const existingById = new Map<string, Record<string, unknown>>(
+    existing.map(d => [d['_id'] as string, d]),
+  )
+  const alreadyPresentDetails: NearMatch[] = []
+  const seenAlreadyPresent = new Set<string>()
+  for (const id of alreadyPresent) {
+    if (seenAlreadyPresent.has(id)) continue
+    seenAlreadyPresent.add(id)
+    const doc = existingById.get(id)
+    if (doc) alreadyPresentDetails.push(enrich(doc))
+  }
+  alreadyPresentDetails.sort((a, b) => (b.date ?? '').localeCompare(a.date ?? ''))
+
   // Build nearMatches for each toInsert doc
   const nearMatches: Record<string, NearMatch[]> = {}
   for (const p of toInsert) {
@@ -288,7 +319,7 @@ export async function prepareSync(
   }
 
   return {
-    toInsert, alreadyPresent, nearMatches, unmatchedExisting,
+    toInsert, alreadyPresent, alreadyPresentDetails, nearMatches, unmatchedExisting,
     needsAsset, unsupported: input.unsupported, total: input.txns.length,
     recordsToInsert, alreadyPresentRecords, skippedRecords,
   }

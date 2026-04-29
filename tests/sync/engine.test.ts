@@ -379,7 +379,7 @@ describe('runSync', () => {
       unsupported: [],
       accountId: '-Account_a', ownerId: 'u', toolVersion: '1.0.0',
       couch, lookup,
-      manualLink: new Map([['xtb:IBKR-XYZ', '-AssetTransaction_existing-1']]),
+      manualLink: new Map([['xtb:IBKR-XYZ', ['-AssetTransaction_existing-1']]]),
       recordFallback: new Set(),
     })
     expect(r.inserted).toBe(0)

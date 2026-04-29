@@ -80,4 +80,35 @@ export class CouchClient {
     }
     return out
   }
+
+  /**
+   * Walk the _changes feed from `since` to the current head, yielding every
+   * change (including deletions). The caller is responsible for upserting/
+   * removing rows in its own store and persisting the returned `lastSeq`.
+   */
+  async *changesSince(since: string | number): AsyncGenerator<{
+    id: string
+    deleted: boolean
+    doc: Record<string, unknown> | null
+    seq: string | number
+  }, { lastSeq: string | number }, void> {
+    let cursor: string | number = since
+    let lastSeq: string | number = since
+    while (true) {
+      const params = new URLSearchParams({ include_docs: 'true', style: 'main_only', since: String(cursor), limit: '500' })
+      const res = await this.req(`/_changes?${params}`)
+      const data = (await res.json()) as {
+        results: Array<{ id: string; deleted?: boolean; seq: string | number; doc?: Record<string, unknown> }>
+        last_seq: string | number
+      }
+      for (const r of data.results) {
+        const isDeleted = r.deleted === true || (r.doc?.['_deleted'] === true)
+        yield { id: r.id, deleted: isDeleted, doc: isDeleted ? null : (r.doc ?? null), seq: r.seq }
+      }
+      lastSeq = data.last_seq
+      if (lastSeq === cursor || data.results.length === 0) break
+      cursor = lastSeq
+    }
+    return { lastSeq }
+  }
 }

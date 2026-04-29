@@ -7,6 +7,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
+import BackupRestore from '@/app/components/BackupRestore'
 import {
   Table,
   TableBody,
@@ -452,10 +453,12 @@ function ManualLinksSection({ links }: { links: ManualLink[] }) {
 
   async function handleDelete(l: ManualLink) {
     if (!confirm(`Unlink trade ${l.externalId.slice(0, 12)}… from ${l.existingDocId}?`)) return
-    const res = await fetch(
-      `/api/manual-link?broker=${encodeURIComponent(l.broker)}&externalId=${encodeURIComponent(l.externalId)}`,
-      { method: 'DELETE' },
-    )
+    const params = new URLSearchParams({
+      broker: l.broker,
+      externalId: l.externalId,
+      existingDocId: l.existingDocId,
+    })
+    const res = await fetch(`/api/manual-link?${params}`, { method: 'DELETE' })
     if (res.ok) router.refresh()
   }
 
@@ -486,7 +489,7 @@ function ManualLinksSection({ links }: { links: ManualLink[] }) {
             </TableHeader>
             <TableBody>
               {links.map(l => {
-                const key = `${l.broker}:${l.externalId}`
+                const key = `${l.broker}:${l.externalId}:${l.existingDocId}`
                 const isExpanded = expanded === key
                 return (
                   <TableRow key={key}>
@@ -535,17 +538,15 @@ function ManualLinksSection({ links }: { links: ManualLink[] }) {
 export default function SettingsView({ connection, mappings, aliases, fallbacks, links }: Props) {
   return (
     <main className="container mx-auto max-w-3xl py-12 px-4">
-      <div className="flex items-center justify-between mb-8">
-        <div>
-          <h1 className="text-2xl font-semibold">Settings</h1>
-          <p className="text-muted-foreground text-sm mt-1">Manage all persistent rules for wallet-broker-sync.</p>
-        </div>
-        <Link
-          href="/upload"
-          className="text-sm text-muted-foreground underline underline-offset-4 hover:text-foreground transition-colors"
-        >
-          ← Back to upload
-        </Link>
+      <div className="mb-8">
+        <p className="mb-2 inline-flex items-center gap-2 rounded-full bg-accent px-3 py-1 text-xs font-medium text-accent-foreground ring-1 ring-accent-foreground/15">
+          <span className="size-1.5 rounded-full bg-primary" aria-hidden />
+          Configuration
+        </p>
+        <h1 className="text-3xl font-semibold tracking-tight">Settings</h1>
+        <p className="mt-2 text-sm text-muted-foreground">
+          Manage all persistent rules for wallet-broker-sync — connection, mappings, aliases, and overrides.
+        </p>
       </div>
 
       <div className="space-y-6">
@@ -554,7 +555,27 @@ export default function SettingsView({ connection, mappings, aliases, fallbacks,
         <AliasSection aliases={aliases} />
         <RecordFallbackSection fallbacks={fallbacks} />
         <ManualLinksSection links={links} />
+        <BackupRestoreSection />
       </div>
     </main>
+  )
+}
+
+// ---------- Section: Backup & restore ----------
+
+function BackupRestoreSection() {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Backup & restore</CardTitle>
+        <CardDescription>
+          Export all rules to a JSON file and restore them on another machine — useful when moving
+          to a new PC or sharing a setup.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <BackupRestore />
+      </CardContent>
+    </Card>
   )
 }

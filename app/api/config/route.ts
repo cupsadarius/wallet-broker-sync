@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { db, runMigrations } from '@/src/storage/db'
-import { config, brokerAccountMap } from '@/src/storage/schema'
+import { config, brokerAccountMap, couchDocCache, couchCacheMeta } from '@/src/storage/schema'
 import { saveCouchCreds, loadCouchCreds, deleteCouchCreds } from '@/src/storage/credentials'
 import { inArray } from 'drizzle-orm'
 import { formatError } from '@/src/sync/format-error'
@@ -117,6 +117,9 @@ export async function DELETE(req: Request) {
     if (scope === 'connection' || scope === 'all') {
       await deleteCouchCreds()
       await db.delete(config).where(inArray(config.key, ['couchUrl', 'dbName']))
+      // Drop the local Couch mirror — different connection means different scope.
+      await db.delete(couchDocCache)
+      await db.delete(couchCacheMeta)
     }
     if (scope === 'mappings' || scope === 'all') {
       await db.delete(brokerAccountMap)

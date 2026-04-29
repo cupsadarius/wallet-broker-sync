@@ -21,6 +21,15 @@ export class LookupService {
 
   constructor(private readonly couch: Pick<CouchClient, 'listByModelType'>) {}
 
+  /** Populate from a pre-bucketed snapshot (e.g. the local cache). */
+  populateFromBuckets(buckets: Map<string, Record<string, unknown>[]>): void {
+    const accounts = (buckets.get('Account') ?? []) as Array<{ _id: string; accountType: number; name: string; currencyId: string; investmentInfo?: { assetTypes?: number[] } }>
+    const currencies = (buckets.get('Currency') ?? []) as Array<{ _id: string; code: string }>
+    const assets = (buckets.get('StocksFundsAsset') ?? []) as Array<{ _id: string; symbol: string; exchangeCode: string; currencyCode?: string; name?: string }>
+    const categories = (buckets.get('Category') ?? []) as Array<{ _id: string; name: string }>
+    this.populate({ accounts, currencies, assets, categories })
+  }
+
   async refresh() {
     const [accounts, currencies, assets, categories] = await Promise.all([
       this.couch.listByModelType<{ _id: string; accountType: number; name: string; currencyId: string; investmentInfo?: { assetTypes?: number[] } }>('Account'),
@@ -28,6 +37,16 @@ export class LookupService {
       this.couch.listByModelType<{ _id: string; symbol: string; exchangeCode: string; currencyCode?: string }>('StocksFundsAsset'),
       this.couch.listByModelType<{ _id: string; name: string }>('Category'),
     ])
+    this.populate({ accounts, currencies, assets, categories })
+  }
+
+  private populate(input: {
+    accounts: Array<{ _id: string; accountType: number; name: string; currencyId: string; investmentInfo?: { assetTypes?: number[] } }>
+    currencies: Array<{ _id: string; code: string }>
+    assets: Array<{ _id: string; symbol: string; exchangeCode: string; currencyCode?: string; name?: string }>
+    categories: Array<{ _id: string; name: string }>
+  }) {
+    const { accounts, currencies, assets, categories } = input
     const currencyMap = new Map(currencies.map(c => [c._id, c.code]))
     this.accounts = accounts.filter(a => a.accountType === 7).map(a => ({
       id: a._id, name: a.name,

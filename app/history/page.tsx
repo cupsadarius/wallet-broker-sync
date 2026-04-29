@@ -11,27 +11,23 @@ export default async function HistoryPage() {
 
   return (
     <main className="container mx-auto max-w-5xl py-12 px-4">
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-end justify-between gap-4 mb-8">
         <div>
-          <h1 className="text-2xl font-semibold">Sync history</h1>
-          <p className="text-muted-foreground text-sm mt-1">
-            Audit log of all past syncs — click a row to expand per-doc detail.
+          <p className="mb-2 inline-flex items-center gap-2 rounded-full bg-accent px-3 py-1 text-xs font-medium text-accent-foreground ring-1 ring-accent-foreground/15">
+            <span className="size-1.5 rounded-full bg-primary" aria-hidden />
+            Audit log
+          </p>
+          <h1 className="text-3xl font-semibold tracking-tight">Sync history</h1>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Every past sync, persisted locally. Click a row to expand per-doc detail.
           </p>
         </div>
-        <div className="flex items-center gap-4">
-          <Link
-            href="/settings"
-            className="text-sm text-muted-foreground underline underline-offset-4 hover:text-foreground transition-colors"
-          >
-            Settings
-          </Link>
-          <Link
-            href="/upload"
-            className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground shadow hover:bg-primary/90 transition-colors"
-          >
-            Sync another file
-          </Link>
-        </div>
+        <Link
+          href="/upload"
+          className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground shadow-sm ring-1 ring-primary/20 hover:bg-primary/90 transition-colors"
+        >
+          Sync another file
+        </Link>
       </div>
       <HistoryList runs={runs} />
     </main>

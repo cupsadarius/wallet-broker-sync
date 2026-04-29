@@ -2,19 +2,18 @@
 
 import { useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import Link from 'next/link'
 import { useWizard } from '@/src/ui/store'
 import PreviewTable from './PreviewTable'
 
 export default function PreviewPage() {
   const router = useRouter()
-  const { file, broker, dryRun } = useWizard()
+  const { files, broker, dryRun } = useWizard()
 
   useEffect(() => {
-    if (!dryRun || !file || !broker) router.replace('/upload')
-  }, [dryRun, file, broker, router])
+    if (!dryRun || files.length === 0 || !broker) router.replace('/upload')
+  }, [dryRun, files, broker, router])
 
-  if (!dryRun || !file || !broker) {
+  if (!dryRun || files.length === 0 || !broker) {
     return (
       <main className="container mx-auto max-w-3xl py-12 px-4">
         <p className="text-muted-foreground">Redirecting to /upload…</p>
@@ -22,21 +21,32 @@ export default function PreviewPage() {
     )
   }
 
+  const summary =
+    files.length === 1
+      ? <code className="px-1.5 py-0.5 rounded bg-muted font-mono text-xs">{files[0].name}</code>
+      : <span className="font-medium text-foreground">{files.length} files</span>
+
   return (
     <main className="container mx-auto max-w-5xl py-12 px-4">
-      <div className="flex items-start justify-between mb-4">
-        <div>
-          <h1 className="text-2xl font-semibold mb-2">Review changes</h1>
-          <p className="text-muted-foreground">
-            Parsed <code className="px-1 py-0.5 rounded bg-zinc-100 text-xs">{file.name}</code> as {broker.toUpperCase()}.
-          </p>
-        </div>
-        <Link
-          href="/settings"
-          className="text-sm text-muted-foreground underline underline-offset-4 hover:text-foreground transition-colors shrink-0"
-        >
-          Settings
-        </Link>
+      <div className="mb-6">
+        <p className="mb-2 inline-flex items-center gap-2 rounded-full bg-accent px-3 py-1 text-xs font-medium text-accent-foreground ring-1 ring-accent-foreground/15">
+          <span className="size-1.5 rounded-full bg-primary" aria-hidden />
+          Step 2 · Review
+        </p>
+        <h1 className="text-3xl font-semibold tracking-tight">Review changes</h1>
+        <p className="mt-2 text-muted-foreground">
+          Parsed {summary} as{' '}
+          <span className="font-medium text-foreground">{broker.toUpperCase()}</span>. Nothing is written
+          until you confirm.
+        </p>
+        {files.length > 1 && (
+          <details className="mt-2 text-xs text-muted-foreground">
+            <summary className="cursor-pointer hover:text-foreground select-none">Show file list</summary>
+            <ul className="mt-1.5 space-y-0.5 pl-4 list-disc">
+              {files.map((f, i) => <li key={i} className="font-mono">{f.name}</li>)}
+            </ul>
+          </details>
+        )}
       </div>
       <PreviewTable />
     </main>

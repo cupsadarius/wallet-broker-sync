@@ -5,7 +5,7 @@ import type { BrokerId } from '@/src/types'
 type SyncResultLike = Record<string, unknown>
 
 type Wizard = {
-  file: File | null
+  files: File[]
   broker: BrokerId | null
   dryRun: SyncResultLike | null
   result: SyncResultLike | null
@@ -14,10 +14,10 @@ type Wizard = {
 }
 
 export const useWizard = create<Wizard>((set) => ({
-  file: null,
+  files: [],
   broker: null,
   dryRun: null,
   result: null,
   set: (v) => set(v),
-  reset: () => set({ file: null, broker: null, dryRun: null, result: null }),
+  reset: () => set({ files: [], broker: null, dryRun: null, result: null }),
 }))

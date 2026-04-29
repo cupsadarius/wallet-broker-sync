@@ -57,5 +57,24 @@ export const manualLink = sqliteTable('manual_link', {
   externalId: text('external_id').notNull(),
   existingDocId: text('existing_doc_id').notNull(),
 }, (t) => ({
-  pk: primaryKey({ columns: [t.broker, t.externalId] }),
+  // Composite PK includes existingDocId so one (broker, externalId) can map to
+  // multiple existing Wallet entries (partial-fill grouping).
+  pk: primaryKey({ columns: [t.broker, t.externalId, t.existingDocId] }),
 }))
+
+// Local mirror of CouchDB docs we care about. Keyed by (scope, docId), where
+// scope is `${couchUrl}|${dbName}`. Persisted across runs so dry-runs only
+// fetch the delta via _changes?since=<lastSeq> instead of re-scanning the DB.
+export const couchDocCache = sqliteTable('couch_doc_cache', {
+  scope: text('scope').notNull(),
+  docId: text('doc_id').notNull(),
+  modelType: text('model_type').notNull(),
+  json: text('json').notNull(),
+}, (t) => ({
+  pk: primaryKey({ columns: [t.scope, t.docId] }),
+}))
+
+export const couchCacheMeta = sqliteTable('couch_cache_meta', {
+  scope: text('scope').primaryKey(),
+  lastSeq: text('last_seq').notNull(),
+})

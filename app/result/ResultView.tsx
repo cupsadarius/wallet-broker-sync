@@ -19,20 +19,51 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import type { AssetTransactionDoc } from '@/src/sync/mapper'
+import type { RecordDoc } from '@/src/sync/record-mapper'
 import type { CanonicalTxn } from '@/src/types'
 
 type PreparedDoc = { doc: AssetTransactionDoc; source: CanonicalTxn }
+type PreparedRecord = { doc: RecordDoc; source: CanonicalTxn }
+
+function Stat({
+  label,
+  value,
+  tone,
+  emphasis,
+}: {
+  label: string
+  value: number
+  tone: 'emerald' | 'muted' | 'red'
+  emphasis?: boolean
+}) {
+  const toneClass =
+    tone === 'emerald' ? 'text-primary'
+    : tone === 'red' ? 'text-destructive'
+    : 'text-muted-foreground'
+  return (
+    <div className="flex flex-col gap-1 px-5 py-4">
+      <span className={`${emphasis ? 'text-3xl' : 'text-2xl'} font-semibold tabular-nums ${toneClass}`}>
+        {value}
+      </span>
+      <span className="text-xs uppercase tracking-wide text-muted-foreground">{label}</span>
+    </div>
+  )
+}
 
 type SyncResult = {
   total: number
   inserted: number
   conflict: number
+  recordsInserted: number
+  recordsConflict: number
   errors: Array<{ id: string; reason: string }>
   needsAsset: CanonicalTxn[]
   unsupported: Array<{ row: string | number; reason: string; raw?: Record<string, unknown> }>
   preview: {
     new: PreparedDoc[]
     alreadyPresent: string[]
+    newRecords?: PreparedRecord[]
+    alreadyPresentRecords?: string[]
   }
 }
 
@@ -45,13 +76,18 @@ export default function ResultView() {
   const r = result as unknown as SyncResult
   const submitted = r.preview?.new ?? []
   const conflicts = r.preview?.alreadyPresent ?? []
+  const submittedRecords = r.preview?.newRecords ?? []
+  const recordConflicts = r.preview?.alreadyPresentRecords ?? []
   const errors = r.errors ?? []
-  const inserted = r.inserted ?? 0
-  const conflict = r.conflict ?? 0
+  const inserted = (r.inserted ?? 0) + (r.recordsInserted ?? 0)
+  const conflict = (r.conflict ?? 0) + (r.recordsConflict ?? 0)
   const totalWritten = inserted + conflict
 
-  // Derive accountId from first submitted doc as fallback
-  const accountId = submitted[0]?.doc?.accountId ?? null
+  // Derive accountId from first submitted doc (trade or record) as fallback
+  const accountId =
+    submitted[0]?.doc?.accountId ??
+    submittedRecords[0]?.doc?.accountId ??
+    null
 
   function handleSyncAnother(e: { preventDefault: () => void }) {
     e.preventDefault()
@@ -64,54 +100,55 @@ export default function ResultView() {
     router.push('/history')
   }
 
+  const isNoOp =
+    submitted.length === 0 &&
+    submittedRecords.length === 0 &&
+    (conflicts.length > 0 || recordConflicts.length > 0) &&
+    errors.length === 0
+  const totalConflicts = conflicts.length + recordConflicts.length
+
   return (
     <div className="space-y-6">
-      {/* Nav */}
-      <div className="flex items-center justify-between text-sm">
+      {/* Summary hero */}
+      <div className="overflow-hidden rounded-xl bg-card ring-1 ring-foreground/10 shadow-sm">
+        <div className="px-6 pt-6 pb-5 border-b border-border/60 bg-gradient-to-br from-accent/40 to-transparent">
+          <p className="mb-2 inline-flex items-center gap-2 rounded-full bg-primary/10 px-3 py-1 text-xs font-medium text-primary ring-1 ring-primary/20">
+            <span className="size-1.5 rounded-full bg-primary" aria-hidden />
+            Step 3 · Done
+          </p>
+          {isNoOp ? (
+            <>
+              <h1 className="text-2xl font-semibold tracking-tight">Nothing to import</h1>
+              <p className="mt-1 text-muted-foreground">
+                All <span className="font-semibold text-foreground">{totalConflicts}</span>{' '}
+                parsed entr{totalConflicts === 1 ? 'y' : 'ies'} already exist in Wallet.
+                Your data is up to date.
+              </p>
+            </>
+          ) : (
+            <>
+              <h1 className="text-2xl font-semibold tracking-tight">Sync complete</h1>
+              <p className="mt-1 text-muted-foreground">
+                Wrote {totalWritten} document{totalWritten === 1 ? '' : 's'} to Wallet
+                {errors.length > 0 ? `, with ${errors.length} error${errors.length === 1 ? '' : 's'}` : ''}.
+              </p>
+            </>
+          )}
+        </div>
+        {!isNoOp && (
+          <div className="grid grid-cols-2 sm:grid-cols-4 divide-x divide-y sm:divide-y-0 divide-border/60">
+            <Stat label="Total written" value={totalWritten} tone="emerald" emphasis />
+            <Stat label="Inserted" value={inserted} tone="emerald" />
+            <Stat label="Already present" value={conflict} tone="muted" />
+            <Stat label="Errors" value={errors.length} tone={errors.length > 0 ? 'red' : 'muted'} />
+          </div>
+        )}
         <button
           onClick={handleHistoryLink}
-          className="text-muted-foreground underline underline-offset-4 hover:text-foreground transition-colors"
+          className="block w-full border-t border-border/60 px-6 py-2.5 text-left text-xs text-muted-foreground hover:bg-muted/40 hover:text-foreground transition-colors"
         >
-          View history
+          View full sync history →
         </button>
-      </div>
-
-      {/* Summary header card */}
-      <div className="rounded-xl border bg-card px-5 py-6 ring-1 ring-foreground/10">
-        {submitted.length === 0 && conflicts.length > 0 && errors.length === 0 ? (
-          <>
-            <h1 className="text-2xl font-semibold mb-2">Nothing to import</h1>
-            <p className="text-muted-foreground">
-              All <span className="font-semibold text-foreground">{conflicts.length}</span>{' '}
-              parsed transaction{conflicts.length === 1 ? '' : 's'} already exist in Wallet.
-              Your data is up to date.
-            </p>
-          </>
-        ) : (
-          <>
-            <h1 className="text-2xl font-semibold mb-4">Sync complete</h1>
-            <div className="flex flex-wrap gap-8">
-              <div className="flex flex-col gap-1">
-                <span className="text-4xl font-bold text-green-600">{totalWritten}</span>
-                <span className="text-sm text-muted-foreground">total written</span>
-              </div>
-              <div className="flex flex-col gap-1">
-                <span className="text-3xl font-semibold text-green-600">{inserted}</span>
-                <span className="text-sm text-muted-foreground">inserted</span>
-              </div>
-              <div className="flex flex-col gap-1">
-                <span className="text-3xl font-semibold text-zinc-500">{conflict}</span>
-                <span className="text-sm text-muted-foreground">already present (idempotent)</span>
-              </div>
-              {errors.length > 0 && (
-                <div className="flex flex-col gap-1">
-                  <span className="text-3xl font-semibold text-red-600">{errors.length}</span>
-                  <span className="text-sm text-muted-foreground">errors</span>
-                </div>
-              )}
-            </div>
-          </>
-        )}
       </div>
 
       {/* Submitted transactions */}
@@ -172,12 +209,62 @@ export default function ResultView() {
         </CardContent>
       </Card>
 
-      {/* Conflicts */}
-      {conflicts.length > 0 && (
+      {/* Submitted records (dividends, coupons, fees, record-fallback trades) */}
+      {submittedRecords.length > 0 && (
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Badge variant="secondary">{conflicts.length}</Badge>
+              <Badge variant="default" className="bg-green-600 text-white">
+                {submittedRecords.length}
+              </Badge>
+              Submitted records
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-muted-foreground text-xs mb-3">
+              Cash income/expense entries — dividends, coupons, fees, and trades on exchanges Wallet doesn&apos;t catalog.
+            </p>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Date</TableHead>
+                  <TableHead>Type</TableHead>
+                  <TableHead>Note</TableHead>
+                  <TableHead className="text-right">Amount</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {submittedRecords.map(({ doc, source }) => {
+                  const dateShort = doc.recordDate.slice(0, 10)
+                  const amount = (doc.amount / 100).toFixed(2)
+                  const isIncome = doc.type === 0
+                  return (
+                    <TableRow key={doc._id}>
+                      <TableCell className="font-mono text-xs">{dateShort}</TableCell>
+                      <TableCell>
+                        <span className={isIncome ? 'text-green-600 font-medium' : 'text-red-600 font-medium'}>
+                          {isIncome ? 'INCOME' : 'EXPENSE'}
+                        </span>
+                      </TableCell>
+                      <TableCell className="text-xs truncate max-w-[280px]">{doc.note || source.description || '—'}</TableCell>
+                      <TableCell className="text-right">
+                        {amount} {source.settlementCurrency}
+                      </TableCell>
+                    </TableRow>
+                  )
+                })}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Conflicts (trades + records combined) */}
+      {(conflicts.length > 0 || recordConflicts.length > 0) && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Badge variant="secondary">{totalConflicts}</Badge>
               Already in Wallet (skipped)
             </CardTitle>
           </CardHeader>
@@ -186,7 +273,7 @@ export default function ResultView() {
               These docs were already present — idempotent re-import, no duplicate created.
             </p>
             <div className="space-y-1">
-              {conflicts.map((id) => (
+              {[...conflicts, ...recordConflicts].map((id) => (
                 <p key={id} className="font-mono text-xs text-muted-foreground">{id}</p>
               ))}
             </div>

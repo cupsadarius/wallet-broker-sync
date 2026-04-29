@@ -133,7 +133,7 @@ export default function HistoryList({ runs }: { runs: SyncRun[] }) {
                   </TableCell>
                   <TableCell className="text-right">{run.parsedCount}</TableCell>
                   <TableCell className="text-right text-green-600 font-medium">{run.insertedCount}</TableCell>
-                  <TableCell className="text-right text-zinc-500">{run.conflictCount}</TableCell>
+                  <TableCell className="text-right text-muted-foreground">{run.conflictCount}</TableCell>
                   <TableCell className="text-right">
                     {run.errorCount > 0
                       ? <span className="text-red-600 font-medium">{run.errorCount}</span>
