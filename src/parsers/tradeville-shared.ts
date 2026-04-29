@@ -31,6 +31,12 @@ export function tradevilleRowToTxn(row: TradevilleRow): RowResult {
   const ticker = row.ticker.trim()
   const dateRaw = row.dateRaw.trim()
 
+  // Some "in" rows are free-share grants (bonus shares from corporate actions —
+  // "mcs gratuite" = "free shares" in Romanian). These have a quantity but no
+  // cash impact. Treat as a Buy at price=0 so the holding count goes up.
+  const obsLower = (row.observatii || '').toLowerCase()
+  const isFreeShares = oper === 'in' && /gratuit/.test(obsLower)
+
   let kind: 'buy' | 'sell' | 'dividend' | 'fee' | null = null
   if (oper === 'cump' || oper === 'cumparare' || oper === 'cumpărare') kind = 'buy'
   else if (oper === 'vanz' || oper === 'vânz' || oper === 'vanzare' || oper === 'vânzare') kind = 'sell'
@@ -39,6 +45,10 @@ export function tradevilleRowToTxn(row: TradevilleRow): RowResult {
     // distinguishes ("dividend XYZ" vs "plata cupon XYZ"). For Wallet's data
     // model both are cash income → kind: 'dividend'.
     kind = 'dividend'
+  }
+  else if (isFreeShares) {
+    // Bonus shares — kind:'buy', price:0, quantity from Cantitate.
+    kind = 'buy'
   }
 
   if (!kind) {
@@ -109,9 +119,13 @@ export function tradevilleRowToTxn(row: TradevilleRow): RowResult {
     }
   }
 
-  // buy/sell path: must have price and quantity
-  const price = parseRoNumber(row.pret)
+  // buy/sell path: must have quantity. Price defaults to 0 for free-share grants
+  // where pret is empty/'-'.
   const quantity = parseRoNumber(row.cantitate)
+  const priceRaw = row.pret.trim()
+  const price = isFreeShares && (!priceRaw || priceRaw === '-' || priceRaw === '0')
+    ? 0
+    : parseRoNumber(row.pret)
 
   if (!Number.isFinite(price) || !Number.isFinite(quantity)) {
     return {
@@ -139,7 +153,9 @@ export function tradevilleRowToTxn(row: TradevilleRow): RowResult {
       quantity, pricePerShare: price,
       tradeCurrency: TRADEVILLE_CURRENCY, settlementCurrency: TRADEVILLE_CURRENCY,
       cashAmount,
-      description: oper + ' ' + quantity + ' ' + ticker + ' @ ' + price,
+      description: isFreeShares
+        ? 'free shares: ' + quantity + ' ' + ticker + (row.observatii ? ' (' + row.observatii + ')' : '')
+        : oper + ' ' + quantity + ' ' + ticker + ' @ ' + price,
       raw: { oper, ticker, pret: row.pret, cantitate: row.cantitate, valoare: row.valoare, observatii: row.observatii, date: dateRaw },
     },
   }
