@@ -7,7 +7,7 @@ import { config, brokerAccountMap, syncRun, syncRunDoc, assetAlias } from '@/src
 import { loadCouchCreds } from '@/src/storage/credentials'
 import { CouchClient } from '@/src/sync/couch'
 import { LookupService } from '@/src/sync/lookup'
-import { prepareSync, commitSync } from '@/src/sync/engine'
+import { prepareSync, commitSync, type PreparedSync } from '@/src/sync/engine'
 import { parsers } from '@/src/parsers/registry'
 import { formatError } from '@/src/sync/format-error'
 
@@ -121,16 +121,35 @@ export async function POST(req: Request) {
       return NextResponse.json({
         inserted: 0,
         conflict: 0,
-        preview: { new: prepared.toInsert, alreadyPresent: prepared.alreadyPresent },
+        preview: { new: prepared.toInsert, alreadyPresent: prepared.alreadyPresent, nearMatches: prepared.nearMatches },
         needsAsset: prepared.needsAsset,
         unsupported: prepared.unsupported,
       })
     }
 
+    // Parse skip map: ourDocId → existingDocId for user-chosen links
+    const skipRaw = formData.get('skip')
+    let skipMap: Record<string, string> = {}
+    if (typeof skipRaw === 'string' && skipRaw) {
+      try { skipMap = JSON.parse(skipRaw) } catch { /* ignore bad JSON */ }
+    }
+
     // Full sync
     const startedAt = Date.now()
     const prepared = await prepareSync(syncInput)
-    const result = await commitSync(prepared, couch)
+
+    // Filter prepared.toInsert: drop any whose _id is in skipMap
+    const skippedDocIds = new Set(Object.keys(skipMap))
+    const filteredToInsert = prepared.toInsert.filter(p => !skippedDocIds.has(p.doc._id))
+    const linkedExistingIds = Object.values(skipMap).filter(id => !prepared.alreadyPresent.includes(id))
+
+    const filteredPrepared: PreparedSync = {
+      ...prepared,
+      toInsert: filteredToInsert,
+      alreadyPresent: [...prepared.alreadyPresent, ...linkedExistingIds],
+    }
+
+    const result = await commitSync(filteredPrepared, couch)
     const finishedAt = Date.now()
 
     // Persist sync run to SQLite

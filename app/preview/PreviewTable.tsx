@@ -26,6 +26,16 @@ type UnsupportedRow = { row: string | number; reason: string; raw?: Record<strin
 
 type PreparedDoc = { doc: AssetTransactionDoc; source: CanonicalTxn }
 
+type NearMatch = {
+  docId: string
+  date: string
+  quantity: number
+  price: number
+  priceCurrencyCode?: string
+  cashAmount?: number
+  cashAmountCurrencyCode?: string
+}
+
 type SyncResult = {
   total: number
   inserted: number
@@ -36,6 +46,7 @@ type SyncResult = {
   preview: {
     new: PreparedDoc[]
     alreadyPresent: string[]
+    nearMatches?: Record<string, NearMatch[]>
   }
 }
 
@@ -44,17 +55,22 @@ export default function PreviewTable() {
   const { file, broker, dryRun } = useWizard()
   const [isPending, startTransition] = useTransition()
   const [syncError, setSyncError] = useState<string | null>(null)
+  // docId → existingDocId (user linked) or 'insert' (default)
+  const [linkSelections, setLinkSelections] = useState<Record<string, string>>({})
 
   if (!dryRun || !file || !broker) return null
 
   const result = dryRun as unknown as SyncResult
   const newTxns = result.preview?.new ?? []
   const alreadyPresent = result.preview?.alreadyPresent ?? []
+  const nearMatches = result.preview?.nearMatches ?? {}
   const needsAsset = result.needsAsset ?? []
   const unsupported = result.unsupported ?? []
 
-  const newCount = newTxns.length
-  const alreadyCount = alreadyPresent.length
+  // Count how many rows the user has chosen to link (not insert)
+  const linkedCount = Object.values(linkSelections).filter(v => v !== 'insert').length
+  const newCount = newTxns.length - linkedCount
+  const alreadyCount = alreadyPresent.length + linkedCount
   const needsAssetCount = needsAsset.length
   const unsupportedCount = unsupported.length
 
@@ -75,6 +91,14 @@ export default function PreviewTable() {
         const fd = new FormData()
         fd.append('file', file)
         fd.append('broker', broker)
+        // Build skip map: ourDocId → existingDocId for user-linked rows
+        const skipMap: Record<string, string> = {}
+        for (const [docId, selection] of Object.entries(linkSelections)) {
+          if (selection !== 'insert') skipMap[docId] = selection
+        }
+        if (Object.keys(skipMap).length > 0) {
+          fd.append('skip', JSON.stringify(skipMap))
+        }
         const res = await fetch('/api/sync', { method: 'POST', body: fd })
         const data = await res.json()
         if (!res.ok || data.ok === false) {
@@ -143,7 +167,7 @@ export default function PreviewTable() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          {newCount === 0 ? (
+          {newTxns.length === 0 ? (
             <p className="text-muted-foreground text-sm">No new transactions to insert.</p>
           ) : (
             <Table>
@@ -156,6 +180,7 @@ export default function PreviewTable() {
                   <TableHead className="text-right">Quantity</TableHead>
                   <TableHead className="text-right">Price</TableHead>
                   <TableHead className="text-right">Total</TableHead>
+                  <TableHead>Link to existing</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -164,8 +189,11 @@ export default function PreviewTable() {
                   const price = (doc.price / 100).toFixed(2)
                   const total = (doc.cashAmount / 100).toFixed(2)
                   const dateShort = doc.date.slice(0, 10)
+                  const candidates = nearMatches[doc._id] ?? []
+                  const selection = linkSelections[doc._id] ?? 'insert'
+                  const isLinked = selection !== 'insert'
                   return (
-                    <TableRow key={doc._id}>
+                    <TableRow key={doc._id} className={isLinked ? 'opacity-50 line-through text-zinc-400' : undefined}>
                       <TableCell className="font-mono text-xs">{dateShort}</TableCell>
                       <TableCell>
                         <span className={doc.transactionType === 0 ? 'text-green-600 font-medium' : 'text-red-600 font-medium'}>
@@ -180,6 +208,33 @@ export default function PreviewTable() {
                       </TableCell>
                       <TableCell className="text-right">
                         {total} {doc.cashAmountCurrencyCode}
+                      </TableCell>
+                      <TableCell>
+                        {candidates.length > 0 ? (
+                          <select
+                            value={selection}
+                            onChange={(e: { preventDefault: () => void; target: { value: string } }) => {
+                              const val = (e as unknown as React.ChangeEvent<HTMLSelectElement>).target.value
+                              setLinkSelections(prev => ({ ...prev, [doc._id]: val }))
+                            }}
+                            className="text-xs rounded border border-input bg-background px-2 py-1 text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                          >
+                            <option value="insert">Insert</option>
+                            {candidates.map(c => {
+                              const cPrice = (c.price / 100).toFixed(2)
+                              const cDate = c.date.slice(5, 10).replace('-', '/')
+                              const sign = doc.transactionType === 0 ? '+' : '−'
+                              const currency = c.priceCurrencyCode ? ` ${c.priceCurrencyCode}` : ''
+                              return (
+                                <option key={c.docId} value={c.docId}>
+                                  {`Link to: ${sign}${c.quantity} ${source.symbol ?? ''} on ${cDate} @ $${cPrice}${currency}`}
+                                </option>
+                              )
+                            })}
+                          </select>
+                        ) : (
+                          <span className="text-xs text-muted-foreground">—</span>
+                        )}
                       </TableCell>
                     </TableRow>
                   )

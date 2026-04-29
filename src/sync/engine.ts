@@ -14,6 +14,16 @@ export type SyncInput = {
 /** Pair the wire doc (what gets written) with its source canonical txn (for UI display). */
 export type PreparedDoc = { doc: AssetTransactionDoc; source: CanonicalTxn }
 
+export type NearMatch = {
+  docId: string
+  date: string             // ISO from existing doc
+  quantity: number
+  price: number            // int × 100 from existing doc
+  priceCurrencyCode?: string
+  cashAmount?: number      // dec × 100
+  cashAmountCurrencyCode?: string
+}
+
 /** Per-doc outcome from the bulk write step. Lets the audit log report accurately. */
 export type WriteOutcome =
   | { docId: string; externalId: string; status: 'inserted'; rev: string }
@@ -26,12 +36,13 @@ export type SyncResult = {
   needsAsset: CanonicalTxn[]
   unsupported: UnsupportedRow[]
   outcomes: WriteOutcome[]
-  preview: { new: PreparedDoc[]; alreadyPresent: string[] }
+  preview: { new: PreparedDoc[]; alreadyPresent: string[]; nearMatches: Record<string, NearMatch[]> }
 }
 
 export type PreparedSync = {
   toInsert: PreparedDoc[]
   alreadyPresent: string[]
+  nearMatches: Record<string, NearMatch[]>   // ourDocId → candidates
   needsAsset: CanonicalTxn[]
   unsupported: UnsupportedRow[]
   total: number
@@ -80,6 +91,14 @@ export async function prepareSync(
     existingByContent.set(contentKey(d as Parameters<typeof contentKey>[0]), d['_id'] as string)
   }
 
+  // Index existing by (assetId, transactionType, day) for near-match lookup
+  const existingByDayKey = new Map<string, Array<Record<string, unknown>>>()
+  for (const d of existing) {
+    const key = `${d['assetId'] ?? ''}|${d['transactionType'] ?? ''}|${(d['date'] as string ?? '').slice(0, 10)}`
+    if (!existingByDayKey.has(key)) existingByDayKey.set(key, [])
+    existingByDayKey.get(key)!.push(d)
+  }
+
   const now = new Date().toISOString()
 
   const toInsert: PreparedDoc[] = []
@@ -107,7 +126,32 @@ export async function prepareSync(
     }
   }
 
-  return { toInsert, alreadyPresent, needsAsset, unsupported: input.unsupported, total: input.txns.length }
+  // Build nearMatches for each toInsert doc
+  const nearMatches: Record<string, NearMatch[]> = {}
+  for (const p of toInsert) {
+    const dayKey = `${p.doc.assetId}|${p.doc.transactionType}|${p.doc.date.slice(0, 10)}`
+    const candidates = (existingByDayKey.get(dayKey) ?? [])
+      // Exclude docs that are ALREADY in alreadyPresent (don't suggest as link target)
+      .filter(d => !alreadyPresent.includes(d['_id'] as string))
+    if (candidates.length === 0) continue
+    // Sort by quantity-closeness, then by date-closeness
+    const sorted = [...candidates].sort((a, b) => {
+      const da = Math.abs((a['quantity'] as number) - p.doc.quantity)
+      const db = Math.abs((b['quantity'] as number) - p.doc.quantity)
+      return da - db
+    })
+    nearMatches[p.doc._id] = sorted.map(d => ({
+      docId: d['_id'] as string,
+      date: d['date'] as string,
+      quantity: d['quantity'] as number,
+      price: d['price'] as number,
+      priceCurrencyCode: d['priceCurrencyCode'] as string | undefined,
+      cashAmount: d['cashAmount'] as number | undefined,
+      cashAmountCurrencyCode: d['cashAmountCurrencyCode'] as string | undefined,
+    }))
+  }
+
+  return { toInsert, alreadyPresent, nearMatches, needsAsset, unsupported: input.unsupported, total: input.txns.length }
 }
 
 /**
@@ -150,7 +194,7 @@ export async function commitSync(
     needsAsset: prepared.needsAsset,
     unsupported: prepared.unsupported,
     outcomes,
-    preview: { new: prepared.toInsert, alreadyPresent: prepared.alreadyPresent },
+    preview: { new: prepared.toInsert, alreadyPresent: prepared.alreadyPresent, nearMatches: prepared.nearMatches },
   }
 }
 

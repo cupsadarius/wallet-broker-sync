@@ -80,6 +80,42 @@ describe('runSync', () => {
     expect(r.inserted).toBe(0); expect(r.needsAsset).toHaveLength(1)
   })
 
+  it('exposes nearMatches for inserts that share day+asset+side with an existing doc', async () => {
+    const existingDoc = {
+      _id: '-AssetTransaction_aggregate-1',
+      reservedModelType: 'AssetTransaction',
+      accountId: '-Account_a',
+      assetId: '-StocksFundsAsset_y',
+      transactionType: 0,
+      date: '2026-04-28T15:30:00.000Z',
+      quantity: 4.04,        // aggregate of the user's two CSV rows
+      price: 11804,
+    }
+    const couch: any = {
+      listAssetTransactions: vi.fn(async () => [existingDoc]),
+      bulkDocs: vi.fn(async () => []),
+    }
+    const lookup: any = { assetByVenueSymbol: vi.fn(() => '-StocksFundsAsset_y') }
+
+    const splitRow1 = { ...baseTxn, externalId: 'a', quantity: 0.04 }
+    const splitRow2 = { ...baseTxn, externalId: 'b', quantity: 4 }
+    const r = await runSync({
+      broker: 'xtb', txns: [splitRow1, splitRow2], unsupported: [],
+      accountId: '-Account_a', ownerId: 'u', toolVersion: '1.0.0', couch, lookup,
+    })
+
+    // Both rows are different qty from the existing 4.04 — won't strict-match
+    expect(r.preview.new.length).toBe(2)
+    // But both should have a near-match candidate pointing at the aggregate doc
+    for (const p of r.preview.new) {
+      const candidates = r.preview.nearMatches[p.doc._id]
+      expect(candidates).toBeTruthy()
+      expect(candidates.length).toBe(1)
+      expect(candidates[0].docId).toBe('-AssetTransaction_aggregate-1')
+      expect(candidates[0].quantity).toBe(4.04)
+    }
+  })
+
   it('content-matches manually-entered existing docs (different _id, same trade)', async () => {
     // A manually-entered entry with a random _id but the same trade content as baseTxn.
     // baseTxn: kind=buy → transactionType=0, date day='2026-04-28', qty=1,
