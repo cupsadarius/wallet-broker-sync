@@ -8,6 +8,58 @@ const fixture = (name: string) => ({
   filename: name,
 })
 
+describe('ibkr parser — yearly Activity Statement format', () => {
+  it('detect() accepts the yearly format', () => {
+    expect(ibkr.detect(fixture('ibkr-yearly-2025.csv'))).toBe(true)
+  })
+
+  it('parses Trades section (signed Quantity → buy/sell direction)', async () => {
+    const result = await ibkr.parse(fixture('ibkr-yearly-2025.csv'))
+    const buys = result.txns.filter(t => t.kind === 'buy' && t.pricePerShare !== 0)
+    expect(buys.length).toBeGreaterThan(0)
+  })
+
+  it('parses Corporate Actions split as kind:buy with price 0', async () => {
+    const result = await ibkr.parse(fixture('ibkr-yearly-2025.csv'))
+    const splits = result.txns.filter(t => t.pricePerShare === 0 && t.kind === 'buy')
+    expect(splits.length).toBeGreaterThan(0)
+    const nflxSplit = splits.find(t => t.symbol === 'NFLX')
+    expect(nflxSplit).toBeTruthy()
+    expect(nflxSplit!.quantity).toBe(9)
+    expect(nflxSplit!.cashAmount).toBe(0)
+  })
+
+  it('parses Dividends section', async () => {
+    const result = await ibkr.parse(fixture('ibkr-yearly-2025.csv'))
+    const divs = result.txns.filter(t => t.kind === 'dividend')
+    expect(divs.length).toBeGreaterThan(0)
+  })
+
+  it('parses Withholding Tax section', async () => {
+    const result = await ibkr.parse(fixture('ibkr-yearly-2025.csv'))
+    const wh = result.txns.filter(t => t.kind === 'fee' && t.feeKind === 'withholding')
+    expect(wh.length).toBeGreaterThan(0)
+  })
+
+  it('all trades have a valid exchange MIC', async () => {
+    const result = await ibkr.parse(fixture('ibkr-yearly-2025.csv'))
+    const trades = result.txns.filter(t => t.kind === 'buy' || t.kind === 'sell')
+    // splits have no exchange requirement but normal trades must
+    const normalTrades = trades.filter(t => t.pricePerShare !== 0)
+    expect(normalTrades.every(t => t.exchange)).toBe(true)
+  })
+
+  it('produces stable externalIds on re-parse', async () => {
+    const a = await ibkr.parse(fixture('ibkr-yearly-2025.csv'))
+    const b = await ibkr.parse(fixture('ibkr-yearly-2025.csv'))
+    expect(a.txns.map(t => t.externalId)).toEqual(b.txns.map(t => t.externalId))
+  })
+
+  it('existing detect() still accepts Transaction History format', () => {
+    expect(ibkr.detect(fixture('ibkr-2026.csv'))).toBe(true)
+  })
+})
+
 describe('ibkr parser', () => {
   it('detect() accepts IBKR Activity Statement CSV', async () => {
     expect(ibkr.detect(fixture('ibkr-2026.csv'))).toBe(true)

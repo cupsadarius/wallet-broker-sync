@@ -2,6 +2,12 @@ import type { BrokerParser, ParseResult, UnsupportedRow } from './types'
 import type { CanonicalTxn } from '@/src/types'
 import { canonicalContentHash } from './canonicalize'
 import { micFromIbkrSymbol } from './ibkr-venues'
+import { parseYearly } from './ibkr-yearly'
+
+/** True if the CSV has the multi-section yearly format (Trades,Header,DataDiscriminator,...) */
+function isYearlyFormat(text: string): boolean {
+  return /^Trades,Header,DataDiscriminator,Asset Category/m.test(text)
+}
 
 export const ibkr: BrokerParser = {
   id: 'ibkr',
@@ -11,6 +17,8 @@ export const ibkr: BrokerParser = {
   detect(input) {
     if (!input.filename.toLowerCase().endsWith('.csv')) return false
     const text = new TextDecoder('utf-8').decode(input.bytes)
+    // Accept both the multi-section yearly format and the shorter Transaction History format.
+    if (isYearlyFormat(text)) return true
     // IBKR Activity Statement CSVs have a 'Statement,Data,Title,Transaction History' marker
     // and a 'Transaction History,Header,Date,Account,Description,...' header row.
     return /^Statement,(?:Header|Data)/m.test(text)
@@ -21,10 +29,21 @@ export const ibkr: BrokerParser = {
     const text = new TextDecoder('utf-8').decode(input.bytes)
     const rows = parseCsvLines(text)
 
-    // Find base currency from Summary section
-    const baseCurrencyRow = rows.find(r => r[0] === 'Summary' && r[1] === 'Data' && r[2] === 'Base Currency')
+    // Find base currency (common to both formats)
+    const baseCurrencyRow = rows.find(r =>
+      (r[0] === 'Summary' || r[0] === 'Account Information') && r[1] === 'Data' && r[2] === 'Base Currency'
+    )
     const baseCurrency = baseCurrencyRow?.[3] ?? 'EUR'
 
+    if (isYearlyFormat(text)) {
+      return parseYearly(rows, baseCurrency)
+    }
+
+    return parseTransactionHistory(rows, baseCurrency)
+  },
+}
+
+function parseTransactionHistory(rows: string[][], baseCurrency: string): ParseResult {
     // Find Transaction History header row to get column indices (defensive — column order has shifted across IBKR versions)
     const txnHeaderIdx = rows.findIndex(r => r[0] === 'Transaction History' && r[1] === 'Header' && r[2] === 'Date')
     if (txnHeaderIdx < 0) throw new Error('IBKR: Transaction History header row not found')
@@ -180,7 +199,6 @@ export const ibkr: BrokerParser = {
     }
 
     return { txns, unsupported }
-  },
 }
 
 /**
