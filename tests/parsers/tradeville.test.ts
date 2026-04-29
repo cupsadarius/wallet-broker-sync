@@ -37,11 +37,22 @@ describe('tradeville HTML parser', () => {
     expect(buy!.externalId).toMatch(/^[0-9a-f]+$/)
   })
 
-  it('routes deposits, dividends, and other non-trade rows to unsupported', async () => {
+  it('routes deposits, withdrawals, and other non-cash-event rows to unsupported', async () => {
     const result = await tradeville.parse(fixture('tradeville-2026.html'))
     expect(result.unsupported.length).toBeGreaterThan(0)
     const reasons = result.unsupported.map(u => u.reason).join(' ')
-    expect(/deposit|depunere|non-trade|unsupported/i.test(reasons)).toBe(true)
+    expect(/deposit|depunere|non-trade|unsupported|"in"|"out"/i.test(reasons)).toBe(true)
+  })
+
+  it('routes oper="div" rows to kind:dividend (cash income)', async () => {
+    const result = await tradeville.parse(fixture('tradeville-2026.html'))
+    const dividends = result.txns.filter(t => t.kind === 'dividend')
+    expect(dividends.length).toBeGreaterThan(0)
+    const div = dividends[0]
+    expect(div.broker).toBe('tradeville')
+    expect(div.tradeCurrency).toBe('RON')
+    expect(div.settlementCurrency).toBe('RON')
+    expect(div.cashAmount).not.toBe(0)  // dividends/coupons have a cash amount
   })
 
   it('produces stable externalId hash (re-parse yields same ids)', async () => {

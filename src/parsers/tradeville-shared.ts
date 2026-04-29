@@ -31,9 +31,15 @@ export function tradevilleRowToTxn(row: TradevilleRow): RowResult {
   const ticker = row.ticker.trim()
   const dateRaw = row.dateRaw.trim()
 
-  let kind: 'buy' | 'sell' | null = null
+  let kind: 'buy' | 'sell' | 'dividend' | 'fee' | null = null
   if (oper === 'cump' || oper === 'cumparare' || oper === 'cumpărare') kind = 'buy'
   else if (oper === 'vanz' || oper === 'vânz' || oper === 'vanzare' || oper === 'vânzare') kind = 'sell'
+  else if (oper === 'div') {
+    // Dividend or coupon payment. Tradeville lumps both under "div" — observatii
+    // distinguishes ("dividend XYZ" vs "plata cupon XYZ"). For Wallet's data
+    // model both are cash income → kind: 'dividend'.
+    kind = 'dividend'
+  }
 
   if (!kind) {
     return {
@@ -46,7 +52,9 @@ export function tradevilleRowToTxn(row: TradevilleRow): RowResult {
     }
   }
 
-  if (!ticker) {
+  // For dividends, ticker may sometimes be empty (free-form coupon payments);
+  // for buy/sell ticker is required.
+  if ((kind === 'buy' || kind === 'sell') && !ticker) {
     return {
       ok: false,
       unsupported: { row: dateRaw, reason: 'trade row missing ticker', raw: { row } },
@@ -65,16 +73,52 @@ export function tradevilleRowToTxn(row: TradevilleRow): RowResult {
     }
   }
 
-  const price = parseRoNumber(row.pret)
-  const quantity = parseRoNumber(row.cantitate)
   const cashAmount = parseRoNumber(row.valoare)
-
-  if (!Number.isFinite(price) || !Number.isFinite(quantity) || !Number.isFinite(cashAmount)) {
+  if (!Number.isFinite(cashAmount)) {
     return {
       ok: false,
       unsupported: {
         row: dateRaw,
-        reason: 'non-numeric price/qty/value: pret="' + row.pret + '" cant="' + row.cantitate + '" val="' + row.valoare + '"',
+        reason: 'non-numeric value: val="' + row.valoare + '"',
+        raw: { row },
+      },
+    }
+  }
+
+  if (kind === 'dividend') {
+    // Dividend / coupon: no quantity, no price, just the cash amount.
+    const externalId = canonicalContentHash({
+      date, exchange: TRADEVILLE_EXCHANGE_MIC, symbol: ticker || 'CASH',
+      side: 'fee',  // distinguishes dividend hash from any same-day buy/sell of same symbol
+      quantity: 0, price: 0, cashAmount,
+      pricePrecision: 4, quantityPrecision: 6,
+    })
+    return {
+      ok: true,
+      txn: {
+        externalId, broker: 'tradeville', kind: 'dividend',
+        date,
+        symbol: ticker || undefined,
+        exchange: ticker ? TRADEVILLE_EXCHANGE_MIC : undefined,
+        // No quantity/pricePerShare for dividends
+        tradeCurrency: TRADEVILLE_CURRENCY, settlementCurrency: TRADEVILLE_CURRENCY,
+        cashAmount,
+        description: row.observatii || ('div ' + ticker),
+        raw: { oper, ticker, pret: row.pret, cantitate: row.cantitate, valoare: row.valoare, observatii: row.observatii, date: dateRaw },
+      },
+    }
+  }
+
+  // buy/sell path: must have price and quantity
+  const price = parseRoNumber(row.pret)
+  const quantity = parseRoNumber(row.cantitate)
+
+  if (!Number.isFinite(price) || !Number.isFinite(quantity)) {
+    return {
+      ok: false,
+      unsupported: {
+        row: dateRaw,
+        reason: 'non-numeric price/qty: pret="' + row.pret + '" cant="' + row.cantitate + '"',
         raw: { row },
       },
     }
