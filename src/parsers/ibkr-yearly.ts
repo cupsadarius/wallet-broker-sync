@@ -127,7 +127,11 @@ function parseTrade(
   const kind: 'buy' | 'sell' = quantity >= 0 ? 'buy' : 'sell'
   const absQuantity = Math.abs(quantity)
 
-  // cashAmount = proceeds + commission (both signed; proceeds negative for buys, comm negative always)
+  // cashAmount = proceeds + commission, in TRADE currency (the Trades section's
+  // Proceeds and Comm/Fee columns are denominated in the trade's Currency, NOT
+  // the account base currency). We therefore set settlementCurrency = tradeCurrency
+  // so the doc is internally consistent. Wallet handles cross-currency display
+  // automatically (the account total in base currency uses spot FX).
   const cashAmount = Number.isFinite(commission) ? proceeds + commission : proceeds
 
   const exchange = micFromIbkrSymbol(symbol)
@@ -150,11 +154,14 @@ function parseTrade(
     date,
     symbol, exchange,
     quantity: absQuantity, pricePerShare,
-    tradeCurrency, settlementCurrency: baseCurrency,
+    tradeCurrency, settlementCurrency: tradeCurrency,
     cashAmount,
     description: `${kind === 'buy' ? 'Buy' : 'Sell'} ${absQuantity} ${symbol} @ ${pricePerShare} ${tradeCurrency}`,
     raw: rawObj,
   })
+  // (baseCurrency intentionally unused — kept on the function signature for the
+  // dividend/withholding/fee paths below which DO bookkeep against base.)
+  void baseCurrency
 }
 
 function parseCorporateAction(
