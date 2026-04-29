@@ -45,3 +45,7 @@ next-env.d.ts
 docs/superpowers/captures/
 sources/
 *.har
+
+# pouchdb-server dev artifacts (created when pouchdb-server starts in project root)
+config.json
+log.txt

@@ -46,6 +46,7 @@
     "eslint": "^9",
     "eslint-config-next": "16.2.4",
     "husky": "^9.1.7",
+    "pouchdb-server": "^4.2.0",
     "shadcn": "^4.5.0",
     "tailwindcss": "^4",
     "tsx": "^4.21.0",
