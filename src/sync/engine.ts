@@ -38,6 +38,23 @@ export type PreparedSync = {
 }
 
 /**
+ * Build a content key for dedup against manually-entered existing docs.
+ * Uses (assetId, transactionType, day-of-date, quantity, price) — all fields
+ * that must agree for two records to represent the same trade.
+ */
+function contentKey(doc: {
+  assetId?: string; transactionType?: number; date?: string; quantity?: number; price?: number
+}): string {
+  return [
+    doc.assetId ?? '',
+    String(doc.transactionType ?? ''),
+    (doc.date ?? '').slice(0, 10),
+    String(doc.quantity ?? ''),
+    String(doc.price ?? ''),
+  ].join('|')
+}
+
+/**
  * Steps 1-6: read existing docs, diff, build AssetTransactionDocs.
  * Does NOT write anything to CouchDB.
  */
@@ -46,6 +63,14 @@ export async function prepareSync(
 ): Promise<PreparedSync> {
   const existing = await input.couch.listAssetTransactions(input.accountId)
   const existingIds = new Set(existing.map((d: Record<string, unknown>) => d['_id']))
+
+  // Second-pass content map: catches manually-entered docs with random _ids
+  // that share the same trade fields as our deterministic-_id docs.
+  const existingByContent = new Map<string, string>()  // contentKey → existing _id
+  for (const d of existing) {
+    existingByContent.set(contentKey(d as Parameters<typeof contentKey>[0]), d['_id'] as string)
+  }
+
   const now = new Date().toISOString()
 
   const toInsert: PreparedDoc[] = []
@@ -55,14 +80,22 @@ export async function prepareSync(
   for (const t of input.txns) {
     if (t.kind === 'fee') continue
     if (!t.exchange || !t.symbol) { needsAsset.push(t); continue }
-    const assetId = input.lookup.assetByVenueSymbol(t.exchange, t.symbol)
+    const assetId = input.lookup.assetByVenueSymbol(t.exchange, t.symbol, t.tradeCurrency)
     if (!assetId) { needsAsset.push(t); continue }
     const doc = toAssetTransactionDoc(t, {
       accountId: input.accountId, assetId,
       ownerId: input.ownerId, now, toolVersion: input.toolVersion,
     })
-    if (existingIds.has(doc._id)) alreadyPresent.push(doc._id)
-    else toInsert.push({ doc, source: t })
+    const ourKey = contentKey(doc)
+    if (existingIds.has(doc._id)) {
+      alreadyPresent.push(doc._id)
+    } else if (existingByContent.has(ourKey)) {
+      // Content-match against a manually-entered (or differently-_id'd) existing doc.
+      // Push the EXISTING _id so the preview shows what's already in Wallet.
+      alreadyPresent.push(existingByContent.get(ourKey)!)
+    } else {
+      toInsert.push({ doc, source: t })
+    }
   }
 
   return { toInsert, alreadyPresent, needsAsset, unsupported: input.unsupported, total: input.txns.length }

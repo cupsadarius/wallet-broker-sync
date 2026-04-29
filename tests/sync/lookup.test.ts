@@ -23,4 +23,23 @@ describe('LookupService', () => {
     expect(svc.assetByVenueSymbol('XETR', 'VUAA')).toBe('-StocksFundsAsset_v')
     expect(svc.assetByVenueSymbol('XETR', 'NOPE')).toBe(null)
   })
+
+  it('falls back to symbol-only when (MIC, symbol) misses', async () => {
+    const svc = new LookupService(couchOf([
+      { _id: '-StocksFundsAsset_x', reservedModelType: 'StocksFundsAsset', symbol: 'NVDA', exchangeCode: 'XNAS', currencyCode: 'USD' },
+    ]))
+    await svc.refresh()
+    expect(svc.assetByVenueSymbol('XNGS', 'NVDA')).toBe('-StocksFundsAsset_x')        // fallback to bare symbol
+    expect(svc.assetByVenueSymbol('XNGS', 'NVDA', 'USD')).toBe('-StocksFundsAsset_x') // same with currency hint
+  })
+
+  it('disambiguates by currency when multiple bare-symbol matches', async () => {
+    const svc = new LookupService(couchOf([
+      { _id: '-StocksFundsAsset_xetr', reservedModelType: 'StocksFundsAsset', symbol: 'VUAA', exchangeCode: 'XETR', currencyCode: 'EUR' },
+      { _id: '-StocksFundsAsset_xlon', reservedModelType: 'StocksFundsAsset', symbol: 'VUAA', exchangeCode: 'XLON', currencyCode: 'USD' },
+    ]))
+    await svc.refresh()
+    expect(svc.assetByVenueSymbol('XETR', 'VUAA')).toBe('-StocksFundsAsset_xetr')        // exact MIC match
+    expect(svc.assetByVenueSymbol('NOPE', 'VUAA', 'USD')).toBe('-StocksFundsAsset_xlon') // fallback + currency match
+  })
 })

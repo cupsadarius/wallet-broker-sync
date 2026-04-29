@@ -79,4 +79,33 @@ describe('runSync', () => {
       accountId: '-Account_a', ownerId: 'u', toolVersion: '1.0.0', couch, lookup })
     expect(r.inserted).toBe(0); expect(r.needsAsset).toHaveLength(1)
   })
+
+  it('content-matches manually-entered existing docs (different _id, same trade)', async () => {
+    // A manually-entered entry with a random _id but the same trade content as baseTxn.
+    // baseTxn: kind=buy → transactionType=0, date day='2026-04-28', qty=1,
+    //          pricePerShare=118.04 → price=11804
+    // The time-of-day differs to verify day-only matching works.
+    const existingManual = {
+      _id: '-AssetTransaction_manual-uuid-1',
+      reservedModelType: 'AssetTransaction',
+      accountId: '-Account_a',
+      assetId: '-StocksFundsAsset_y',
+      transactionType: 0,
+      date: '2026-04-28T15:30:00.000Z',
+      quantity: 1,
+      price: 11804,
+    }
+    const couch: any = {
+      listAssetTransactions: vi.fn(async () => [existingManual]),
+      bulkDocs: vi.fn(async () => []),
+    }
+    const lookup: any = { assetByVenueSymbol: vi.fn(() => '-StocksFundsAsset_y') }
+    const r = await runSync({
+      broker: 'xtb', txns: [baseTxn], unsupported: [],
+      accountId: '-Account_a', ownerId: 'u', toolVersion: '1.0.0', couch, lookup,
+    })
+    expect(r.inserted).toBe(0)
+    expect(r.preview.alreadyPresent).toEqual(['-AssetTransaction_manual-uuid-1'])
+    expect(couch.bulkDocs).not.toHaveBeenCalled()
+  })
 })
