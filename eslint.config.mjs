@@ -12,6 +12,10 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Project-specific: don't lint user-supplied broker exports (gitignored)
+    // or browser-saved asset folders that come with HTML "Save As" exports.
+    "sources/**",
+    "docs/superpowers/captures/**",
   ]),
 ]);
 
