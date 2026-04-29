@@ -1,6 +1,6 @@
 'use client'
 
-import { useTransition, useState } from 'react'
+import { Fragment, useTransition, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useWizard } from '@/src/ui/store'
 import { Badge } from '@/components/ui/badge'
@@ -21,6 +21,7 @@ import {
 } from '@/components/ui/table'
 import type { AssetTransactionDoc } from '@/src/sync/mapper'
 import type { CanonicalTxn } from '@/src/types'
+import JsonViewer from '@/app/components/JsonViewer'
 
 type UnsupportedRow = { row: string | number; reason: string; raw?: Record<string, unknown> }
 
@@ -62,6 +63,16 @@ export default function PreviewTable() {
   const [syncError, setSyncError] = useState<string | null>(null)
   // docId → existingDocId (user linked) or 'insert' (default)
   const [linkSelections, setLinkSelections] = useState<Record<string, string>>({})
+  // Shared expanded set across all sections — keys are namespaced
+  const [expanded, setExpanded] = useState<Set<string>>(new Set())
+
+  function toggle(key: string) {
+    setExpanded(prev => {
+      const next = new Set(prev)
+      if (next.has(key)) next.delete(key); else next.add(key)
+      return next
+    })
+  }
 
   if (!dryRun || !file || !broker) return null
 
@@ -179,6 +190,7 @@ export default function PreviewTable() {
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead className="w-6" />
                   <TableHead>Date</TableHead>
                   <TableHead>Side</TableHead>
                   <TableHead>Symbol</TableHead>
@@ -200,6 +212,8 @@ export default function PreviewTable() {
                   const otherCandidates = unmatchedExisting.filter(c => !nearCandidateIds.has(c.docId))
                   const selection = linkSelections[doc._id] ?? 'insert'
                   const isLinked = selection !== 'insert'
+                  const key = `ins-${doc._id}`
+                  const isOpen = expanded.has(key)
 
                   const formatMatchLabel = (c: NearMatch) => {
                     const sym = c.symbol ?? '?'
@@ -212,53 +226,73 @@ export default function PreviewTable() {
                   }
 
                   return (
-                    <TableRow key={doc._id} className={isLinked ? 'opacity-50 line-through text-zinc-400' : undefined}>
-                      <TableCell className="font-mono text-xs">{dateShort}</TableCell>
-                      <TableCell>
-                        <span className={doc.transactionType === 0 ? 'text-green-600 font-medium' : 'text-red-600 font-medium'}>
-                          {side}
-                        </span>
-                      </TableCell>
-                      <TableCell className="font-mono font-medium">{source.symbol ?? '—'}</TableCell>
-                      <TableCell className="text-xs">{source.exchange ?? '—'}</TableCell>
-                      <TableCell className="text-right">{doc.quantity}</TableCell>
-                      <TableCell className="text-right">
-                        {price} {doc.priceCurrencyCode}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        {total} {doc.cashAmountCurrencyCode}
-                      </TableCell>
-                      <TableCell>
-                        <select
-                          value={selection}
-                          onChange={(e: { preventDefault: () => void; target: { value: string } }) => {
-                            const val = (e as unknown as React.ChangeEvent<HTMLSelectElement>).target.value
-                            setLinkSelections(prev => ({ ...prev, [doc._id]: val }))
-                          }}
-                          className="text-xs rounded border border-input bg-background px-2 py-1 text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
-                        >
-                          <option value="insert">— Insert as new —</option>
-                          {nearCandidates.length > 0 && (
-                            <optgroup label="Most likely (same asset, side, day)">
-                              {nearCandidates.map(c => (
-                                <option key={c.docId} value={c.docId}>
-                                  {formatMatchLabel(c)}
-                                </option>
-                              ))}
-                            </optgroup>
-                          )}
-                          {otherCandidates.length > 0 && (
-                            <optgroup label="Other unmatched trades">
-                              {otherCandidates.map(c => (
-                                <option key={c.docId} value={c.docId}>
-                                  {formatMatchLabel(c)}
-                                </option>
-                              ))}
-                            </optgroup>
-                          )}
-                        </select>
-                      </TableCell>
-                    </TableRow>
+                    <Fragment key={doc._id}>
+                      <TableRow
+                        className={`cursor-pointer hover:bg-muted/50 ${isLinked ? 'opacity-50 line-through text-zinc-400' : ''}`}
+                        onClick={() => toggle(key)}
+                      >
+                        <TableCell className="w-6 text-muted-foreground select-none">{isOpen ? '▼' : '▶'}</TableCell>
+                        <TableCell className="font-mono text-xs">{dateShort}</TableCell>
+                        <TableCell>
+                          <span className={doc.transactionType === 0 ? 'text-green-600 font-medium' : 'text-red-600 font-medium'}>
+                            {side}
+                          </span>
+                        </TableCell>
+                        <TableCell className="font-mono font-medium">{source.symbol ?? '—'}</TableCell>
+                        <TableCell className="text-xs">{source.exchange ?? '—'}</TableCell>
+                        <TableCell className="text-right">{doc.quantity}</TableCell>
+                        <TableCell className="text-right">
+                          {price} {doc.priceCurrencyCode}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {total} {doc.cashAmountCurrencyCode}
+                        </TableCell>
+                        <TableCell onClick={e => e.stopPropagation()}>
+                          <select
+                            value={selection}
+                            onChange={(e: { preventDefault: () => void; target: { value: string } }) => {
+                              const val = (e as unknown as React.ChangeEvent<HTMLSelectElement>).target.value
+                              setLinkSelections(prev => ({ ...prev, [doc._id]: val }))
+                            }}
+                            className="text-xs rounded border border-input bg-background px-2 py-1 text-foreground focus:outline-none focus:ring-1 focus:ring-ring"
+                          >
+                            <option value="insert">— Insert as new —</option>
+                            {nearCandidates.length > 0 && (
+                              <optgroup label="Most likely (same asset, side, day)">
+                                {nearCandidates.map(c => (
+                                  <option key={c.docId} value={c.docId}>
+                                    {formatMatchLabel(c)}
+                                  </option>
+                                ))}
+                              </optgroup>
+                            )}
+                            {otherCandidates.length > 0 && (
+                              <optgroup label="Other unmatched trades">
+                                {otherCandidates.map(c => (
+                                  <option key={c.docId} value={c.docId}>
+                                    {formatMatchLabel(c)}
+                                  </option>
+                                ))}
+                              </optgroup>
+                            )}
+                          </select>
+                        </TableCell>
+                      </TableRow>
+                      {isOpen && (
+                        <TableRow>
+                          <TableCell colSpan={9} className="bg-muted/30 p-4 space-y-4">
+                            <div>
+                              <p className="text-xs font-semibold text-muted-foreground mb-1">Source (parsed CanonicalTxn):</p>
+                              <JsonViewer data={source} initialOpenDepth={3} />
+                            </div>
+                            <div>
+                              <p className="text-xs font-semibold text-muted-foreground mb-1">Wire doc (will be sent to CouchDB):</p>
+                              <JsonViewer data={doc} initialOpenDepth={3} />
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </Fragment>
                   )
                 })}
               </TableBody>
@@ -311,6 +345,7 @@ export default function PreviewTable() {
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead className="w-6" />
                   <TableHead>Exchange</TableHead>
                   <TableHead>Symbol</TableHead>
                   <TableHead>Description</TableHead>
@@ -320,30 +355,46 @@ export default function PreviewTable() {
               <TableBody>
                 {needsAssetUnique.map((txn) => {
                   const aliasHref = `/aliases?broker=${encodeURIComponent(broker ?? '')}&fromSymbol=${encodeURIComponent(txn.symbol ?? '')}&fromExchange=${encodeURIComponent(txn.exchange ?? '')}`
+                  const key = `asset-${txn.exchange ?? ''}:${txn.symbol ?? ''}`
+                  const isOpen = expanded.has(key)
                   return (
-                    <TableRow key={`${txn.exchange ?? ''}:${txn.symbol ?? ''}`}>
-                      <TableCell>{txn.exchange ?? '—'}</TableCell>
-                      <TableCell className="font-mono font-medium">{txn.symbol ?? '—'}</TableCell>
-                      <TableCell className="text-muted-foreground">{txn.description}</TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-3">
-                          <a
-                            href={`https://web.budgetbakers.com/investments/assets`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-primary underline underline-offset-4 text-xs"
-                          >
-                            Create →
-                          </a>
-                          <a
-                            href={aliasHref}
-                            className="text-muted-foreground underline underline-offset-4 text-xs hover:text-foreground transition-colors"
-                          >
-                            Use existing →
-                          </a>
-                        </div>
-                      </TableCell>
-                    </TableRow>
+                    <Fragment key={`${txn.exchange ?? ''}:${txn.symbol ?? ''}`}>
+                      <TableRow
+                        className="cursor-pointer hover:bg-muted/50"
+                        onClick={() => toggle(key)}
+                      >
+                        <TableCell className="w-6 text-muted-foreground select-none">{isOpen ? '▼' : '▶'}</TableCell>
+                        <TableCell>{txn.exchange ?? '—'}</TableCell>
+                        <TableCell className="font-mono font-medium">{txn.symbol ?? '—'}</TableCell>
+                        <TableCell className="text-muted-foreground">{txn.description}</TableCell>
+                        <TableCell onClick={e => e.stopPropagation()}>
+                          <div className="flex items-center gap-3">
+                            <a
+                              href={`https://web.budgetbakers.com/investments/assets`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-primary underline underline-offset-4 text-xs"
+                            >
+                              Create →
+                            </a>
+                            <a
+                              href={aliasHref}
+                              className="text-muted-foreground underline underline-offset-4 text-xs hover:text-foreground transition-colors"
+                            >
+                              Use existing →
+                            </a>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                      {isOpen && (
+                        <TableRow>
+                          <TableCell colSpan={5} className="bg-muted/30 p-4">
+                            <p className="text-xs font-semibold text-muted-foreground mb-1">CanonicalTxn:</p>
+                            <JsonViewer data={txn} initialOpenDepth={3} />
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </Fragment>
                   )
                 })}
               </TableBody>
@@ -365,6 +416,7 @@ export default function PreviewTable() {
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead className="w-6" />
                   <TableHead>Row</TableHead>
                   <TableHead>Reason</TableHead>
                   <TableHead>Raw preview</TableHead>
@@ -372,17 +424,35 @@ export default function PreviewTable() {
               </TableHeader>
               <TableBody>
                 {unsupported.map((u, i) => {
+                  const key = `unsup-${i}`
+                  const isOpen = expanded.has(key)
                   const rawPreview = u.raw
                     ? JSON.stringify(u.raw).slice(0, 50) + (JSON.stringify(u.raw).length > 50 ? '…' : '')
                     : '—'
                   return (
-                    <TableRow key={i}>
-                      <TableCell className="font-mono text-xs">{String(u.row)}</TableCell>
-                      <TableCell>{u.reason}</TableCell>
-                      <TableCell className="font-mono text-xs text-muted-foreground max-w-xs truncate">
-                        {rawPreview}
-                      </TableCell>
-                    </TableRow>
+                    <Fragment key={i}>
+                      <TableRow
+                        className="cursor-pointer hover:bg-muted/50"
+                        onClick={() => toggle(key)}
+                      >
+                        <TableCell className="w-6 text-muted-foreground select-none">{isOpen ? '▼' : '▶'}</TableCell>
+                        <TableCell className="font-mono text-xs">{String(u.row)}</TableCell>
+                        <TableCell>{u.reason}</TableCell>
+                        <TableCell className="font-mono text-xs text-muted-foreground max-w-xs truncate">
+                          {rawPreview}
+                        </TableCell>
+                      </TableRow>
+                      {isOpen && (
+                        <TableRow>
+                          <TableCell colSpan={4} className="bg-muted/30 p-4 space-y-2">
+                            <JsonViewer data={u.raw ?? {}} initialOpenDepth={3} />
+                            <p className="text-xs text-muted-foreground pt-1">
+                              <span className="font-semibold">Reason:</span> {u.reason}
+                            </p>
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </Fragment>
                   )
                 })}
               </TableBody>
