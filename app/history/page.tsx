@@ -18,12 +18,20 @@ export default async function HistoryPage() {
             Audit log of all past syncs — click a row to expand per-doc detail.
           </p>
         </div>
-        <Link
-          href="/upload"
-          className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground shadow hover:bg-primary/90 transition-colors"
-        >
-          Sync another file
-        </Link>
+        <div className="flex items-center gap-4">
+          <Link
+            href="/settings"
+            className="text-sm text-muted-foreground underline underline-offset-4 hover:text-foreground transition-colors"
+          >
+            Settings
+          </Link>
+          <Link
+            href="/upload"
+            className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground shadow hover:bg-primary/90 transition-colors"
+          >
+            Sync another file
+          </Link>
+        </div>
       </div>
       <HistoryList runs={runs} />
     </main>

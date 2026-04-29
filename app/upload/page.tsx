@@ -9,12 +9,20 @@ export default function UploadPage() {
           <h1 className="text-2xl font-semibold mb-1">Upload broker export</h1>
           <p className="text-muted-foreground">Drop your CSV (IBKR), XLSX (XTB), or PDF (Tradeville) export.</p>
         </div>
-        <Link
-          href="/history"
-          className="text-sm text-muted-foreground underline underline-offset-4 hover:text-foreground transition-colors"
-        >
-          View history
-        </Link>
+        <div className="flex items-center gap-4">
+          <Link
+            href="/history"
+            className="text-sm text-muted-foreground underline underline-offset-4 hover:text-foreground transition-colors"
+          >
+            View history
+          </Link>
+          <Link
+            href="/settings"
+            className="text-sm text-muted-foreground underline underline-offset-4 hover:text-foreground transition-colors"
+          >
+            Settings
+          </Link>
+        </div>
       </div>
       <UploadDropzone />
     </main>
