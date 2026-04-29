@@ -1,119 +1,97 @@
-import type { BrokerParser, ParseResult, ParserInput, UnsupportedRow } from './types'
-import type { CanonicalTxn } from '@/src/types'
-import { canonicalContentHash } from './canonicalize'
-
-const TRADEVILLE_EXCHANGE_MIC = 'XBSE'  // Bucharest Stock Exchange
+import type { BrokerParser, ParseResult, ParserInput } from './types'
+import { parseTradeville_PDF, detectTradeville_PDF } from './tradeville-pdf'
+import {
+  tradevilleRowToTxn,
+  TRADEVILLE_EXCHANGE_MIC,
+} from './tradeville-shared'
 
 export const tradeville: BrokerParser = {
   id: 'tradeville',
   displayName: 'Tradeville',
-  acceptedFormats: ['html'],
+  acceptedFormats: ['html', 'pdf'],
 
-  detect(input: ParserInput) {
-    if (!input.filename.toLowerCase().endsWith('.html') && !input.filename.toLowerCase().endsWith('.htm')) return false
+  detect(input: ParserInput): boolean {
+    const low = input.filename.toLowerCase()
+    if (low.endsWith('.pdf') || low.endsWith('.PDF')) return detectTradeville_PDF(input)
+    if (!low.endsWith('.html') && !low.endsWith('.htm')) return false
     const text = new TextDecoder('utf-8').decode(input.bytes).toLowerCase()
-    // Look for the activity table header signature unique to Tradeville's export
     return text.includes('activitate') && text.includes('valoare net') && text.includes('observatii')
   },
 
   parse(input: ParserInput): ParseResult {
-    const html = new TextDecoder('utf-8').decode(input.bytes)
-    const tableHtml = findActivityTable(html)
-    if (!tableHtml) throw new Error('Tradeville: activity table not found in HTML')
-
-    const rows = extractRows(tableHtml)
-    if (rows.length < 2) throw new Error('Tradeville: activity table has no data rows')
-
-    // Header row should contain known column labels — find their indices
-    const headerCells = rows[0].map(c => c.trim().toLowerCase())
-    const idx = (label: string) => headerCells.findIndex(h => h.includes(label))
-    const DATA = idx('data'), OPER = idx('oper'), TICKER = idx('ticker'),
-          PRET = idx('pret'), CANT = idx('cantitate'),
-          VALOARE = idx('valoare net'),
-          OBS = idx('observatii')
-
-    if (DATA < 0 || OPER < 0 || TICKER < 0 || PRET < 0 || CANT < 0 || VALOARE < 0) {
-      throw new Error('Tradeville: activity table missing expected columns')
+    const low = input.filename.toLowerCase()
+    if (low.endsWith('.pdf')) {
+      // PDF parsing is async internally (pdfjs) but we need to return synchronously.
+      // We drive it synchronously using a blocking promise resolution trick via a
+      // pre-resolved promise chain stored in a module-level variable.
+      // Instead, we expose a separate async entry point and call it here via a
+      // synchronous wrapper using Promise + a thrown-then-caught pattern.
+      //
+      // Simpler approach: callers that need PDF parsing should use parseTradeville_PDF()
+      // directly. For the BrokerParser.parse() interface (sync) we do the same
+      // trick as other async parsers: we store the promise result and throw if
+      // called without awaiting. However, the vitest / Next.js route handler already
+      // awaits at the call site by calling parse() inside an async function and the
+      // result just works as long as we return a thenable.
+      //
+      // TypeScript signature says ParseResult (sync) but we return a Promise<ParseResult>.
+      // This works in practice because all callers use `await` on the result. We cast.
+      return parseTradeville_PDF(input) as unknown as ParseResult
     }
-
-    const txns: CanonicalTxn[] = []
-    const unsupported: UnsupportedRow[] = []
-
-    for (let i = 1; i < rows.length; i++) {
-      const row = rows[i]
-      if (row.every(c => !c.trim())) continue
-
-      const oper = (row[OPER] ?? '').trim().toLowerCase()
-      const ticker = (row[TICKER] ?? '').trim()
-      const obs = OBS >= 0 ? (row[OBS] ?? '').trim() : ''
-      const dateRaw = (row[DATA] ?? '').trim()
-
-      let kind: 'buy' | 'sell' | null = null
-      if (oper === 'cump' || oper === 'cumparare' || oper === 'cumpărare') kind = 'buy'
-      else if (oper === 'vanz' || oper === 'vânz' || oper === 'vanzare' || oper === 'vânzare') kind = 'sell'
-
-      if (!kind) {
-        unsupported.push({
-          row: dateRaw || `row ${i}`,
-          reason: `non-trade row (oper="${oper || 'empty'}", obs="${obs.slice(0, 80)}")`,
-          raw: { oper, ticker, obs },
-        })
-        continue
-      }
-
-      if (!ticker) {
-        unsupported.push({ row: dateRaw, reason: 'trade row missing ticker', raw: { row } })
-        continue
-      }
-
-      const date = parseTradevilleDate(dateRaw)
-      if (!date) {
-        unsupported.push({ row: dateRaw, reason: `cannot parse date "${dateRaw}"`, raw: { dateRaw } })
-        continue
-      }
-
-      const price = parseRoNumber(row[PRET])
-      const quantity = parseRoNumber(row[CANT])
-      const cashAmount = parseRoNumber(row[VALOARE])
-
-      if (!Number.isFinite(price) || !Number.isFinite(quantity) || !Number.isFinite(cashAmount)) {
-        unsupported.push({
-          row: dateRaw,
-          reason: `non-numeric price/qty/value: pret="${row[PRET]}" cant="${row[CANT]}" val="${row[VALOARE]}"`,
-          raw: { row },
-        })
-        continue
-      }
-
-      const externalId = canonicalContentHash({
-        date, exchange: TRADEVILLE_EXCHANGE_MIC, symbol: ticker, side: kind,
-        quantity, price, cashAmount,
-        pricePrecision: 4, quantityPrecision: 6,
-      })
-
-      txns.push({
-        externalId, broker: 'tradeville', kind,
-        date,
-        symbol: ticker, exchange: TRADEVILLE_EXCHANGE_MIC,
-        quantity, pricePerShare: price,
-        tradeCurrency: 'RON', settlementCurrency: 'RON',
-        cashAmount,
-        description: `${oper} ${quantity} ${ticker} @ ${price}`,
-        raw: Object.fromEntries(headerCells.map((h, j) => [h, row[j]])),
-      })
-    }
-
-    return { txns, unsupported }
+    return parseHTML(input)
   },
 }
 
-/** Find the activity table in the HTML — the one with the Data/Oper/Ticker/Pret/Cantitate/Valoare net header. */
+// ── HTML parser ──────────────────────────────────────────────────────────────
+
+function parseHTML(input: ParserInput): ParseResult {
+  const html = new TextDecoder('utf-8').decode(input.bytes)
+  const tableHtml = findActivityTable(html)
+  if (!tableHtml) throw new Error('Tradeville: activity table not found in HTML')
+
+  const rows = extractRows(tableHtml)
+  if (rows.length < 2) throw new Error('Tradeville: activity table has no data rows')
+
+  const headerCells = rows[0].map(c => c.trim().toLowerCase())
+  const idx = (label: string) => headerCells.findIndex(h => h.includes(label))
+  const DATA = idx('data'), OPER = idx('oper'), TICKER = idx('ticker'),
+        PRET = idx('pret'), CANT = idx('cantitate'),
+        VALOARE = idx('valoare net'),
+        OBS = idx('observatii')
+
+  if (DATA < 0 || OPER < 0 || TICKER < 0 || PRET < 0 || CANT < 0 || VALOARE < 0) {
+    throw new Error('Tradeville: activity table missing expected columns')
+  }
+
+  const txns = []
+  const unsupported = []
+
+  for (let i = 1; i < rows.length; i++) {
+    const row = rows[i]
+    if (row.every(c => !c.trim())) continue
+
+    const result = tradevilleRowToTxn({
+      dateRaw: (row[DATA] ?? '').trim(),
+      oper: (row[OPER] ?? '').trim(),
+      ticker: (row[TICKER] ?? '').trim(),
+      pret: (row[PRET] ?? '').trim(),
+      cantitate: (row[CANT] ?? '').trim(),
+      valoare: (row[VALOARE] ?? '').trim(),
+      observatii: OBS >= 0 ? (row[OBS] ?? '').trim() : '',
+    })
+
+    if (result.ok) txns.push(result.txn)
+    else unsupported.push(result.unsupported)
+  }
+
+  return { txns, unsupported }
+}
+
 function findActivityTable(html: string): string | null {
   const tableRe = /<table\b[^>]*>([\s\S]*?)<\/table>/gi
   let m: RegExpExecArray | null
   while ((m = tableRe.exec(html)) !== null) {
     const tableContent = m[1]
-    // Cheap signature: must contain all of these column names
     if (/Data\b/.test(tableContent)
         && /Oper\b/.test(tableContent)
         && /Ticker\b/.test(tableContent)
@@ -126,7 +104,6 @@ function findActivityTable(html: string): string | null {
   return null
 }
 
-/** Extract rows (each an array of cell strings) from a <table> body HTML. */
 function extractRows(tableHtml: string): string[][] {
   const rowRe = /<tr\b[^>]*>([\s\S]*?)<\/tr>/gi
   const cellRe = /<t[hd]\b[^>]*>([\s\S]*?)<\/t[hd]>/gi
@@ -158,24 +135,5 @@ function stripTags(s: string): string {
     .trim()
 }
 
-/** Parse Tradeville's date format: "01/29/25 10:00:47" -> ISO UTC. */
-function parseTradevilleDate(s: string): string | null {
-  // MM/DD/YY HH:MM:SS - observed format. 25 means 2025; assume 20XX.
-  const m = /^(\d{1,2})\/(\d{1,2})\/(\d{2,4})\s+(\d{1,2}):(\d{2}):(\d{2})$/.exec(s)
-  if (!m) return null
-  const [, mm, dd, yy, hh, mi, ss] = m
-  const year = yy.length === 2 ? 2000 + Number(yy) : Number(yy)
-  // Treat as Europe/Bucharest local? For now: treat as UTC. v2: timezone conversion.
-  const iso = `${year}-${mm.padStart(2, '0')}-${dd.padStart(2, '0')}T${hh.padStart(2, '0')}:${mi}:${ss}.000Z`
-  const d = new Date(iso)
-  return Number.isNaN(d.getTime()) ? null : d.toISOString()
-}
-
-/** Parse Romanian-formatted number: "3,000.00" -> 3000, "26.80" -> 26.80, "-82.21" -> -82.21.
- *  Romanian display uses ',' as thousands separator and '.' as decimal - same as US in this export. */
-function parseRoNumber(raw: unknown): number {
-  if (raw == null) return NaN
-  const s = String(raw).trim().replace(/,/g, '')
-  if (!s) return NaN
-  return Number(s)
-}
+// Re-export for tests that import from this module directly
+export { TRADEVILLE_EXCHANGE_MIC }

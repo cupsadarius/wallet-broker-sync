@@ -12,6 +12,7 @@ function detectBroker(filename: string): BrokerId {
   if (ext === 'xlsx') return 'xtb'
   if (ext === 'csv') return 'ibkr'
   if (ext === 'html' || ext === 'htm') return 'tradeville'
+  if (ext === 'pdf') return 'tradeville'
   return 'ibkr'
 }
 
@@ -109,7 +110,7 @@ export default function UploadDropzone() {
   const brokerLabels: Record<BrokerId, string> = {
     xtb: 'XTB (.xlsx)',
     ibkr: 'IBKR / Interactive Brokers (.csv)',
-    tradeville: 'Tradeville (.html)',
+    tradeville: 'Tradeville (.html or .pdf)',
   }
 
   return (
@@ -145,7 +146,7 @@ export default function UploadDropzone() {
             <p className="text-sm font-medium text-zinc-700">
               {isDragging ? 'Release to upload' : 'Drop your file here, or click to browse'}
             </p>
-            <p className="text-xs text-zinc-500">CSV (IBKR), XLSX (XTB), HTML (Tradeville) — up to 10 MB</p>
+            <p className="text-xs text-zinc-500">CSV (IBKR), XLSX (XTB), HTML or PDF (Tradeville) — up to 10 MB</p>
           </div>
         ) : (
           <form onSubmit={handleParse} className="flex flex-col gap-5">
