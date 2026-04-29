@@ -217,7 +217,7 @@ export default function PreviewTable() {
               </TableHeader>
               <TableBody>
                 {newTxns.map(({ doc, source }) => {
-                  const side = doc.transactionType === 0 ? 'BUY' : 'SELL'
+                  const side = doc.transactionType === 0 ? 'BUY' : doc.transactionType === 1 ? 'SELL' : '?'
                   const price = (doc.price / 100).toFixed(2)
                   const total = (doc.cashAmount / 100).toFixed(2)
                   const dateShort = doc.date.slice(0, 10)
@@ -233,7 +233,7 @@ export default function PreviewTable() {
                     const sym = c.symbol ?? '?'
                     const exch = c.exchange ?? '?'
                     const cDate = c.date.slice(0, 10)
-                    const cSide = c.transactionType === 0 ? 'BUY' : 'SELL'
+                    const cSide = c.transactionType === 0 ? 'BUY' : c.transactionType === 1 ? 'SELL' : '?'
                     const cPrice = (c.price / 100).toFixed(2)
                     const currency = c.priceCurrencyCode ?? ''
                     return `${sym} ${exch} · ${cDate} · ${cSide} · ${c.quantity} @ ${currency}${cPrice}`
@@ -248,7 +248,7 @@ export default function PreviewTable() {
                         <TableCell className="w-6 text-muted-foreground select-none">{isOpen ? '▼' : '▶'}</TableCell>
                         <TableCell className="font-mono text-xs">{dateShort}</TableCell>
                         <TableCell>
-                          <span className={doc.transactionType === 0 ? 'text-green-600 font-medium' : 'text-red-600 font-medium'}>
+                          <span className={doc.transactionType === 0 ? 'text-green-600 font-medium' : doc.transactionType === 1 ? 'text-red-600 font-medium' : 'text-zinc-400 font-medium'}>
                             {side}
                           </span>
                         </TableCell>

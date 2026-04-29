@@ -18,13 +18,21 @@
  *      (date on top, time 12pt below; observations may wrap).
  *   7. Call tradevilleRowToTxn() (shared with HTML parser) for each row.
  */
-import { getDocument } from 'pdfjs-dist/legacy/build/pdf.mjs'
+import { getDocument, GlobalWorkerOptions } from 'pdfjs-dist/legacy/build/pdf.mjs'
+import * as pdfjsWorker from 'pdfjs-dist/legacy/build/pdf.worker.mjs'
 import type { ParseResult, ParserInput } from './types'
 import {
   ANCHORS, COL, COL_EDGE, ROW_Y_TOL, HEADER_BAND,
   PAGE_HEADER_Y, PAGE_FOOTER_Y, PAGE_TITLE_Y,
 } from './tradeville-layout'
 import { tradevilleRowToTxn } from './tradeville-shared'
+
+// Disable the worker — server-side everything runs on the main thread.
+// pdfjs's fake-worker path calls import(workerSrc) to load WorkerMessageHandler;
+// we pre-register it on globalThis.pdfjsWorker so that import is never attempted.
+// This avoids the "Cannot find module pdf.worker.mjs" error from Next.js bundling.
+;(globalThis as Record<string, unknown>)['pdfjsWorker'] = pdfjsWorker
+GlobalWorkerOptions.workerSrc = 'pdfjs-dist/legacy/build/pdf.worker.mjs'
 
 type TextItem = { page: number; x: number; y: number; text: string }
 

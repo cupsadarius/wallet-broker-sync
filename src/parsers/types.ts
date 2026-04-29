@@ -10,5 +10,5 @@ export interface BrokerParser {
   displayName: string
   acceptedFormats: ParserFormat[]
   detect(input: ParserInput): boolean
-  parse(input: ParserInput): ParseResult
+  parse(input: ParserInput): ParseResult | Promise<ParseResult>
 }

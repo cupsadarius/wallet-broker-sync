@@ -96,7 +96,7 @@ export async function POST(req: Request) {
     }
 
     const bytes = new Uint8Array(buf)
-    const { txns, unsupported } = parser.parse({ bytes, filename })
+    const { txns, unsupported } = await parser.parse({ bytes, filename })
 
     // Build CouchClient + LookupService
     const couch = new CouchClient({ url: couchUrl, dbName, auth: creds })

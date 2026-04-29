@@ -118,7 +118,7 @@ describe('tradeville PDF parser', () => {
   })
 
   it('tradeville.parse() dispatches PDF input to PDF parser', async () => {
-    const result = await (tradeville.parse(fixture('tradeville-2026.pdf')) as unknown as Promise<import('@/src/parsers/types').ParseResult>)
+    const result = await tradeville.parse(fixture('tradeville-2026.pdf'))
     expect(result.txns.length).toBeGreaterThan(0)
   })
 

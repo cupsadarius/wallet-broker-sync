@@ -1,5 +1,11 @@
 import { readFileSync } from 'node:fs'
-import { getDocument } from 'pdfjs-dist/legacy/build/pdf.mjs'
+import { getDocument, GlobalWorkerOptions } from 'pdfjs-dist/legacy/build/pdf.mjs'
+import * as pdfjsWorker from 'pdfjs-dist/legacy/build/pdf.worker.mjs'
+
+// Pre-register the worker on globalThis so pdfjs uses it directly without
+// trying to dynamically import a path that may not exist in the bundle.
+;(globalThis as Record<string, unknown>)['pdfjsWorker'] = pdfjsWorker
+GlobalWorkerOptions.workerSrc = 'pdfjs-dist/legacy/build/pdf.worker.mjs'
 
 async function main() {
   const path = process.argv[2]

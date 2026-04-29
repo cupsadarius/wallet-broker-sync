@@ -204,7 +204,7 @@ export async function prepareSync(
       assetId,
       symbol: meta?.symbol,
       exchange: meta?.exchangeCode,
-      transactionType: d['transactionType'] as number,
+      transactionType: Number(d['transactionType']),
       quantity: d['quantity'] as number,
       price: d['price'] as number,
       priceCurrencyCode: d['priceCurrencyCode'] as string | undefined,
@@ -226,6 +226,9 @@ export async function prepareSync(
     const candidates = (existingByDayKey.get(dayKey) ?? [])
       // Exclude docs that are ALREADY in alreadyPresent (don't suggest as link target)
       .filter(d => !alreadyPresent.includes(d['_id'] as string))
+      // Defensive: ensure transactionType matches after Number() coercion
+      // (guards against CouchDB serialization returning a string instead of a number)
+      .filter(d => Number(d['transactionType']) === p.doc.transactionType)
     if (candidates.length === 0) continue
     // Sort by quantity-closeness, then by date-closeness
     const sorted = [...candidates].sort((a, b) => {

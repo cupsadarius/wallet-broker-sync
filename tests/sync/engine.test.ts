@@ -333,4 +333,34 @@ describe('runSync', () => {
     expect(r.recordsInserted).toBe(0)
     expect(r.preview.newRecords).toHaveLength(0)
   })
+
+  it('defensive filter: string transactionType from CouchDB does not appear in nearMatches for a buy', async () => {
+    // Simulate a CouchDB doc whose transactionType was serialized as a string '1' (SELL)
+    // instead of the number 1. It shares the same assetId and date-day as baseTxn (a BUY),
+    // but should NOT appear as a near-match candidate because Number('1') !== 0 (buy).
+    const existingStringTyped = {
+      _id: '-AssetTransaction_string-type-1',
+      reservedModelType: 'AssetTransaction',
+      accountId: '-Account_a',
+      assetId: '-StocksFundsAsset_y',
+      transactionType: '1',  // string — the serialization quirk we're guarding against
+      date: '2026-04-28T09:00:00.000Z',
+      quantity: 1,
+      price: 11804,
+    }
+    const couch = makeCouchMock({
+      listAssetTransactions: vi.fn(async () => [existingStringTyped]),
+      bulkDocs: vi.fn(async () => []),
+    })
+    const lookup = makeLookupMock()
+    const r = await runSync({
+      broker: 'xtb', txns: [baseTxn], unsupported: [],
+      accountId: '-Account_a', ownerId: 'u', toolVersion: '1.0.0', couch, lookup,
+    })
+    // baseTxn is a BUY (transactionType 0); the string-typed doc is SELL ('1')
+    // It should NOT appear in nearMatches for baseTxn
+    expect(r.preview.new).toHaveLength(1)
+    const candidates = r.preview.nearMatches[r.preview.new[0].doc._id]
+    expect(candidates ?? []).toHaveLength(0)
+  })
 })

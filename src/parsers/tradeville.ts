@@ -18,25 +18,12 @@ export const tradeville: BrokerParser = {
     return text.includes('activitate') && text.includes('valoare net') && text.includes('observatii')
   },
 
-  parse(input: ParserInput): ParseResult {
+  parse(input: ParserInput): ParseResult | Promise<ParseResult> {
     const low = input.filename.toLowerCase()
     if (low.endsWith('.pdf')) {
-      // PDF parsing is async internally (pdfjs) but we need to return synchronously.
-      // We drive it synchronously using a blocking promise resolution trick via a
-      // pre-resolved promise chain stored in a module-level variable.
-      // Instead, we expose a separate async entry point and call it here via a
-      // synchronous wrapper using Promise + a thrown-then-caught pattern.
-      //
-      // Simpler approach: callers that need PDF parsing should use parseTradeville_PDF()
-      // directly. For the BrokerParser.parse() interface (sync) we do the same
-      // trick as other async parsers: we store the promise result and throw if
-      // called without awaiting. However, the vitest / Next.js route handler already
-      // awaits at the call site by calling parse() inside an async function and the
-      // result just works as long as we return a thenable.
-      //
-      // TypeScript signature says ParseResult (sync) but we return a Promise<ParseResult>.
-      // This works in practice because all callers use `await` on the result. We cast.
-      return parseTradeville_PDF(input) as unknown as ParseResult
+      // PDF parsing is async (pdfjs). The BrokerParser interface now allows
+      // returning a Promise<ParseResult>; all callers must await the result.
+      return parseTradeville_PDF(input)
     }
     return parseHTML(input)
   },
