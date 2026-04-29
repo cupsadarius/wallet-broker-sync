@@ -9,12 +9,12 @@ const fixture = (name: string) => ({
 })
 
 describe('ibkr parser', () => {
-  it('detect() accepts IBKR Activity Statement CSV', () => {
+  it('detect() accepts IBKR Activity Statement CSV', async () => {
     expect(ibkr.detect(fixture('ibkr-2026.csv'))).toBe(true)
   })
 
-  it('parses Buy rows into CanonicalTxn[]', () => {
-    const result = ibkr.parse(fixture('ibkr-2026.csv'))
+  it('parses Buy rows into CanonicalTxn[]', async () => {
+    const result = await ibkr.parse(fixture('ibkr-2026.csv'))
     expect(result.txns.length).toBeGreaterThan(0)
     const buy = result.txns.find(t => t.kind === 'buy')
     expect(buy).toBeTruthy()
@@ -30,8 +30,8 @@ describe('ibkr parser', () => {
     expect(buy!.date).toMatch(/^\d{4}-\d{2}-\d{2}T/)
   })
 
-  it('routes Forex Trade Component and Adjustment to unsupported (internal bookkeeping)', () => {
-    const result = ibkr.parse(fixture('ibkr-2026.csv'))
+  it('routes Forex Trade Component and Adjustment to unsupported (internal bookkeeping)', async () => {
+    const result = await ibkr.parse(fixture('ibkr-2026.csv'))
     const reasons = result.unsupported.map(u => u.reason)
     expect(reasons.some(r => /Forex Trade Component/i.test(r))).toBe(true)
     expect(reasons.some(r => /Adjustment/i.test(r))).toBe(true)
@@ -40,8 +40,8 @@ describe('ibkr parser', () => {
     expect(reasons.every(r => !/Foreign Tax Withholding/i.test(r))).toBe(true)
   })
 
-  it('parses Dividend rows into CanonicalTxn with kind=dividend', () => {
-    const result = ibkr.parse(fixture('ibkr-2026.csv'))
+  it('parses Dividend rows into CanonicalTxn with kind=dividend', async () => {
+    const result = await ibkr.parse(fixture('ibkr-2026.csv'))
     const dividends = result.txns.filter(t => t.kind === 'dividend')
     expect(dividends.length).toBeGreaterThan(0)
     const d = dividends[0]
@@ -54,8 +54,8 @@ describe('ibkr parser', () => {
     expect(d.date).toMatch(/^\d{4}-\d{2}-\d{2}T/)
   })
 
-  it('parses Foreign Tax Withholding rows into CanonicalTxn with kind=fee feeKind=withholding', () => {
-    const result = ibkr.parse(fixture('ibkr-2026.csv'))
+  it('parses Foreign Tax Withholding rows into CanonicalTxn with kind=fee feeKind=withholding', async () => {
+    const result = await ibkr.parse(fixture('ibkr-2026.csv'))
     const withholdings = result.txns.filter(t => t.kind === 'fee' && t.feeKind === 'withholding')
     expect(withholdings.length).toBeGreaterThan(0)
     const w = withholdings[0]
@@ -65,29 +65,29 @@ describe('ibkr parser', () => {
     expect(w.cashAmount).toBeLessThan(0)  // withholdings are outflows (negative)
   })
 
-  it('parses Other Fee rows into CanonicalTxn with kind=fee feeKind=other-fee', () => {
-    const result = ibkr.parse(fixture('ibkr-2026.csv'))
+  it('parses Other Fee rows into CanonicalTxn with kind=fee feeKind=other-fee', async () => {
+    const result = await ibkr.parse(fixture('ibkr-2026.csv'))
     const fees = result.txns.filter(t => t.kind === 'fee' && t.feeKind === 'other-fee')
     expect(fees.length).toBeGreaterThan(0)
   })
 
-  it('parses Sales Tax rows into CanonicalTxn with kind=fee feeKind=sales-tax', () => {
-    const result = ibkr.parse(fixture('ibkr-2026.csv'))
+  it('parses Sales Tax rows into CanonicalTxn with kind=fee feeKind=sales-tax', async () => {
+    const result = await ibkr.parse(fixture('ibkr-2026.csv'))
     const taxes = result.txns.filter(t => t.kind === 'fee' && t.feeKind === 'sales-tax')
     expect(taxes.length).toBeGreaterThan(0)
   })
 
-  it('counts expected dividends and fees from fixture', () => {
-    const result = ibkr.parse(fixture('ibkr-2026.csv'))
+  it('counts expected dividends and fees from fixture', async () => {
+    const result = await ibkr.parse(fixture('ibkr-2026.csv'))
     const dividends = result.txns.filter(t => t.kind === 'dividend')
     const fees = result.txns.filter(t => t.kind === 'fee')
     expect(dividends.length).toBe(10)
     expect(fees.length).toBeGreaterThanOrEqual(15)  // 12 withholdings + 6 other-fees + 3 sales-tax
   })
 
-  it('produces stable externalId hash from canonicalized fields (re-parse yields same id)', () => {
-    const a = ibkr.parse(fixture('ibkr-2026.csv'))
-    const b = ibkr.parse(fixture('ibkr-2026.csv'))
+  it('produces stable externalId hash from canonicalized fields (re-parse yields same id)', async () => {
+    const a = await ibkr.parse(fixture('ibkr-2026.csv'))
+    const b = await ibkr.parse(fixture('ibkr-2026.csv'))
     expect(a.txns.map(t => t.externalId)).toEqual(b.txns.map(t => t.externalId))
   })
 })

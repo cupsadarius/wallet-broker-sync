@@ -169,7 +169,7 @@ describe('e2e smoke against pouchdb-server', () => {
 
     const fixturePath = resolve('tests/parsers/fixtures/xtb-2026.xlsx')
     const bytes = new Uint8Array(readFileSync(fixturePath))
-    const parsed = xtb.parse({ bytes, filename: 'xtb-2026.xlsx' })
+    const parsed = await xtb.parse({ bytes, filename: 'xtb-2026.xlsx' })
 
     // Fixture has exactly 5 stock purchases (all VUAA.DE on XETR)
     expect(parsed.txns.filter(t => t.kind === 'buy' || t.kind === 'sell')).toHaveLength(5)

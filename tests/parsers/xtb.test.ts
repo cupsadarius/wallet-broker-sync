@@ -9,11 +9,11 @@ const fixture = (name: string) => ({
 })
 
 describe('xtb parser', () => {
-  it('detect() accepts xlsx', () => {
+  it('detect() accepts xlsx', async () => {
     expect(xtb.detect(fixture('xtb-2026.xlsx'))).toBe(true)
   })
-  it('parses real XTB export into CanonicalTxn[]', () => {
-    const result = xtb.parse(fixture('xtb-2026.xlsx'))
+  it('parses real XTB export into CanonicalTxn[]', async () => {
+    const result = await xtb.parse(fixture('xtb-2026.xlsx'))
     expect(result.txns.length).toBeGreaterThan(0)
     const buy = result.txns.find(t => t.kind === 'buy')
     expect(buy).toBeTruthy()
@@ -27,8 +27,8 @@ describe('xtb parser', () => {
     expect(buy!.externalId).toMatch(/^\d+$/)
     expect(buy!.date).toMatch(/^\d{4}-\d{2}-\d{2}T/)
   })
-  it('emits unsupported rows for non-stock-purchase types', () => {
-    const result = xtb.parse(fixture('xtb-2026.xlsx'))
+  it('emits unsupported rows for non-stock-purchase types', async () => {
+    const result = await xtb.parse(fixture('xtb-2026.xlsx'))
     expect(result.unsupported.some(u => /deposit|withdrawal|dividend/i.test(u.reason))).toBe(true)
   })
 })
