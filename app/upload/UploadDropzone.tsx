@@ -142,8 +142,8 @@ export default function UploadDropzone() {
   const totalBytes = files.reduce((s, f) => s + f.size, 0)
 
   return (
-    <Card className="shadow-sm">
-      <CardContent className="p-6">
+    <Card>
+      <CardContent className="p-2">
         {files.length === 0 ? (
           <div
             role="button"
@@ -154,18 +154,18 @@ export default function UploadDropzone() {
             onDragLeave={handleDragLeave}
             onDrop={handleDrop}
             className={[
-              'group flex flex-col items-center justify-center gap-3 rounded-xl border-2 border-dashed py-16 px-8 cursor-pointer transition-all',
+              'group flex flex-col items-center justify-center gap-4 rounded-sm border border-dashed py-20 px-8 cursor-pointer transition-all',
               isDragging
-                ? 'border-primary bg-accent ring-4 ring-primary/15 scale-[1.005]'
-                : 'border-border bg-muted/40 hover:border-primary/50 hover:bg-accent/50',
+                ? 'border-primary bg-primary/5 ring-2 ring-primary/30'
+                : 'border-lead/40 bg-deep-space/40 hover:border-primary/60 hover:bg-graphite/30',
             ].join(' ')}
           >
             <span
               className={[
-                'flex size-12 items-center justify-center rounded-xl transition-all',
+                'flex size-14 items-center justify-center rounded-full transition-all',
                 isDragging
-                  ? 'bg-primary text-primary-foreground shadow-md'
-                  : 'bg-card text-primary ring-1 ring-border group-hover:ring-primary/40 group-hover:text-primary group-hover:-translate-y-0.5',
+                  ? 'bg-primary text-primary-foreground'
+                  : 'bg-graphite text-foreground ring-1 ring-lead/40 group-hover:bg-primary/15 group-hover:text-primary group-hover:ring-primary/40 group-hover:-translate-y-0.5',
               ].join(' ')}
               aria-hidden
             >
@@ -175,44 +175,44 @@ export default function UploadDropzone() {
                 fill="none"
                 viewBox="0 0 24 24"
                 stroke="currentColor"
-                strokeWidth={1.8}
+                strokeWidth={1.6}
               >
                 <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75V16.5m-13.5-9L12 3m0 0l4.5 4.5M12 3v13.5" />
               </svg>
             </span>
-            <p className="text-base font-medium text-foreground">
-              {isDragging ? 'Release to upload' : 'Drop one or more files, or click to browse'}
+            <p className="font-heading text-lg font-light tracking-wide text-foreground">
+              {isDragging ? 'Release to upload' : 'Drop a file, or click to browse'}
             </p>
-            <p className="text-xs text-muted-foreground">
-              CSV (IBKR) · XLSX (XTB) · HTML or PDF (Tradeville) — up to 10 MB each
+            <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
+              CSV · XLSX · HTML · PDF — up to 10 MB
             </p>
           </div>
         ) : (
-          <form onSubmit={handleParse} className="flex flex-col gap-5">
+          <form onSubmit={handleParse} className="flex flex-col gap-6 p-4">
             {/* Files list */}
             <div
               onDragOver={handleDragOver}
               onDragLeave={handleDragLeave}
               onDrop={handleDrop}
               className={[
-                'rounded-lg border bg-muted/40 transition-colors',
-                isDragging ? 'border-primary bg-accent ring-2 ring-primary/20' : 'border-border',
+                'rounded-sm border transition-colors',
+                isDragging ? 'border-primary bg-primary/5' : 'border-lead/30 bg-deep-space/40',
               ].join(' ')}
             >
-              <ul className="divide-y divide-border">
+              <ul className="divide-y divide-lead/20">
                 {files.map((f) => {
                   const k = fileKey(f)
                   return (
-                    <li key={k} className="flex items-center gap-3 px-4 py-3">
+                    <li key={k} className="flex items-center gap-4 px-5 py-4">
                       <span
-                        className="flex size-9 shrink-0 items-center justify-center rounded-md bg-card text-primary ring-1 ring-border"
+                        className="flex size-10 shrink-0 items-center justify-center rounded-full bg-graphite text-foreground ring-1 ring-lead/40"
                         aria-hidden
                       >
                         <svg viewBox="0 0 24 24" fill="none" className="size-4" aria-hidden>
                           <path
                             d="M14 3H7a2 2 0 00-2 2v14a2 2 0 002 2h10a2 2 0 002-2V8m-5-5l5 5m-5-5v5h5"
                             stroke="currentColor"
-                            strokeWidth="1.8"
+                            strokeWidth="1.6"
                             strokeLinecap="round"
                             strokeLinejoin="round"
                           />
@@ -225,7 +225,7 @@ export default function UploadDropzone() {
                       <button
                         type="button"
                         onClick={() => removeFile(k)}
-                        className="shrink-0 text-xs text-muted-foreground hover:text-foreground transition-colors"
+                        className="shrink-0 text-xs uppercase tracking-[0.14em] text-muted-foreground hover:text-foreground transition-colors"
                         aria-label={`Remove ${f.name}`}
                       >
                         Remove
@@ -234,14 +234,14 @@ export default function UploadDropzone() {
                   )
                 })}
               </ul>
-              <div className="flex items-center justify-between gap-3 border-t border-border bg-card/50 px-4 py-2 text-xs text-muted-foreground">
+              <div className="flex items-center justify-between gap-3 border-t border-lead/20 px-5 py-3 text-xs text-muted-foreground">
                 <span>
                   {files.length} file{files.length === 1 ? '' : 's'} · {formatBytes(totalBytes)}
                 </span>
                 <button
                   type="button"
                   onClick={() => inputRef.current?.click()}
-                  className="font-medium text-primary hover:underline"
+                  className="font-medium text-primary hover:text-primary/80 transition-colors"
                 >
                   + Add more
                 </button>
@@ -249,8 +249,8 @@ export default function UploadDropzone() {
             </div>
 
             {/* Broker selector */}
-            <div className="flex flex-col gap-1.5">
-              <label htmlFor="broker-select" className="text-sm font-medium text-foreground">
+            <div className="flex flex-col gap-2">
+              <label htmlFor="broker-select" className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
                 Broker
               </label>
               <select
@@ -258,10 +258,10 @@ export default function UploadDropzone() {
                 value={broker}
                 onChange={(e) => setBroker(e.target.value as BrokerId)}
                 disabled={isLoading}
-                className="w-full rounded-md border border-input bg-card px-3 py-2 text-sm text-foreground shadow-xs focus:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-50"
+                className="w-full rounded-full border border-lead/40 bg-transparent px-5 py-2.5 text-sm text-foreground transition-colors hover:border-lead/60 focus:outline-none focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/30 disabled:opacity-50"
               >
                 {(Object.keys(brokerLabels) as BrokerId[]).map((b) => (
-                  <option key={b} value={b}>{brokerLabels[b]}</option>
+                  <option key={b} value={b} className="bg-card text-foreground">{brokerLabels[b]}</option>
                 ))}
               </select>
               <p className="text-xs text-muted-foreground">
@@ -271,7 +271,7 @@ export default function UploadDropzone() {
 
             {/* Error display */}
             {error && (
-              <div className="rounded-md border px-3 py-2 text-sm bg-red-50 border-red-200 text-red-700">
+              <div className="rounded-sm border border-destructive/40 bg-destructive/10 px-4 py-3 text-sm text-destructive">
                 {errorKind === 'not_configured' ? (
                   <>
                     CouchDB is not configured.{' '}

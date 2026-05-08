@@ -267,7 +267,7 @@ export default function PreviewTable() {
   return (
     <div className="space-y-6">
       {/* Summary bar */}
-      <div className="flex flex-wrap items-center gap-4 rounded-xl border bg-card px-5 py-4 text-sm ring-1 ring-foreground/10">
+      <div className="flex flex-wrap items-center gap-6 rounded-sm border border-lead/25 bg-card px-6 py-5 text-sm">
         <div className="flex items-center gap-2">
           <span className="text-2xl font-bold text-green-600">{newCount}</span>
           <span className="text-muted-foreground">new trades</span>
@@ -468,7 +468,7 @@ export default function PreviewTable() {
                         <TableCell className="w-6 text-muted-foreground select-none">{isOpen ? '▼' : '▶'}</TableCell>
                         <TableCell className="font-mono text-xs">{dateShort}</TableCell>
                         <TableCell>
-                          <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${isIncome ? 'bg-blue-100 text-blue-800' : 'bg-red-100 text-red-800'}`}>
+                          <span className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium ${isIncome ? 'bg-blue-500/15 text-blue-300 ring-1 ring-blue-500/30' : 'bg-red-500/15 text-red-300 ring-1 ring-red-500/30'}`}>
                             {source.kind}
                           </span>
                         </TableCell>
@@ -603,7 +603,7 @@ export default function PreviewTable() {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <span className="inline-flex h-5 w-fit shrink-0 items-center justify-center gap-1 overflow-hidden rounded-4xl px-2 py-0.5 text-xs font-medium whitespace-nowrap bg-yellow-100 text-yellow-800 border border-yellow-300">
+              <span className="inline-flex h-5 w-fit shrink-0 items-center justify-center gap-1 overflow-hidden rounded-full px-2 py-0.5 text-xs font-medium whitespace-nowrap bg-amber-500/15 text-amber-300 ring-1 ring-amber-500/30">
                 {needsAssetCount}
               </span>
               Needs asset created
@@ -789,7 +789,7 @@ export default function PreviewTable() {
               ref={popoverRef}
               role="dialog"
               style={{ position: 'fixed', top: pickerCoords.top, left: pickerCoords.left, width: 420 }}
-              className="z-50 max-h-[360px] overflow-auto rounded-lg border border-border bg-card text-card-foreground shadow-xl ring-1 ring-foreground/10"
+              className="z-50 max-h-[360px] overflow-auto rounded-sm border border-lead/40 bg-card text-card-foreground"
             >
               <div className="sticky top-0 z-10 bg-card border-b border-border px-3 py-2 flex items-center justify-between">
                 <span className="text-xs font-medium">

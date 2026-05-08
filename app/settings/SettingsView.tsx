@@ -111,7 +111,7 @@ function ConnectionSection({ connection }: { connection: ConnectionInfo }) {
             <dt className="w-28 shrink-0 text-muted-foreground">Credentials</dt>
             <dd>
               {connection.hasCreds
-                ? <Badge variant="outline" className="text-green-700 border-green-300">Configured ✓</Badge>
+                ? <Badge variant="outline" className="text-emerald-300 border-emerald-500/40 bg-emerald-500/10">Configured ✓</Badge>
                 : <Badge variant="outline" className="text-destructive border-destructive/30">Not configured</Badge>
               }
             </dd>
@@ -283,7 +283,7 @@ function AliasSection({ aliases: initial }: { aliases: Alias[] }) {
                 <select
                   value={broker}
                   onChange={e => setBroker(e.target.value as Broker)}
-                  className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                  className="flex h-11 w-full rounded-full border border-lead/40 bg-transparent px-5 py-2 text-sm text-foreground transition-colors hover:border-lead/60 focus-visible:outline-none focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/30"
                 >
                   {BROKERS.map(b => <option key={b} value={b}>{b}</option>)}
                 </select>
@@ -414,7 +414,7 @@ function RecordFallbackSection({ fallbacks }: { fallbacks: Fallback[] }) {
                   <select
                     value={broker}
                     onChange={e => setBroker(e.target.value as Broker)}
-                    className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+                    className="flex h-11 w-full rounded-full border border-lead/40 bg-transparent px-5 py-2 text-sm text-foreground transition-colors hover:border-lead/60 focus-visible:outline-none focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/30"
                   >
                     {BROKERS.map(b => <option key={b} value={b}>{b}</option>)}
                   </select>
@@ -537,14 +537,14 @@ function ManualLinksSection({ links }: { links: ManualLink[] }) {
 
 export default function SettingsView({ connection, mappings, aliases, fallbacks, links }: Props) {
   return (
-    <main className="container mx-auto max-w-3xl py-12 px-4">
-      <div className="mb-8">
-        <p className="mb-2 inline-flex items-center gap-2 rounded-full bg-accent px-3 py-1 text-xs font-medium text-accent-foreground ring-1 ring-accent-foreground/15">
+    <main className="container mx-auto max-w-3xl py-20 px-6">
+      <div className="mb-14">
+        <p className="mb-6 inline-flex items-center gap-2 rounded-full bg-ghost-blue/10 px-4 py-1.5 text-xs font-medium text-foreground/80 ring-1 ring-lead/30">
           <span className="size-1.5 rounded-full bg-primary" aria-hidden />
-          Configuration
+          <span className="uppercase tracking-[0.18em]">Configuration</span>
         </p>
-        <h1 className="text-3xl font-semibold tracking-tight">Settings</h1>
-        <p className="mt-2 text-sm text-muted-foreground">
+        <h1 className="font-heading text-5xl font-light leading-[1.1] tracking-wide text-foreground">Settings</h1>
+        <p className="mt-5 max-w-xl text-[15px] text-muted-foreground">
           Manage all persistent rules for wallet-broker-sync — connection, mappings, aliases, and overrides.
         </p>
       </div>

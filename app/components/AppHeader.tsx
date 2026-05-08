@@ -14,27 +14,28 @@ export default function AppHeader() {
   const pathname = usePathname() ?? ''
 
   return (
-    <header className="sticky top-0 z-30 w-full border-b border-border/60 bg-background/80 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-      <div className="container mx-auto max-w-5xl flex h-14 items-center justify-between px-4">
-        <Link href="/upload" className="flex items-center gap-2.5 group">
+    <header className="sticky top-0 z-30 w-full border-b border-border/40 bg-background/70 backdrop-blur-md supports-[backdrop-filter]:bg-background/50">
+      <div className="container mx-auto max-w-6xl flex h-16 items-center justify-between px-6">
+        <Link href="/upload" className="flex items-center gap-3 group">
           <span
             aria-hidden
-            className="inline-flex size-7 items-center justify-center rounded-md bg-primary text-primary-foreground shadow-sm ring-1 ring-primary/20 transition-transform group-hover:-rotate-3"
+            className="inline-flex size-8 items-center justify-center rounded-full bg-primary text-primary-foreground ring-1 ring-primary/30 transition-transform group-hover:-rotate-6"
           >
-            {/* arrow-into-vault glyph */}
             <svg viewBox="0 0 24 24" fill="none" className="size-4" aria-hidden>
               <path
                 d="M12 3v10m0 0l-4-4m4 4l4-4M5 17h14M5 21h14"
                 stroke="currentColor"
-                strokeWidth="2"
+                strokeWidth="1.6"
                 strokeLinecap="round"
                 strokeLinejoin="round"
               />
             </svg>
           </span>
           <span className="flex flex-col leading-none">
-            <span className="text-sm font-semibold tracking-tight">Wallet Sync</span>
-            <span className="text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
+            <span className="font-heading text-[15px] font-light tracking-wide text-foreground">
+              Wallet Sync
+            </span>
+            <span className="mt-1 text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
               broker → wallet
             </span>
           </span>
@@ -50,19 +51,13 @@ export default function AppHeader() {
                 key={item.href}
                 href={item.href}
                 className={cn(
-                  'relative px-3 py-1.5 text-sm rounded-md transition-colors',
+                  'relative px-5 py-2 text-sm rounded-full transition-colors',
                   active
-                    ? 'text-foreground font-medium'
-                    : 'text-muted-foreground hover:text-foreground hover:bg-muted/60',
+                    ? 'bg-ghost-blue/15 text-foreground'
+                    : 'text-muted-foreground hover:text-foreground hover:bg-graphite/60',
                 )}
               >
                 {item.label}
-                {active && (
-                  <span
-                    aria-hidden
-                    className="absolute inset-x-2 -bottom-px h-0.5 rounded-full bg-primary"
-                  />
-                )}
               </Link>
             )
           })}

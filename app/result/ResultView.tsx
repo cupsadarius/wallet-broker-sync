@@ -110,25 +110,25 @@ export default function ResultView() {
   return (
     <div className="space-y-6">
       {/* Summary hero */}
-      <div className="overflow-hidden rounded-xl bg-card ring-1 ring-foreground/10 shadow-sm">
-        <div className="px-6 pt-6 pb-5 border-b border-border/60 bg-gradient-to-br from-accent/40 to-transparent">
-          <p className="mb-2 inline-flex items-center gap-2 rounded-full bg-primary/10 px-3 py-1 text-xs font-medium text-primary ring-1 ring-primary/20">
+      <div className="overflow-hidden rounded-sm bg-card border border-lead/25">
+        <div className="px-7 pt-7 pb-6 border-b border-lead/20">
+          <p className="mb-5 inline-flex items-center gap-2 rounded-full bg-ghost-blue/10 px-4 py-1.5 text-xs font-medium text-foreground/80 ring-1 ring-lead/30">
             <span className="size-1.5 rounded-full bg-primary" aria-hidden />
-            Step 3 · Done
+            <span className="uppercase tracking-[0.18em]">Step 3 · Done</span>
           </p>
           {isNoOp ? (
             <>
-              <h1 className="text-2xl font-semibold tracking-tight">Nothing to import</h1>
-              <p className="mt-1 text-muted-foreground">
-                All <span className="font-semibold text-foreground">{totalConflicts}</span>{' '}
+              <h1 className="font-heading text-3xl font-light tracking-wide">Nothing to import</h1>
+              <p className="mt-3 text-muted-foreground">
+                All <span className="font-medium text-foreground">{totalConflicts}</span>{' '}
                 parsed entr{totalConflicts === 1 ? 'y' : 'ies'} already exist in Wallet.
                 Your data is up to date.
               </p>
             </>
           ) : (
             <>
-              <h1 className="text-2xl font-semibold tracking-tight">Sync complete</h1>
-              <p className="mt-1 text-muted-foreground">
+              <h1 className="font-heading text-3xl font-light tracking-wide">Sync complete</h1>
+              <p className="mt-3 text-muted-foreground">
                 Wrote {totalWritten} document{totalWritten === 1 ? '' : 's'} to Wallet
                 {errors.length > 0 ? `, with ${errors.length} error${errors.length === 1 ? '' : 's'}` : ''}.
               </p>
@@ -136,7 +136,7 @@ export default function ResultView() {
           )}
         </div>
         {!isNoOp && (
-          <div className="grid grid-cols-2 sm:grid-cols-4 divide-x divide-y sm:divide-y-0 divide-border/60">
+          <div className="grid grid-cols-2 sm:grid-cols-4 divide-x divide-y sm:divide-y-0 divide-lead/20">
             <Stat label="Total written" value={totalWritten} tone="emerald" emphasis />
             <Stat label="Inserted" value={inserted} tone="emerald" />
             <Stat label="Already present" value={conflict} tone="muted" />
@@ -145,7 +145,7 @@ export default function ResultView() {
         )}
         <button
           onClick={handleHistoryLink}
-          className="block w-full border-t border-border/60 px-6 py-2.5 text-left text-xs text-muted-foreground hover:bg-muted/40 hover:text-foreground transition-colors"
+          className="block w-full border-t border-lead/20 px-7 py-3 text-left text-xs uppercase tracking-[0.16em] text-muted-foreground hover:bg-graphite/40 hover:text-foreground transition-colors"
         >
           View full sync history →
         </button>
