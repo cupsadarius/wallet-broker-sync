@@ -3,7 +3,9 @@ import type { BrokerParser, ParseResult, ParserInput, UnsupportedRow } from './t
 import type { CanonicalTxn } from '@/src/types'
 import { micFromXtbSymbol } from './xtb-venues'
 
-const SHEET_CASH = 'CASH OPERATION HISTORY'
+// Pre-Nov-2026 exports use 'CASH OPERATION HISTORY'; newer ones use 'Cash Operations'.
+const CASH_SHEETS = ['CASH OPERATION HISTORY', 'CASH OPERATIONS']
+const isCashSheet = (n: string) => CASH_SHEETS.includes(n.trim().toUpperCase())
 const COMMENT_RE = /^OPEN (BUY|SELL) (\d+(?:\.\d+)?) @ (\d+(?:\.\d+)?)$/
 
 export const xtb: BrokerParser = {
@@ -17,28 +19,29 @@ export const xtb: BrokerParser = {
       const wb = XLSX.read(input.bytes, { type: 'array' })
       // Tolerate trailing/leading whitespace in sheet names — XTB has shipped variations
       // (e.g. 'PENDING ORDERS HISTORY ' with trailing space).
-      return wb.SheetNames.some(n => n.trim() === SHEET_CASH)
+      return wb.SheetNames.some(isCashSheet)
     } catch { return false }
   },
 
   parse(input: ParserInput): ParseResult {
     const wb = XLSX.read(input.bytes, { type: 'array' })
-    const sheetName = wb.SheetNames.find(n => n.trim() === SHEET_CASH)
-    if (!sheetName) throw new Error(`XTB: sheet "${SHEET_CASH}" not found`)
+    const sheetName = wb.SheetNames.find(isCashSheet)
+    if (!sheetName) throw new Error('XTB: cash operations sheet not found')
     const sheet = wb.Sheets[sheetName]
     const rows = XLSX.utils.sheet_to_json(sheet, { header: 1, raw: true }) as unknown[][]
 
     let headerRow = -1
     for (let i = 0; i < rows.length; i++) {
       const cells = rows[i].map(c => (c == null ? '' : String(c)).trim()).filter(Boolean)
-      if (cells[0] === 'ID' && cells.includes('Type') && cells.includes('Time')) { headerRow = i; break }
+      if (cells.includes('ID') && cells.includes('Type') && cells.includes('Time')) { headerRow = i; break }
     }
     if (headerRow < 0) throw new Error('XTB: header row not found')
 
     const headers = rows[headerRow].map(c => (c == null ? '' : String(c)).trim())
     const idx = (name: string) => headers.indexOf(name)
     const ID = idx('ID'), TYPE = idx('Type'), TIME = idx('Time'),
-          COMMENT = idx('Comment'), SYMBOL = idx('Symbol'), AMOUNT = idx('Amount')
+          COMMENT = idx('Comment'), AMOUNT = idx('Amount'),
+          SYMBOL = idx('Symbol') >= 0 ? idx('Symbol') : idx('Ticker')
 
     const txns: CanonicalTxn[] = []
     const unsupported: UnsupportedRow[] = []

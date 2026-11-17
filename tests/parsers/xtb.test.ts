@@ -31,4 +31,18 @@ describe('xtb parser', () => {
     const result = await xtb.parse(fixture('xtb-2026.xlsx'))
     expect(result.unsupported.some(u => /deposit|withdrawal|dividend/i.test(u.reason))).toBe(true)
   })
+
+  // Nov 2026 format: sheet "Cash Operations", ID no longer first column, Symbol -> Ticker, times in UTC.
+  it('parses the Nov 2026 export format', async () => {
+    const f = fixture('xtb-2026-11.xlsx')
+    expect(xtb.detect(f)).toBe(true)
+    const result = await xtb.parse(f)
+    const buy = result.txns.find(t => t.externalId === '1417866320')
+    expect(buy).toMatchObject({
+      kind: 'buy', symbol: 'VUAA', quantity: 1, pricePerShare: 128.25, cashAmount: -128.25,
+    })
+    expect(buy!.exchange).toBeTruthy()
+    expect(result.txns.every(t => t.kind === 'buy' || t.kind === 'sell')).toBe(true)
+    expect(result.unsupported.some(u => /Deposit/.test(u.reason))).toBe(true)
+  })
 })
