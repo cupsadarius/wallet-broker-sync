@@ -17,19 +17,36 @@ export function isConnectionManagedByEnv(): boolean {
   return envCouchConnection() !== null
 }
 
-// keytar loads only on the Keychain path, so the container never needs the native module.
-const keychain = async () => (await import('keytar')).default
+// keytar is optional and absent in the container: neither the bundler nor tsc may resolve it.
+type Keytar = {
+  getPassword(service: string, account: string): Promise<string | null>
+  setPassword(service: string, account: string, password: string): Promise<void>
+  deletePassword(service: string, account: string): Promise<boolean>
+}
+const KEYTAR = 'keytar'
+async function keychain(): Promise<Keytar | null> {
+  try {
+    return (await import(/* turbopackIgnore: true */ KEYTAR)).default
+  } catch {
+    return null
+  }
+}
+const NO_KEYCHAIN = 'Keychain unavailable: set the WALLET_COUCH_* env vars'
 
-export async function saveCouchCreds(c: CouchCreds) { await (await keychain()).setPassword(SERVICE, ACCOUNT, JSON.stringify(c)) }
+export async function saveCouchCreds(c: CouchCreds) {
+  const k = await keychain()
+  if (!k) throw new Error(NO_KEYCHAIN)
+  await k.setPassword(SERVICE, ACCOUNT, JSON.stringify(c))
+}
 
 export async function loadCouchCreds(): Promise<CouchCreds | null> {
   const env = envCouchConnection()
   if (env) return { login: env.login, token: env.token }
-  const v = await (await keychain()).getPassword(SERVICE, ACCOUNT)
+  const v = await (await keychain())?.getPassword(SERVICE, ACCOUNT)
   return v ? JSON.parse(v) : null
 }
 
-export async function deleteCouchCreds() { await (await keychain()).deletePassword(SERVICE, ACCOUNT) }
+export async function deleteCouchCreds() { await (await keychain())?.deletePassword(SERVICE, ACCOUNT) }
 
 /** Upserts config couchUrl/dbName from env. No-op without env. */
 export async function applyEnvConnection(): Promise<void> {
