@@ -26,11 +26,11 @@ function fileKey(f: File) {
   return `${f.name}:${f.size}:${f.lastModified}`
 }
 
-export default function UploadDropzone() {
+export default function UploadDropzone({ initialBroker }: { initialBroker?: BrokerId }) {
   const router = useRouter()
   const inputRef = useRef<HTMLInputElement>(null)
   const [files, setFiles] = useState<File[]>([])
-  const [broker, setBroker] = useState<BrokerId>('ibkr')
+  const [broker, setBroker] = useState<BrokerId>(initialBroker ?? 'ibkr')
   const [isDragging, setIsDragging] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -51,7 +51,7 @@ export default function UploadDropzone() {
         }
       }
       // First file picks the default broker; user can override.
-      if (prev.length === 0 && merged.length > 0) {
+      if (prev.length === 0 && merged.length > 0 && !initialBroker) {
         setBroker(detectBroker(merged[0].name))
       }
       return merged
