@@ -12,8 +12,12 @@ const TRANSFER_WINDOW_DAYS = 4
 /** The other leg of a transfer between own accounts: opposite direction, same amount and currency, within 4 days. */
 export function findTransferCounterparts(record: MirrorRecord, records: MirrorRecord[]): MirrorRecord[] {
   const days = (r: MirrorRecord) => Math.abs(Date.parse(r.recordDate) - Date.parse(record.recordDate)) / 86_400_000
+  // Wallet's bank sync marks some legs as transfers alone: their own transferId, no second leg.
+  const legs = new Map<string, number>()
+  for (const r of records) if (r.transferId) legs.set(r.transferId, (legs.get(r.transferId) ?? 0) + 1)
+  const oneSided = (r: MirrorRecord) => r.transfer && !!r.transferId && legs.get(r.transferId) === 1 && !r.isTradeFallback
   return records
-    .filter(r => reviewable(r) && r.accountId !== record.accountId && r.recordType !== record.recordType
+    .filter(r => (reviewable(r) || oneSided(r)) && r.accountId !== record.accountId && r.recordType !== record.recordType
       && Math.abs(r.amount) === Math.abs(record.amount) && r.currencyCode === record.currencyCode
       && days(r) <= TRANSFER_WINDOW_DAYS)
     .sort((a, b) => days(a) - days(b))

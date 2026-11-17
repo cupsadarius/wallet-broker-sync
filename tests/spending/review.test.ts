@@ -98,6 +98,16 @@ describe('findTransferCounterparts', () => {
     expect(findTransferCounterparts(topUp, records).map(r => r.id)).toEqual(['near', 'far', 'edge-before'])
   })
 
+  it('accepts a one-sided transfer as the other side, but not one already paired', () => {
+    const records = [
+      topUp,
+      out('one-sided', { transfer: true, transferId: 'solo', transferAccountId: 'r-joint' }),
+      out('paired', { transfer: true, transferId: 'pair' }),
+      rec({ id: 'pair-other-leg', accountId: 'savings', recordType: 0, amount: 490_000, recordDate: '2026-10-29', transfer: true, transferId: 'pair' }),
+    ]
+    expect(findTransferCounterparts(topUp, records).map(r => r.id)).toEqual(['one-sided'])
+  })
+
   it('works from the outgoing side too', () => {
     const sent = out('sent')
     expect(findTransferCounterparts(sent, [sent, topUp]).map(r => r.id)).toEqual(['topup'])
