@@ -190,3 +190,18 @@ export function planTasks(items: { plan: Plan; progress: PlanProgress }[]): Task
       action: 'Open',
     }))
 }
+
+/** Plans read off the user's own trade history; shown only while no plan exists. */
+export const SUGGESTED_PLANS = [
+  {
+    key: 'xtb-vuaa', broker: 'xtb', name: 'VUAA monthly', amount: 100, frequency: 'monthly', startDate: '2025-07-01',
+    targetSymbol: 'VUAA', wholeShares: true, status: 'active', why: '100 EUR a month into XTB since Jul 2025, whole VUAA shares',
+  },
+  {
+    key: 'tradeville-tvbetetf', broker: 'tradeville', name: 'TVBETETF weekly', amount: 200, frequency: 'weekly', startDate: '2025-01-29',
+    targetSymbol: 'TVBETETF', wholeShares: true, status: 'paused', why: '200 RON a week, about 7 TVBETETF, Jan to Mar 2025',
+  },
+] as const satisfies readonly {
+  key: string; broker: BrokerId; name: string; amount: number; frequency: RecurringPlan['frequency']; startDate: string
+  targetSymbol: string; wholeShares: boolean; status: PlanStatus; why: string
+}[]

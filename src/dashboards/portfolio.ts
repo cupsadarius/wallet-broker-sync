@@ -1,11 +1,11 @@
 import { sql } from 'drizzle-orm'
 import { db } from '@/src/storage/db'
-import { brokerAccountMap, maturity } from '@/src/storage/schema'
+import { brokerAccountMap, maturity, plan as planTable } from '@/src/storage/schema'
 import type { BrokerId } from '@/src/types'
 import {
   ensureFreshMirror, getBaseCurrency, getLastMirrorSync, withFallbackTrades, type MirrorSnapshot,
 } from './mirror'
-import { latestFx } from './prices'
+import { latestClose, latestFx, resolveYahooTicker } from './prices'
 import { computeHoldings } from './compute/holdings'
 import { valuateHoldings } from './compute/valuation'
 import { computePerformance, type CashFlow } from './compute/performance'
@@ -15,6 +15,7 @@ import { incomeKind, type IncomeKind } from './compute/income'
 import {
   accountBalances, bankTasks, dataAge, maturityTasks, uploadTasks, type Task,
 } from './compute/today'
+import { planProgress, type Plan, type PlanProgress } from './compute/plans'
 
 const PAGE_MAX_AGE_MS = 5 * 60_000
 const DAY_MS = 86_400_000
@@ -31,6 +32,48 @@ async function lastImports(): Promise<Partial<Record<BrokerId, string>>> {
     sql`SELECT broker, MAX(COALESCE(finished_at, started_at)) AS t FROM sync_run GROUP BY broker`,
   )
   return Object.fromEntries(rows.map(r => [r.broker, new Date(r.t).toISOString()]))
+}
+
+function need<T>(v: T | null, what: string): T {
+  if (v === null) throw new Error(`plan row without ${what}`)
+  return v
+}
+
+function toPlan(r: typeof planTable.$inferSelect): Plan {
+  const base = { id: r.id, name: r.name, accountId: r.accountId, startDate: r.startDate, status: r.status, targetSymbol: r.targetSymbol }
+  return r.type === 'recurring'
+    ? { ...base, type: 'recurring', amount: need(r.amount, 'amount') / 100, currency: need(r.currency, 'currency'), frequency: need(r.frequency, 'frequency'), wholeShares: r.wholeShares }
+    : { ...base, type: 'rollover', maturityId: r.maturityId, targetProduct: need(r.targetProduct, 'target product') }
+}
+
+export type PlanView = { plan: Plan; accountName: string; progress: PlanProgress }
+
+/** Every plan with its progress; archived plans come last. */
+export async function loadPlans(s: MirrorSnapshot, maturities: Maturity[], today = isoDay(new Date())): Promise<PlanView[]> {
+  const plans = (await db.select().from(planTable)).map(toPlan)
+  const brokerOf = new Map((await db.select().from(brokerAccountMap)).map(r => [r.accountId, r.broker as BrokerId]))
+  const { transactions, byAssetId } = withFallbackTrades(s)
+  const views: PlanView[] = []
+  for (const p of plans) {
+    let price: number | null = null
+    if (p.type === 'recurring' && p.targetSymbol) {
+      const symbol = p.targetSymbol.toUpperCase()
+      const held = transactions.find(t => t.accountId === p.accountId && byAssetId.get(t.assetId)?.symbol.toUpperCase() === symbol)
+      const asset = held ? byAssetId.get(held.assetId) : s.assets.find(a => a.symbol.toUpperCase() === symbol)
+      const close = asset ? await latestClose(resolveYahooTicker(asset.symbol, asset.exchangeCode) ?? symbol, today) : null
+      const fx = close ? await latestFx(close.currency, p.currency, today) : null
+      if (close && fx !== null) price = close.close * fx
+    }
+    views.push({
+      plan: p,
+      accountName: s.byAccountId.get(p.accountId)?.name ?? 'Unknown account',
+      progress: planProgress(p, {
+        broker: brokerOf.get(p.accountId) ?? null, records: s.records, transactions, byAssetId, price, today,
+        maturity: p.type === 'rollover' ? maturities.find(m => m.id === p.maturityId) ?? null : null,
+      }),
+    })
+  }
+  return views.sort((a, b) => Number(a.plan.status === 'archived') - Number(b.plan.status === 'archived') || a.plan.id - b.plan.id)
 }
 
 export async function loadTasks(s: MirrorSnapshot, maturities: Maturity[], today = isoDay(new Date())): Promise<Task[]> {

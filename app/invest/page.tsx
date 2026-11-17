@@ -1,6 +1,12 @@
 import Link from 'next/link'
 import Menu from '@/app/components/Menu'
-import { loadPerformance, loadPositions } from '@/src/dashboards/portfolio'
+import { db } from '@/src/storage/db'
+import { brokerAccountMap } from '@/src/storage/schema'
+import { ensureFreshMirror } from '@/src/dashboards/mirror'
+import { loadMaturities, loadPerformance, loadPlans, loadPositions } from '@/src/dashboards/portfolio'
+import { SUGGESTED_PLANS } from '@/src/dashboards/compute/plans'
+import { PlanTagPill } from '@/app/components/PlanBits'
+import { addSuggestedPlan, setPlanStatus } from './plans/actions'
 import { fmtAmount, fmtSigned } from '@/src/dashboards/compute/today'
 import type { Position } from '@/src/dashboards/compute/positions'
 import { cn } from '@/lib/utils'
@@ -40,7 +46,7 @@ export default async function InvestPage({ searchParams }: { searchParams: Promi
       </nav>
       {tab === 'positions' && <Positions />}
       {tab === 'performance' && <Performance />}
-      {tab === 'plans' && <p className="text-sm text-muted-foreground">Investment plans come in a later update.</p>}
+      {tab === 'plans' && <Plans />}
     </main>
   )
 }
@@ -171,4 +177,76 @@ function Stat({ label, value, sub, tone }: { label: string; value: string; sub: 
 
 function pct(v: number | null): string {
   return v === null ? '—' : `${fmtSigned(v * 100, 1)}%`
+}
+
+async function Plans() {
+  const s = await ensureFreshMirror(5 * 60_000)
+  if (!s) return <NotConfigured />
+  const views = await loadPlans(s, await loadMaturities())
+  const active = views.filter(v => v.plan.status === 'active')
+  const behind = active.filter(v => v.progress.tag === 'behind').length
+  const mapped = new Map((await db.select().from(brokerAccountMap)).map(r => [r.broker, r.accountId]))
+  const suggestions = views.length ? [] : SUGGESTED_PLANS.filter(p => mapped.has(p.broker))
+
+  return (
+    <>
+      <div className="flex items-center justify-between gap-3">
+        <p className="min-w-0 text-[13px] text-muted-foreground">
+          {views.length === 0 ? 'No plans yet.' : `${active.length} active${behind ? ` · ${behind} behind` : ''}`}
+        </p>
+        <Link href="/invest/plans" className="shrink-0 rounded-xl bg-primary px-3.5 py-2 text-sm font-bold text-primary-foreground">+ New plan</Link>
+      </div>
+
+      {views.map(({ plan: p, accountName, progress: g }) => (
+        <div key={p.id} className={cn('my-2 rounded-2xl border bg-card px-3.5 py-3', p.status === 'archived' && 'opacity-60')}>
+          <div className="flex items-baseline justify-between gap-2">
+            <span className="min-w-0 font-semibold">{p.name} <span className="font-normal text-muted-foreground">· {accountName}</span></span>
+            <PlanTagPill tag={g.tag} label={g.tag === 'behind' && g.periodsBehind ? `${g.periodsBehind} behind` : undefined} />
+          </div>
+          <div className="relative mt-2.5 mb-1.5 h-[7px] overflow-hidden rounded bg-border">
+            <b className={cn('absolute inset-y-0 left-0 rounded', p.status === 'active' ? 'bg-primary' : 'bg-[#3c4049]')} style={{ width: `${Math.round(g.ring * 100)}%` }} />
+          </div>
+          <div className="text-[13px] text-muted-foreground">{p.status === 'active' ? g.detail : g.line}</div>
+          {(g.holding || g.action) && (
+            <div className="mt-2 flex items-center justify-between gap-2">
+              <span className="min-w-0 text-[13px] text-muted-foreground">{g.holding}</span>
+              {g.action && <span className="shrink-0 rounded-lg bg-primary px-3 py-1.5 text-[13px] font-bold text-primary-foreground">{g.action}</span>}
+            </div>
+          )}
+          <div className="mt-2 flex gap-4 border-t pt-2 text-[13px]">
+            <Link href={`/invest/plans?id=${p.id}`} className="text-primary">Edit</Link>
+            {p.status === 'active' && <StatusButton id={p.id} status="paused" label="Pause" />}
+            {p.status !== 'active' && <StatusButton id={p.id} status="active" label="Resume" />}
+            {p.status !== 'archived' && <StatusButton id={p.id} status="archived" label="Archive" />}
+          </div>
+        </div>
+      ))}
+
+      {suggestions.length > 0 && (
+        <>
+          <h3 className="mt-5 mb-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Suggested from your history</h3>
+          {suggestions.map(sg => (
+            <form key={sg.key} action={addSuggestedPlan} className="my-2 flex items-center gap-3 rounded-2xl border border-dashed bg-card px-3.5 py-3">
+              <input type="hidden" name="key" value={sg.key} />
+              <div className="min-w-0">
+                <div className="font-semibold">{sg.name} {sg.status === 'paused' && <span className="text-xs font-normal text-muted-foreground">· paused</span>}</div>
+                <div className="text-[13px] text-muted-foreground">{sg.why}</div>
+              </div>
+              <button className="ml-auto shrink-0 rounded-lg border px-3 py-1.5 text-[13px] font-bold text-primary">Add</button>
+            </form>
+          ))}
+        </>
+      )}
+    </>
+  )
+}
+
+function StatusButton({ id, status, label }: { id: number; status: 'active' | 'paused' | 'archived'; label: string }) {
+  return (
+    <form action={setPlanStatus}>
+      <input type="hidden" name="id" value={id} />
+      <input type="hidden" name="status" value={status} />
+      <button className="text-primary">{label}</button>
+    </form>
+  )
 }
