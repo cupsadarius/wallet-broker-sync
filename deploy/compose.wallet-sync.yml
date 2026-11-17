@@ -19,6 +19,9 @@ services:
       # /mcp needs Authorization: Bearer <WALLET_MCP_TOKEN>; empty = /mcp answers 404
       WALLET_MCP_TOKEN: ${WALLET_MCP_TOKEN:-}
       WALLET_VAPID_SUBJECT: ${WALLET_VAPID_SUBJECT:-}
+      # The Ask tab: body-ledger's opencode service, logged in as user "opencode"
+      WALLET_OPENCODE_URL: http://opencode:4096
+      WALLET_OPENCODE_PASSWORD: ${OPENCODE_SERVER_PASSWORD:-}
 
   # body-ledger's opencode service: opencode.json reads the token as {env:WALLET_MCP_TOKEN}.
   opencode:
