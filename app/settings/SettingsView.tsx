@@ -24,6 +24,7 @@ type ConnectionInfo = {
   dbName: string | null
   loginMasked: string | null
   hasCreds: boolean
+  managedByEnv: boolean
 }
 
 type Mapping = {
@@ -124,6 +125,9 @@ function ConnectionSection({ connection }: { connection: ConnectionInfo }) {
           </div>
         </dl>
 
+        {connection.managedByEnv ? (
+          <p className="mt-5 text-sm text-muted-foreground">Managed by environment (WALLET_COUCH_*).</p>
+        ) : (
         <div className="mt-5 flex gap-3">
           <Button
             variant="destructive"
@@ -137,6 +141,7 @@ function ConnectionSection({ connection }: { connection: ConnectionInfo }) {
             <Button variant="outline" size="sm">Edit connection →</Button>
           </Link>
         </div>
+        )}
       </CardContent>
     </Card>
   )

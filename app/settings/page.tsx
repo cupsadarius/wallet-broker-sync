@@ -1,4 +1,4 @@
-import { loadCouchCreds } from '@/src/storage/credentials'
+import { loadCouchCreds, isConnectionManagedByEnv } from '@/src/storage/credentials'
 import { db } from '@/src/storage/db'
 import { config, brokerAccountMap, assetAlias, recordFallback, manualLink } from '@/src/storage/schema'
 import { getBaseCurrency, getMirrorIntervalMs } from '@/src/dashboards/mirror'
@@ -21,6 +21,7 @@ export default async function SettingsPage() {
     dbName: cfgMap['dbName'] ?? null,
     loginMasked: creds ? maskLogin(creds.login) : null,
     hasCreds: creds !== null,
+    managedByEnv: isConnectionManagedByEnv(),
   }
 
   // All rule tables
