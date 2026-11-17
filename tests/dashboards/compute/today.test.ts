@@ -13,7 +13,7 @@ function rec(p: Partial<MirrorRecord> & { id: string; recordDate: string }): Mir
   }
 }
 function acc(p: Partial<MirrorAccount> & { id: string }): MirrorAccount {
-  return { name: p.id, accountType: 2, currencyCode: 'RON', assetTypes: [], initAmount: 0, ...p }
+  return { name: p.id, accountType: 2, currencyCode: 'RON', assetTypes: [], initAmount: 0, archived: false, ...p }
 }
 
 const brokers = [{ broker: 'xtb' as const, accountId: XTB }]

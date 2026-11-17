@@ -24,6 +24,16 @@ describe('checkAccess', () => {
   it('lets /api/health through without a login', () => {
     expect(checkAccess(req({ path: '/api/health', login: null }), policy)).toBeNull()
   })
+  it('lets /mcp through without a login, from the opencode container host', () => {
+    const mcp = { ...policy, hosts: new Set([...policy.hosts, 'wallet-sync']) }
+    expect(checkAccess(req({ method: 'POST', path: '/mcp', host: 'wallet-sync:8090', login: null, contentType: 'application/json' }), mcp)).toBeNull()
+  })
+  it('still rejects /mcp on an unknown host', () => {
+    expect(checkAccess(req({ method: 'POST', path: '/mcp', host: 'wallet-sync:8090', login: null }), policy)).toMatchObject({ status: 421 })
+  })
+  it('still requires a login below /mcp', () => {
+    expect(checkAccess(req({ path: '/mcp/x', login: null }), policy)).toMatchObject({ status: 403 })
+  })
   it('allows a same-origin multipart upload', () => {
     expect(checkAccess(req({ method: 'POST', path: '/api/sync', contentType: 'multipart/form-data; boundary=x', origin: `https://${HOST}` }), policy)).toBeNull()
   })
