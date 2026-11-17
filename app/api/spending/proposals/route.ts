@@ -1,3 +1,4 @@
+import { eq } from 'drizzle-orm'
 import { readMirror } from '@/src/dashboards/mirror'
 import { db } from '@/src/storage/db'
 import { ruleProposal } from '@/src/storage/schema'
@@ -25,6 +26,8 @@ export async function POST() {
   try { proposals = parseProposals(reply, ctx) } catch { return back('invalid') }
 
   const createdAt = new Date().toISOString()
+  // A new run replaces the open proposals, so repeated runs do not stack near-copies.
+  await db.delete(ruleProposal).where(eq(ruleProposal.status, 'open'))
   for (const p of proposals) {
     await db.insert(ruleProposal)
       .values({ id: ruleId(p.name, p.keywords), name: p.name, keywords: p.keywords, categoryId: p.categoryId, createdAt })
