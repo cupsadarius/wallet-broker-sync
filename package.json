@@ -16,6 +16,8 @@
   },
   "dependencies": {
     "@base-ui/react": "^1.4.1",
+    "@json-render/core": "0.23.1",
+    "@json-render/react": "0.23.1",
     "@types/web-push": "^3.6.4",
     "better-sqlite3": "^12.9.0",
     "class-variance-authority": "^0.7.1",
