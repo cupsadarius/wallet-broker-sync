@@ -4,7 +4,7 @@ import type { Maturity } from './maturities'
 
 export type Task = {
   id: string                 // stable: a push goes out once per id
-  kind: 'upload' | 'bank' | 'maturity' | 'plan' | 'budget'
+  kind: 'upload' | 'bank' | 'maturity' | 'plan' | 'budget' | 'retirement'
   title: string
   detail: string
   href?: string

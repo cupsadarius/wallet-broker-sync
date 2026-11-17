@@ -1,0 +1,37 @@
+--- page 1
+Generat la: 03.10.2026 10:00:00
+RAPORT
+privind datele necesare determinarii stagiului de cotizare si punctajului realizat in sistemul asigurarilor de stat
+incepand cu aprilie 2001
+pentru asiguratul(a) POPESCU ION CNP 1850101123456
+Total NN DD SS Total NN DD SS Total NN DD SS NN DD SS NN DD SS
+2020 1 AB 3,000 3,000 0 0 3,000 3,000 0 0 0 0 0 0 21 0 0 0 0 0 21 8 X DA 1
+2023 1 31 0.25000 0.25000 0.00000 0.00000 5,000
+--- page 12
+Generat la: 03.10.2026 10:00:00
+DESFASURATOR ANUAL STAGII SI PUNCTAJE:
+Luni lucrate Zile lucrate Numar puncte
+Punctaj Punctaj
+An
+lunar anual
+Total Total
+normale deosebite speciale normale deosebite speciale normale deosebite speciale
+2020 10.8 0.9 12 12 0 0 0 0 0 0 10.8 0 0
+2021 19.2 1.6 12 12 0 0 0 0 0 0 19.2 0 0
+12
+--- page 13
+Luni lucrate Zile lucrate Numar puncte
+Punctaj Punctaj
+2022 30 2.5 12 12 0 0 0 0 0 0 30 0 0
+2023 30 2.5 2 2 0 0 10 10 0 0 30 0 0
+13
+--- page 14
+CENTRALIZATOR STAGII SI PUNCTAJE:
+Număr de puncte Suma punctaje
+Ani Luni Zile
+realizat lunare
+Total perioada 6 2 10 7.50000 90.00000
+6 2 10 7.50000 90.00000
+Conditii normale
+Datele au fost calculate la: 02.10.2026
+Ultima preluare D112 de la ANAF: 01.10.2026

@@ -1,0 +1,32 @@
+--- page 1
+BT Pensia Noastra SAFPAP
+str. Exemplu, Nr.1, etaj 1 Tel. +40 000 000 000 contact@example.ro
+Extras de cont Pensia Noastra
+- generat in data de 17.11.2026 -
+Numar act de aderare ABC/123456 din 02.06.2011
+POPESCU ION
+1850101123456
+STR. EXEMPLU NR. 1, ORAS
+0700000000
+VUAN la data Nr unitati de fond
+Data alocare Contributie Contributie
+Tip Operatiune Comision contributiei alocate la data Valoare sold
+contributie bruta neta
+(RON) contributiei
+Alocare contributie 15.06.2011 100,00 2,50 97,50 12,100000 8,057851 97,50
+Alocare contributie 15.07.2011 100,00 2,50 97,50 12,200000 7,991803 195,90
+Alocare contributie 16.08.2011 50,00 0,00 50,00 12,150000 4,115226 246,10
+--- page 2
+BT Pensia Noastra SAFPAP
+Alocare contributie 15.09.2011 50,00 0,00 50,00 12,050000 4,149378 294,20
+Corectie alocare 03.10.2011 0,00 0,00 0,00 0,000000 -0,000048 0,00
+Alocare contributie 17.10.2011 100,00 0,00 100,00 12,180000 8,210181 397,80
+Alocare contributie 15.11.2011 1.000,00 0,00 1.000,00 12,120000 82,508251 1.394,60
+Informatii la 30.09.2026
+--- page 3
+BT Pensia Noastra SAFPAP
+Valoare unitate fond 14,800000
+Total numar unitati de fond 78,218400
+Valoare totala contributii brute 1400,00
+Valoare cont 1650,40
+Total numar contributii alocate 6

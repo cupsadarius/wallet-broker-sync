@@ -6,6 +6,9 @@ import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { useWizard } from '@/src/ui/store'
 import type { BrokerId } from '@/src/types'
+import Link from 'next/link'
+import { PROVIDER_NAME, type Provider } from '@/src/retirement/types'
+import type { RetirementUploadResult } from '@/app/api/retirement/upload/route'
 
 function detectBroker(filename: string): BrokerId {
   const ext = filename.split('.').pop()?.toLowerCase()
@@ -35,6 +38,8 @@ export default function UploadDropzone({ initialBroker }: { initialBroker?: Brok
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [errorKind, setErrorKind] = useState<'not_configured' | 'too_large' | 'other' | null>(null)
+  const [retirement, setRetirement] = useState<RetirementUploadResult[]>([])
+  const [checked, setChecked] = useState<Set<string>>(new Set())
 
   function addFiles(picked: File[]) {
     if (picked.length === 0) return
@@ -94,8 +99,28 @@ export default function UploadDropzone({ initialBroker }: { initialBroker?: Brok
     setErrorKind(null)
 
     try {
+      // Pension and policy PDFs save at once; whatever is left goes through the broker preview.
+      const pdfs = files.filter(f => f.name.toLowerCase().endsWith('.pdf') && !checked.has(fileKey(f)))
+      let remaining = files
+      if (pdfs.length > 0) {
+        const form = new FormData()
+        for (const f of pdfs) form.append('file', f)
+        const res = await fetch('/api/retirement/upload', { method: 'POST', body: form })
+        const { results } = (await res.json()) as { results: RetirementUploadResult[] }
+        const handled = new Set(results.filter(r => r.status !== 'unsupported').map(r => r.file))
+        // Remember only PDFs that are not retirement statements, so a handled file re-added later is read again.
+        setChecked(prev => new Set([...prev, ...pdfs.filter(f => !handled.has(f.name)).map(fileKey)]))
+        if (handled.size > 0) {
+          remaining = files.filter(f => !handled.has(f.name))
+          setRetirement(prev => [...prev, ...results.filter(r => handled.has(r.file))])
+          setFiles(remaining)
+          return
+        }
+      }
+      if (remaining.length === 0) return
+
       const form = new FormData()
-      for (const f of files) form.append('file', f)
+      for (const f of remaining) form.append('file', f)
       form.append('broker', broker)
 
       const res = await fetch('/api/sync?dryRun=true', {
@@ -123,7 +148,7 @@ export default function UploadDropzone({ initialBroker }: { initialBroker?: Brok
         return
       }
 
-      useWizard.getState().set({ files, broker, dryRun: data })
+      useWizard.getState().set({ files: remaining, broker, dryRun: data })
       router.push('/preview')
     } catch (err) {
       setErrorKind('other')
@@ -144,6 +169,23 @@ export default function UploadDropzone({ initialBroker }: { initialBroker?: Brok
   return (
     <Card>
       <CardContent className="p-2">
+        {retirement.length > 0 && (
+          <div className="mb-2 rounded-sm border border-lead/30 px-4 py-3 text-sm">
+            <ul className="space-y-1">
+              {retirement.map(r => (
+                <li key={r.file} className="flex justify-between gap-3">
+                  <span className="min-w-0 truncate">
+                    {r.status === 'failed' ? r.file : `${PROVIDER_NAME[r.provider as Provider] ?? r.provider} · ${r.asOf}`}
+                  </span>
+                  <span className={r.status === 'failed' ? 'min-w-0 text-right text-destructive' : 'shrink-0 text-muted-foreground'}>
+                    {r.status === 'saved' ? 'Saved' : r.status === 'duplicate' ? 'Already uploaded' : `Not saved: ${r.error}`}
+                  </span>
+                </li>
+              ))}
+            </ul>
+            <Link href="/invest/retirement" className="mt-2 inline-block text-primary">Open Retirement ›</Link>
+          </div>
+        )}
         {files.length === 0 ? (
           <div
             role="button"
@@ -297,7 +339,7 @@ export default function UploadDropzone({ initialBroker }: { initialBroker?: Brok
                     Parsing…
                   </span>
                 ) : (
-                  files.length > 1 ? `Parse ${files.length} files` : 'Parse'
+                  retirement.length > 0 ? `Continue with ${files.length} broker file${files.length === 1 ? '' : 's'}` : files.length > 1 ? `Parse ${files.length} files` : 'Parse'
                 )}
               </Button>
               <Button

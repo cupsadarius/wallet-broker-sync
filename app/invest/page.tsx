@@ -3,7 +3,7 @@ import Menu from '@/app/components/Menu'
 import { db } from '@/src/storage/db'
 import { brokerAccountMap } from '@/src/storage/schema'
 import { ensureFreshMirror } from '@/src/dashboards/mirror'
-import { loadInvestCards, loadMaturities, loadPerformance, loadPlans, loadPositions } from '@/src/dashboards/portfolio'
+import { loadInvestCards, loadMaturities, loadNetWorthSplit, loadPerformance, loadPlans, loadPositions } from '@/src/dashboards/portfolio'
 import { SUGGESTED_PLANS } from '@/src/dashboards/compute/plans'
 import { PlanTagPill } from '@/app/components/PlanBits'
 import { addSuggestedPlan, setPlanStatus } from './plans/actions'
@@ -22,6 +22,7 @@ type Tab = (typeof TABS)[number]['id']
 const MENU = [
   { href: '/upload', label: 'Upload statement' },
   { href: '/invest/maturities', label: 'Deposits and bonds' },
+  { href: '/invest/retirement', label: 'Retirement' },
 ]
 
 export default async function InvestPage({ searchParams }: { searchParams: Promise<{ tab?: string }> }) {
@@ -33,6 +34,7 @@ export default async function InvestPage({ searchParams }: { searchParams: Promi
         <h1 className="text-2xl font-semibold">Invest</h1>
         <Menu items={MENU} label="Invest menu" />
       </div>
+      <NetWorthSplit />
       <InsightCards />
       <nav className="my-3 flex rounded-xl border bg-card p-[3px]">
         {TABS.map(t => (
@@ -49,6 +51,18 @@ export default async function InvestPage({ searchParams }: { searchParams: Promi
       {tab === 'performance' && <Performance />}
       {tab === 'plans' && <Plans />}
     </main>
+  )
+}
+
+async function NetWorthSplit() {
+  const d = await loadNetWorthSplit()
+  if (!d || d.locked === 0) return null
+  return (
+    <Link href="/invest/retirement" className="mt-2 grid grid-cols-3 gap-2 rounded-[14px] border bg-card px-3.5 py-2.5 text-xs text-muted-foreground">
+      <div>Available<b className="block text-sm text-foreground tabular-nums">{fmtAmount(d.available, d.base)}</b></div>
+      <div>Locked<b className="block text-sm text-foreground tabular-nums">{fmtAmount(d.locked, d.base)}</b></div>
+      <div>Net worth<b className="block text-sm text-foreground tabular-nums">{fmtAmount(d.total, d.base)}</b></div>
+    </Link>
   )
 }
 

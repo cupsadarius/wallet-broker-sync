@@ -1,4 +1,6 @@
 import { sql } from 'drizzle-orm'
+import { loadRetirement } from '@/src/retirement/load'
+import { retirementTasks } from '@/src/retirement/compute'
 import { db } from '@/src/storage/db'
 import { brokerAccountMap, maturity, plan as planTable } from '@/src/storage/schema'
 import type { BrokerId } from '@/src/types'
@@ -88,6 +90,7 @@ export async function loadTasks(s: MirrorSnapshot, maturities: Maturity[], today
     ...maturityTasks(maturities, today),
     ...bankTasks(s.accounts, s.records),
     ...budgetTasks((await loadInsights(s, 0)).budgets.map(v => v.status)),
+    ...retirementTasks(await loadRetirement(today)),
   ]
 }
 
@@ -120,7 +123,9 @@ export async function loadToday() {
   const now = new Date()
   const today = isoDay(now)
   const monthAgo = isoDay(new Date(now.getTime() - 30 * DAY_MS))
-  const [base, maturities, lastSync] = await Promise.all([getBaseCurrency(), loadMaturities(), getLastMirrorSync()])
+  const [base, maturities, lastSync, retirement] = await Promise.all([
+    getBaseCurrency(), loadMaturities(), getLastMirrorSync(), loadRetirement(today),
+  ])
 
   const [inv, invThen, cash, cashThen] = await Promise.all([
     portfolioAt(s, base, today, maturities),
@@ -128,13 +133,16 @@ export async function loadToday() {
     cashAt(s, base, today),
     cashAt(s, base, monthAgo),
   ])
-  const netWorth = inv.investedBase + cash.totalBase
-  const netWorthThen = invThen.investedBase + cashThen.totalBase
+  // Released retirement money is available; it counts on both dates so the 30-day change does not jump.
+  const released = retirement.available / 100
+  const netWorth = inv.investedBase + cash.totalBase + released
+  const netWorthThen = invThen.investedBase + cashThen.totalBase + released
   const pricesAsOf = db.all<{ d: string | null }>(sql`SELECT MAX(date) AS d FROM price_history`)[0]?.d ?? null
 
   return {
     base,
     netWorth,
+    retirementLocked: retirement.locked / 100,
     change30dPct: netWorthThen > 0 ? ((netWorth - netWorthThen) / netWorthThen) * 100 : null,
     invested: { value: inv.investedBase, gain: inv.investedBase - inv.costBase, cost: inv.costBase },
     cash: { total: cash.totalBase, top: cash.accounts[0] ?? null },
@@ -146,6 +154,18 @@ export async function loadToday() {
       pricesAsOf, mirrorAsOf: lastSync?.toISOString() ?? null, now,
     }),
   }
+}
+
+/** Today's net worth split into money you can use and retirement money still locked, in the base currency. */
+export async function loadNetWorthSplit() {
+  const s = await ensureFreshMirror(PAGE_MAX_AGE_MS)
+  if (!s) return null
+  const today = isoDay(new Date())
+  const [base, maturities, retirement] = await Promise.all([getBaseCurrency(), loadMaturities(), loadRetirement(today)])
+  const [inv, cash] = await Promise.all([portfolioAt(s, base, today, maturities), cashAt(s, base, today)])
+  const available = inv.investedBase + cash.totalBase + retirement.available / 100
+  const locked = retirement.locked / 100
+  return { base, available, locked, total: available + locked }
 }
 
 export async function loadPositions() {

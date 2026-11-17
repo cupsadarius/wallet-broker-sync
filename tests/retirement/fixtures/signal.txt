@@ -1,0 +1,29 @@
+--- page 1
+Valoarea contului pentru produsul 101 Invest
+(Asigurarea de viaţă cu componentă investiţională)
+Poliţa de asigurare nr. 1000001/4
+Oferta de asigurare nr. UL-000001
+Date de identificare
+Contractantul asigurării Popescu Ion
+Asigurător S.C. SIGNAL IDUNA ASIGURARE REASIGURARE S.A
+Fonduri de investiţii prima de bază
+Fonduri de investiţii Unităţi EURO
+Example Bond Fund (R Class) 0,5000 100,00
+Example Equity Fund 999,5000 2.300,00
+Valoarea contului 1.000,0000 2.400,00
+Fonduri de investiţii Top up
+Valoarea contului 0 0
+Valoarea totală a conturilor (primă de bază, Top-Up) la data de 14.07.2026 1.000,0000 2.400,00
+Prime încasate
+Total prime încasate 2.000,14 EURO
+Prime cont suspensie (prime achitate în avans şi nealocate pe contract) 0 EURO
+Costuri aferente poliţei
+Componenta de protecţie anuală / conform frecvenţei de plată 1,10 / 0,28 EURO
+Cost de emitere a poliţei 5,00 EURO
+Cost de colectare a primelor 2,50 EURO
+Cost aferent taxelor de reglementare 10,00 EURO
+Cost de administrare a poliţei 20,00 EURO
+SIGNAL IDUNA ASIGURARE REASIGURARE S.A. – Str. Exemplu, Nr. 1, Bucureşti
+--- page 2
+Cost iniţial de investiţie 50,00 EURO
+Valoarea contului pentru produsul 101 Invest (Asigurarea de viaţă legată de fonduri de investiţii) Pagină 2 din 2

@@ -1,0 +1,15 @@
+--- page 1
+BT Pensii SAFPF SA
+str. Exemplu, Nr.2, etaj 5 Tel. +40 000 000 001 contact@example.ro
+Extras de cont Pensia Mea
+- generat in data de 17.11.2026 -
+Numar act de aderare 1234567 din 05.02.2021
+POPESCU ION
+1850101123456
+Alocare contributie 10.03.2021 120,00 0,00 120,00 21,000000 5,714286 120,00
+Alocare contributie 12.04.2021 120,00 0,00 120,00 21,300000 5,633803 241,10
+Alocare contributie 11.05.2021 120,00 0,00 120,00 21,900000 5,479452 368,40
+Informatii la 30.09.2026
+Valoare unitate fond 23,000000
+Valoare totala contributii brute 360,00
+Valoare cont 391,20

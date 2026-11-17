@@ -1,7 +1,9 @@
 import { z } from 'zod'
 import { desc, sql } from 'drizzle-orm'
 import { db } from '@/src/storage/db'
-import { brokerAccountMap, weeklyNote } from '@/src/storage/schema'
+import { brokerAccountMap, retirementContribution, retirementStatement, weeklyNote } from '@/src/storage/schema'
+import { loadRetirement } from '@/src/retirement/load'
+import { PROVIDER_NAME } from '@/src/retirement/types'
 import { readMirror, getBaseCurrency, getLastMirrorSync, isMirrorStale, type MirrorRecord } from '@/src/dashboards/mirror'
 import { latestFx, resolveYahooTicker } from '@/src/dashboards/prices'
 import { computeHoldings } from '@/src/dashboards/compute/holdings'
@@ -214,11 +216,59 @@ export const TOOLS: McpTool[] = [
       const nw = await computeNetWorth({
         baseCurrency: base, accounts: snap.accounts, txns: snap.transactions, records: snap.records, byAssetId: snap.byAssetId,
       })
+      const r = await loadRetirement(today())
+      const available = (nw.series[nw.series.length - 1]?.totalBase ?? 0) + r.available / 100
       return {
         currency: base,
+        // Today split: retirement money before its release date is locked; released accounts count as available.
+        today: { available: money(available), locked: money(r.locked / 100), total: money(available + r.locked / 100) },
         series: nw.series
           .filter(p => (!args.from || p.date >= args.from) && (!args.to || p.date <= args.to))
           .map(p => ({ date: p.date, cash: money(p.cashBase), investments: money(p.investmentBase), total: money(p.totalBase) })),
+      }
+    },
+  }),
+
+  tool({
+    name: 'retirement',
+    description: 'Retirement accounts from uploaded statements: Pilon 2 and Pilon 3 pension funds and unit-linked policies, '
+      + 'each with value, amount paid in, gain, fees, yearly return (with its basis) and release date; totals locked until '
+      + 'retirement and already released, in the base currency; and Pilon 1 (state pension): contribution period, points '
+      + 'and a rough monthly pension. includeHistory adds every stored statement and contribution.',
+    input: z.object({ includeHistory: z.boolean().default(false) }),
+    async run(args) {
+      const s = await loadRetirement(today())
+      const units = (n: number | null) => (n === null ? null : money(n / 100))
+      const [statements, contributions] = args.includeHistory
+        ? await Promise.all([db.select().from(retirementStatement), db.select().from(retirementContribution)])
+        : [[], []]
+      const name = (id: string) => s.accounts.find(a => a.id === id)
+      return {
+        currency: s.base, locked: units(s.locked), available: units(s.available),
+        unconverted: s.unconverted.map(id => `${PROVIDER_NAME[name(id)!.provider]} ${name(id)!.product}`),
+        accounts: s.accounts.map(a => {
+          const own = contributions.filter(c => c.accountId === a.id).sort((x, y) => x.date.localeCompare(y.date))
+          return {
+            kind: a.kind, provider: a.provider, product: a.product, contract: `****${a.contract.slice(-4)}`,
+            currency: a.currency, asOf: a.asOf, stale: a.stale,
+            value: units(a.value), valueRon: units(a.valueBase), paidIn: units(a.paidIn), gain: units(a.gain),
+            gainPct: pct(a.gainPct), fees: units(a.fees),
+            yearlyReturn: a.yearly ? { rate: pct(a.yearly.rate), basis: a.yearly.basis, since: a.yearly.since } : null,
+            releaseDate: a.releaseDate, locked: a.locked,
+            ...(args.includeHistory ? {
+              history: {
+                statements: statements.filter(x => x.accountId === a.id).sort((x, y) => x.asOf.localeCompare(y.asOf))
+                  .map(x => ({ asOf: x.asOf, value: units(x.value), paidIn: units(x.paidIn), fees: units(x.fees) })),
+                ...(own.length ? { contributions: own.map(c => ({ date: c.date, gross: units(c.gross), fee: units(c.fee) })) } : {}),
+              },
+            } : {}),
+          }
+        }),
+        pilon1: s.pilon1 && {
+          asOf: s.pilon1.asOf, stale: s.pilon1.stale, period: s.pilon1.period, points: s.pilon1.points,
+          pointsThisYear: s.pilon1.pointsThisYear, pointsByYear: s.pilon1.pointsByYear,
+          pointValueRon: units(s.pilon1.vpr), roughMonthlyPensionRon: units(s.pilon1.pensionEstimate),
+        },
       }
     },
   }),

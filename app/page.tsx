@@ -32,6 +32,11 @@ export default async function TodayPage() {
           <div className="text-3xl font-bold tracking-tight">
             {t.netWorth.toLocaleString('en-US', { maximumFractionDigits: 0 })}<span className="ml-1 text-[15px] font-normal text-muted-foreground">{base}</span>
           </div>
+          {t.retirementLocked > 0 && (
+            <Link href="/invest/retirement" className="text-xs text-muted-foreground">
+              + {fmtAmount(t.retirementLocked, base)} locked until retirement ›
+            </Link>
+          )}
         </div>
         {t.change30dPct !== null && (
           <div className={cn('shrink-0 font-semibold', t.change30dPct >= 0 ? 'text-up' : 'text-down')}>

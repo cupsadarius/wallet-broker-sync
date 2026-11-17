@@ -1,0 +1,28 @@
+--- page 1
+Infoline: 0210000000 ( toate retelele, tarif normal )
+Brokerul dumneavoastra:
+EXEMPLU BROKER DE ASIGURARE SRL
+Polita dvs. nr. ULT0000001234
+Data: 03-09-2026
+Pagina: 1/2
+Scrisoare de Raport Cont
+Stimate client,
+Dorim sa va multumim pentru investitia de încredere si alegerea Allianz-Tiriac Asigurari.
+Produsul de tip unit-linked DINAMIC INVEST reprezinta o solutie financiara pe termen lung.
+Asigurator, Allianz-Tiriac Asigurari S.A.
+--- page 2
+Anexa la Scrisoarea raport cont
+Polita dvs. nr. ULT0000001234
+Investitie, la data 01-09-2026 :
+Leu Forte 100%
+ULT07 300,0000 400,0000 0,0000 71,4286 50.000,00
+TOTAL 50.000,00
+Prime:
+Total sume destinate investirii pâna la 03-09-2026: 40.000,00 RON
+Prima contractuala trimestriala: 300,00 RON
+Detalierea taxelor deduse pâna la 03-09-2026 :
+Taxa de asigurare: 300,00 RON
+Taxe deduse din sumele destinate investirii
+Taxa de alocare: 800,00 RON
+Taxe deduse prin anulare de unitati
+Taxa de recuperare a cheltuielilor initiale: 1.900,00 RON

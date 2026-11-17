@@ -11,7 +11,7 @@ vi.mock('@/src/storage/db', async () => {
 vi.mock('@/src/storage/credentials', () => ({ loadCouchCreds: async () => ({ login: 'u', token: 't' }) }))
 
 import { db } from '@/src/storage/db'
-import { config, couchDocCache, maturity, plan, weeklyNote } from '@/src/storage/schema'
+import { config, couchDocCache, fxHistory, maturity, plan, retirementAccount, retirementContribution, retirementStatement, weeklyNote } from '@/src/storage/schema'
 import { scopeFor } from '@/src/sync/couch-cache'
 import { handleMcp } from '@/src/mcp/http'
 
@@ -160,5 +160,49 @@ describe('tools/call', () => {
   it('returns a JSON-RPC error for an unknown tool', async () => {
     const res = await post({ jsonrpc: '2.0', id: 3, method: 'tools/call', params: { name: 'nope' } })
     expect((await res.json()).error.code).toBe(-32602)
+  })
+})
+
+describe('retirement', () => {
+  beforeAll(async () => {
+    await db.insert(fxHistory).values({ base: 'EUR', quote: 'RON', date: '2026-01-01', rate: 5_000_000 })
+    await db.insert(retirementAccount).values([
+      { id: 'bt-pensia-noastra:ABC/1234567', kind: 'pilon2', provider: 'bt-pensia-noastra', product: 'Pensia Noastră', contract: 'ABC/1234567', currency: 'RON', releaseDate: '2050-01-01', createdAt: '2026-11-01T00:00:00Z' },
+      { id: 'signal-iduna:1000001/4', kind: 'unit-linked', provider: 'signal-iduna', product: '101 Invest', contract: '1000001/4', currency: 'EUR', releaseDate: null, createdAt: '2026-11-01T00:00:00Z' },
+    ])
+    await db.insert(retirementStatement).values([
+      { accountId: 'bt-pensia-noastra:ABC/1234567', asOf: '2026-09-30', value: 165040, paidIn: 140000, fees: 500, fileHash: 'a', uploadedAt: '2026-11-17T00:00:00Z' },
+      { accountId: 'signal-iduna:1000001/4', asOf: '2026-07-14', value: 240000, paidIn: 200014, fees: 1000, fileHash: 'b', uploadedAt: '2026-11-17T00:00:00Z' },
+    ])
+    await db.insert(retirementContribution).values([
+      { accountId: 'bt-pensia-noastra:ABC/1234567', date: '2011-06-15', gross: 100000, fee: 500 },
+      { accountId: 'bt-pensia-noastra:ABC/1234567', date: '2012-06-15', gross: 40000, fee: 0 },
+    ])
+  })
+
+  it('returns every account with its value in RON and a masked contract', async () => {
+    const { data } = await call('retirement')
+    expect(data).toMatchObject({ currency: 'RON', locked: 13650.4, available: 0, unconverted: [] })
+    const signal = data.accounts.find((a: { provider: string }) => a.provider === 'signal-iduna')
+    expect(signal).toMatchObject({ contract: '****01/4', currency: 'EUR', value: 2400, valueRon: 12000, paidIn: 2000.14, locked: true, yearlyReturn: null })
+    const bt = data.accounts.find((a: { provider: string }) => a.provider === 'bt-pensia-noastra')
+    expect(bt).toMatchObject({ contract: '****4567', releaseDate: '2050-01-01', yearlyReturn: { basis: 'contributions', since: '2011-06-15' } })
+    expect(bt.history).toBeUndefined()
+    expect(JSON.stringify(data)).not.toContain('ABC/1234567')
+  })
+
+  it('adds the statements and contributions with includeHistory', async () => {
+    const { data } = await call('retirement', { includeHistory: true })
+    const bt = data.accounts.find((a: { provider: string }) => a.provider === 'bt-pensia-noastra')
+    expect(bt.history).toEqual({
+      statements: [{ asOf: '2026-09-30', value: 1650.4, paidIn: 1400, fees: 5 }],
+      contributions: [{ date: '2011-06-15', gross: 1000, fee: 5 }, { date: '2012-06-15', gross: 400, fee: 0 }],
+    })
+  })
+
+  it('net_worth splits today into available and locked', async () => {
+    const { data } = await call('net_worth')
+    expect(data.today.locked).toBe(13650.4)
+    expect(data.today.total).toBeCloseTo(data.today.available + 13650.4, 2)
   })
 })

@@ -192,3 +192,43 @@ export const weeklyNote = sqliteTable('weekly_note', {
   problem: text('problem'),
   createdAt: text('created_at').notNull(),
 })
+
+// Retirement accounts read from provider statements (Pilon 1/2/3, unit-linked). Money is int*100 in the
+// account currency; a Pilon 1 statement has no money and keeps its period and points in `details`.
+export const retirementAccount = sqliteTable('retirement_account', {
+  id: text('id').primaryKey(),
+  kind: text('kind', { enum: ['pilon1', 'pilon2', 'pilon3', 'unit-linked'] }).notNull(),
+  provider: text('provider').notNull(),
+  product: text('product').notNull(),
+  contract: text('contract').notNull(),
+  currency: text('currency').notNull(),
+  releaseDate: text('release_date'),
+  createdAt: text('created_at').notNull(),
+})
+
+export type Pilon1Details = {
+  period: { years: number; months: number; days: number }
+  points: number
+  pointsByYear: { year: number; points: number }[]
+}
+
+export const retirementStatement = sqliteTable('retirement_statement', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  accountId: text('account_id').notNull(),
+  asOf: text('as_of').notNull(),
+  value: integer('value'),
+  paidIn: integer('paid_in'),
+  fees: integer('fees'),
+  details: text('details', { mode: 'json' }).$type<Pilon1Details>(),
+  fileHash: text('file_hash').notNull(),
+  uploadedAt: text('uploaded_at').notNull(),
+})
+
+export const retirementContribution = sqliteTable('retirement_contribution', {
+  accountId: text('account_id').notNull(),
+  date: text('date').notNull(),
+  gross: integer('gross').notNull(),
+  fee: integer('fee').notNull(),
+}, (t) => ({
+  byAccount: index('retirement_contribution_account').on(t.accountId),
+}))
