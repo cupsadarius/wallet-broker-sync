@@ -117,3 +117,21 @@ export const maturity = sqliteTable('maturity', {
   startDate: text('start_date'),
   maturityDate: text('maturity_date').notNull(),
 })
+
+// Investment plans. `amount` is int*100 in `currency`; recurring plans need amount, currency and
+// frequency, rollovers need target_product (CHECKs in 0007_plans.sql).
+export const plan = sqliteTable('plan', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  type: text('type', { enum: ['recurring', 'rollover'] }).notNull(),
+  name: text('name').notNull(),
+  accountId: text('account_id').notNull(),
+  amount: integer('amount'),
+  currency: text('currency'),
+  frequency: text('frequency', { enum: ['weekly', 'monthly'] }),
+  startDate: text('start_date').notNull(),
+  targetSymbol: text('target_symbol'),
+  wholeShares: integer('whole_shares', { mode: 'boolean' }).notNull().default(false),
+  maturityId: integer('maturity_id').references(() => maturity.id, { onDelete: 'set null' }),
+  targetProduct: text('target_product'),
+  status: text('status', { enum: ['active', 'paused', 'archived'] }).notNull().default('active'),
+})
