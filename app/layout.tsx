@@ -27,6 +27,9 @@ export const metadata: Metadata = {
   icons: { apple: "/icons/180" },
 };
 
+// Every page reads the local database, so nothing may be prerendered at build time.
+export const dynamic = "force-dynamic";
+
 export const viewport: Viewport = {
   themeColor: "#0f1115",
 };
