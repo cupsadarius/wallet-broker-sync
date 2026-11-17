@@ -44,6 +44,7 @@ beforeAll(async () => {
     { _id: '-Record_1', reservedModelType: 'Record', accountId: '-Account_1', amount: 50000, type: 0, currencyId: '-Currency_1', recordDate: '2026-11-01T09:00:00.000Z', note: 'Salary from RO49AAAA1B31007593840000' },
     { _id: '-Budget_1', reservedModelType: 'Budget', name: 'Food', amount: 10000, type: 1, envelopes: [1000], categoryIds: [], accountIds: [], labels: [], closed: false },
     { _id: '-Record_2', reservedModelType: 'Record', accountId: '-Account_1', categoryId: '-Category_food', amount: 12345, type: 1, currencyId: '-Currency_1', recordDate: '2026-11-03T18:00:00.000Z', payee: 'Mega Image' },
+    { _id: '-Record_3', reservedModelType: 'Record', accountId: '-Account_1', amount: 200000, type: 1, transfer: true, currencyId: '-Currency_1', recordDate: '2026-11-04T10:00:00.000Z', note: 'Top-up Revolut' },
   ]
   await db.insert(couchDocCache).values(docs.map(d => ({ scope: SCOPE, docId: d._id, modelType: d.reservedModelType, json: JSON.stringify(d) })))
   await db.insert(maturity).values({ id: 1, kind: 'deposit', name: 'BT deposit', accountId: '-Account_1', currency: 'RON', principal: 100_000, rateBps: 500, startDate: '2026-01-01', maturityDate: '2027-01-01' })
@@ -96,7 +97,7 @@ describe('tools/call', () => {
   it('list_accounts returns the balance with its currency and the as-of time', async () => {
     const { data } = await call('list_accounts')
     expect(data).toHaveProperty('asOf')
-    expect(data.accounts).toEqual([expect.objectContaining({ name: 'BT - Curent', balance: 1376.55, currency: 'RON', type: 'cash' })])
+    expect(data.accounts).toEqual([expect.objectContaining({ name: 'BT - Curent', balance: -623.45, currency: 'RON', type: 'cash' })])
   })
 
   it('query_records filters by text and masks the IBAN in the note', async () => {
@@ -108,6 +109,12 @@ describe('tools/call', () => {
     const { data } = await call('query_records', { from: '2026-11-01', to: '2026-11-30', groupBy: 'category' })
     expect(data.currency).toBe('RON')
     expect(data.groups).toEqual(expect.arrayContaining([{ key: 'Groceries', group: 'Food & Drinks', income: 0, expense: 123.45, net: -123.45, count: 1 }]))
+  })
+
+  it('query_records totals leave out transfers between own accounts', async () => {
+    const { data } = await call('query_records', { from: '2026-11-01', to: '2026-11-30', groupBy: 'month' })
+    expect(data.groups).toEqual([{ key: '2026-11', income: 500, expense: 123.45, net: 376.55, count: 2 }])
+    expect(data.transfersLeftOut).toBe(1)
   })
 
   it('list_plans returns each plan with its progress and leaves out archived plans', async () => {

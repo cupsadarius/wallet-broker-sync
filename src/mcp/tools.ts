@@ -8,7 +8,7 @@ import { computeHoldings } from '@/src/dashboards/compute/holdings'
 import { valuateHoldings } from '@/src/dashboards/compute/valuation'
 import { computePerformance } from '@/src/dashboards/compute/performance'
 import { computeNetWorth } from '@/src/dashboards/compute/networth'
-import { aggregateSpending } from '@/src/dashboards/compute/spending'
+import { aggregateSpending, isTransfer } from '@/src/dashboards/compute/spending'
 import { accrued, payout } from '@/src/dashboards/compute/maturities'
 import { loadMaturities, loadPlans } from '@/src/dashboards/portfolio'
 import { loadInsights } from '@/src/insights/load'
@@ -83,8 +83,9 @@ export const TOOLS: McpTool[] = [
   tool({
     name: 'query_records',
     description: 'Wallet records (income and expenses), newest first. Filter by date range, account, category and text '
-      + '(note, payee or category name). groupBy aggregates by category or month. currency converts amounts with daily '
-      + 'FX rates; aggregates always convert (to the base currency by default). Amounts: income +, expense -.',
+      + '(note, payee or category name). groupBy aggregates by category or month, without transfers between own accounts '
+      + 'and broker trade records. currency converts amounts with daily FX rates; aggregates always convert (to the '
+      + 'base currency by default). Amounts: income +, expense -.',
     input: z.object({
       from: day.optional(), to: day.optional(),
       accountId: z.string().optional(), categoryId: z.string().optional(),
@@ -115,7 +116,9 @@ export const TOOLS: McpTool[] = [
 
       if (args.groupBy) {
         const groups = new Map<string, { key: string; group?: string; income: number; expense: number; count: number }>()
-        for (const r of matched) {
+        // Transfers show twice, as spend on one account and income on the other; totals count real money only.
+        const real = matched.filter(r => !isTransfer(r) && !r.isTradeFallback)
+        for (const r of real) {
           const value = await convert(r)
           if (value === null) continue
           const byMonth = args.groupBy === 'month'
@@ -128,7 +131,7 @@ export const TOOLS: McpTool[] = [
           groups.set(id, g)
         }
         return {
-          currency: target, matched: matched.length, unconverted,
+          currency: target, matched: real.length, transfersLeftOut: matched.length - real.length, unconverted,
           groups: [...groups.values()].map(g => ({
             key: g.key, ...(g.group ? { group: g.group } : {}), income: money(g.income), expense: money(g.expense), net: money(g.income - g.expense), count: g.count,
           })),
