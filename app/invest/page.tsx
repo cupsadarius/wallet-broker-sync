@@ -46,6 +46,9 @@ export default async function InvestPage({ searchParams }: { searchParams: Promi
             {t.label}
           </Link>
         ))}
+        <Link href="/invest/retirement" className="flex-1 rounded-[9px] py-1.5 text-center text-[13px] text-muted-foreground">
+          Retirement
+        </Link>
       </nav>
       {tab === 'positions' && <Positions />}
       {tab === 'performance' && <Performance />}
