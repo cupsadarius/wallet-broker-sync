@@ -14,12 +14,11 @@ WALLET_COUCH_LOGIN=<login>
 WALLET_COUCH_TOKEN=<token>
 WALLET_ALLOWED_USERS=<your tailscale login>
 WALLET_ALLOWED_HOSTS=<mac-pro>.<tailnet>.ts.net
-WALLET_VAPID_SUBJECT=mailto:<your email>
+WALLET_SYNC_PORT=8092   # host port; 8090 and 8091 are taken on the Mac Pro
 ```
 
 - Get the Couch values on the work Mac: open Settings in the app, or read the Keychain entry `wallet-broker-sync`.
 - Get the Tailscale login with `tailscale whois $(tailscale ip -4)`.
-- Use a real address in `WALLET_VAPID_SUBJECT`. Apple push rejects a `localhost` address.
 - Append `:<path to investment-wallet-sync>/deploy/compose.wallet-sync.yml` to `COMPOSE_FILE`.
 
 ## 2. Move the data
@@ -48,15 +47,15 @@ docker compose run --rm --no-deps --user root --entrypoint sh \
 
 ```sh
 docker compose up -d wallet-sync
-curl -s 127.0.0.1:8090/api/health
-tailscale serve --bg --https=8090 http://127.0.0.1:8090
+curl -s 127.0.0.1:8092/api/health
+tailscale serve --bg --https=8092 http://127.0.0.1:8092
 ```
 
 The first start reads the Wallet feed once from the beginning, because the mirror now also stores record rules and labels. This takes about 15 seconds.
 
 ## 4. Install on the iPhone
 
-1. Open `https://<mac-pro>.<tailnet>.ts.net:8090` in Safari.
+1. Open `https://<mac-pro>.<tailnet>.ts.net:8092` in Safari.
 2. Tap Share, then Add to Home Screen.
 3. Open the app from the Home Screen icon.
 4. Go to Settings, then tap Enable under Notifications.
