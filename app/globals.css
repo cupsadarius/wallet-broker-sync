@@ -104,45 +104,46 @@
   --color-starlight: #ededf3;
   --color-silver: #c3c3cc;
   --color-pure-white: #ffffff;
+  --color-up: #5dd39e;
+  --color-down: #f28b82;
+  --color-warn: #fdd663;
 
-  --radius-sm: 4px;
-  --radius-md: 4px;
-  --radius-lg: 4px;
-  --radius-xl: 4px;
-  --radius-2xl: 8px;
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 10px;
+  --radius-xl: 14px;
+  --radius-2xl: 16px;
   --radius-3xl: 32px;
   --radius-4xl: 40px;
 }
 
-/* Mercury — Mountain Top Command Center.
-   Dark, cinematic canvas. Single vibrant blue accent, reserved for primary
-   action surfaces only. Elevation comes from light, not shadow. */
+/* Phone-first dark theme. */
 :root {
-  --background: #171721;          /* Deep Space — outermost canvas */
-  --foreground: #ededf3;          /* Starlight — primary text */
-  --card: #1e1e2a;                /* Midnight Slate — content sections */
-  --card-foreground: #ededf3;
-  --popover: #1e1e2a;
-  --popover-foreground: #ededf3;
-  --primary: #5266eb;             /* Mercury Blue — single accent */
-  --primary-foreground: #ffffff;  /* Pure White on CTA only */
-  --secondary: #272735;           /* Graphite — interactive surfaces */
-  --secondary-foreground: #ededf3;
-  --muted: #1e1e2a;
-  --muted-foreground: #c3c3cc;    /* Silver — secondary text */
-  --accent: #272735;              /* Graphite — hover/elevated bg */
-  --accent-foreground: #ededf3;
+  --background: #0f1115;
+  --foreground: #e8eaed;
+  --card: #171a21;
+  --card-foreground: #e8eaed;
+  --popover: #171a21;
+  --popover-foreground: #e8eaed;
+  --primary: #8ab4f8;
+  --primary-foreground: #0f1115;
+  --secondary: #262b35;
+  --secondary-foreground: #e8eaed;
+  --muted: #171a21;
+  --muted-foreground: #9aa0a6;
+  --accent: #262b35;
+  --accent-foreground: #e8eaed;
   --destructive: oklch(0.704 0.191 22.216);
-  --border: rgb(112 112 125 / 0.28);  /* Lead at low opacity */
+  --border: #23262d;
   --input: rgb(112 112 125 / 0.4);
-  --ring: #5266eb;
-  --chart-1: #5266eb;
-  --chart-2: #c3c3cc;
+  --ring: #8ab4f8;
+  --chart-1: #8ab4f8;
+  --chart-2: #5dd39e;
   --chart-3: #cdddff;
   --chart-4: #70707d;
   --chart-5: #ededf3;
-  --radius: 4px;
-  --sidebar: #1e1e2a;
+  --radius: 10px;
+  --sidebar: #171a21;
   --sidebar-foreground: #ededf3;
   --sidebar-primary: #5266eb;
   --sidebar-primary-foreground: #ffffff;
@@ -158,30 +159,30 @@
 /* Keep the .dark variant in lock-step so any `dark:` modifiers in shadcn
    components that were tuned for dark mode also engage. */
 .dark {
-  --background: #171721;
-  --foreground: #ededf3;
-  --card: #1e1e2a;
-  --card-foreground: #ededf3;
-  --popover: #1e1e2a;
-  --popover-foreground: #ededf3;
-  --primary: #5266eb;
-  --primary-foreground: #ffffff;
-  --secondary: #272735;
-  --secondary-foreground: #ededf3;
-  --muted: #1e1e2a;
-  --muted-foreground: #c3c3cc;
-  --accent: #272735;
-  --accent-foreground: #ededf3;
+  --background: #0f1115;
+  --foreground: #e8eaed;
+  --card: #171a21;
+  --card-foreground: #e8eaed;
+  --popover: #171a21;
+  --popover-foreground: #e8eaed;
+  --primary: #8ab4f8;
+  --primary-foreground: #0f1115;
+  --secondary: #262b35;
+  --secondary-foreground: #e8eaed;
+  --muted: #171a21;
+  --muted-foreground: #9aa0a6;
+  --accent: #262b35;
+  --accent-foreground: #e8eaed;
   --destructive: oklch(0.704 0.191 22.216);
-  --border: rgb(112 112 125 / 0.28);
+  --border: #23262d;
   --input: rgb(112 112 125 / 0.4);
-  --ring: #5266eb;
-  --chart-1: #5266eb;
-  --chart-2: #c3c3cc;
+  --ring: #8ab4f8;
+  --chart-1: #8ab4f8;
+  --chart-2: #5dd39e;
   --chart-3: #cdddff;
   --chart-4: #70707d;
   --chart-5: #ededf3;
-  --sidebar: #1e1e2a;
+  --sidebar: #171a21;
   --sidebar-foreground: #ededf3;
   --sidebar-primary: #5266eb;
   --sidebar-primary-foreground: #ffffff;
@@ -203,12 +204,6 @@
   }
   body {
     @apply bg-background text-foreground;
-    /* Twilight command-center backdrop: deep space with a faint blue glow
-       drifting in from above-left. Atmospheric, never loud. */
-    background-image:
-      radial-gradient(ellipse 90% 60% at 10% -10%, rgb(82 102 235 / 0.10), transparent 55%),
-      radial-gradient(ellipse 70% 50% at 100% 110%, rgb(205 221 255 / 0.05), transparent 55%);
-    background-attachment: fixed;
   }
   h1, h2, h3, h4, h5, h6 {
     font-family: var(--font-heading);

@@ -2,68 +2,49 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
+import { House, ChartLine, ChartPie, Sparkles } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import Menu from './Menu'
 
-const NAV = [
-  { href: '/upload', label: 'Upload' },
-  { href: '/dashboard', label: 'Dashboard' },
-  { href: '/history', label: 'History' },
-  { href: '/settings', label: 'Settings' },
+const TABS = [
+  { href: '/', label: 'Today', icon: House },
+  { href: '/invest', label: 'Invest', icon: ChartLine },
+  { href: '/spending', label: 'Spending', icon: ChartPie },
+  { href: '/ask', label: 'Ask', icon: Sparkles },
 ] as const
+
+const SETTINGS = [
+  { href: '/settings', label: 'Settings' },
+  { href: '/history', label: 'Import history' },
+  { href: '/aliases', label: 'Aliases' },
+]
+
+function isActive(pathname: string, href: string): boolean {
+  if (href === '/') return pathname === '/'
+  if (href === '/spending') return pathname.startsWith('/spending') || pathname.startsWith('/dashboard')
+  return pathname.startsWith(href)
+}
 
 export default function AppHeader() {
   const pathname = usePathname() ?? ''
-
   return (
-    <header className="sticky top-0 z-30 w-full border-b border-border/40 bg-background/70 backdrop-blur-md supports-[backdrop-filter]:bg-background/50">
-      <div className="container mx-auto max-w-6xl flex h-16 items-center justify-between px-6">
-        <Link href="/upload" className="flex items-center gap-3 group">
-          <span
-            aria-hidden
-            className="inline-flex size-8 items-center justify-center rounded-full bg-primary text-primary-foreground ring-1 ring-primary/30 transition-transform group-hover:-rotate-6"
+    <>
+      <header className="flex items-center justify-between px-4 pt-[env(safe-area-inset-top)]">
+        <Link href="/" className="py-3 text-sm font-semibold tracking-wide text-muted-foreground">Wallet</Link>
+        <Menu items={SETTINGS} icon="gear" label="Settings menu" />
+      </header>
+      <nav className="fixed inset-x-0 bottom-0 z-30 flex justify-around border-t bg-[#12151b] pt-2.5 pb-[calc(10px+env(safe-area-inset-bottom))] text-[11px] text-muted-foreground">
+        {TABS.map(({ href, label, icon: Icon }) => (
+          <Link
+            key={href}
+            href={href}
+            className={cn('flex min-w-16 flex-col items-center gap-1', isActive(pathname, href) && 'font-semibold text-primary')}
           >
-            <svg viewBox="0 0 24 24" fill="none" className="size-4" aria-hidden>
-              <path
-                d="M12 3v10m0 0l-4-4m4 4l4-4M5 17h14M5 21h14"
-                stroke="currentColor"
-                strokeWidth="1.6"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-            </svg>
-          </span>
-          <span className="flex flex-col leading-none">
-            <span className="font-heading text-[15px] font-light tracking-wide text-foreground">
-              Wallet Sync
-            </span>
-            <span className="mt-1 text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
-              broker → wallet
-            </span>
-          </span>
-        </Link>
-
-        <nav className="flex items-center gap-1">
-          {NAV.map((item) => {
-            const active =
-              pathname === item.href ||
-              (item.href !== '/upload' && pathname.startsWith(item.href))
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className={cn(
-                  'relative px-5 py-2 text-sm rounded-full transition-colors',
-                  active
-                    ? 'bg-ghost-blue/15 text-foreground'
-                    : 'text-muted-foreground hover:text-foreground hover:bg-graphite/60',
-                )}
-              >
-                {item.label}
-              </Link>
-            )
-          })}
-        </nav>
-      </div>
-    </header>
+            <Icon className="size-5" />
+            {label}
+          </Link>
+        ))}
+      </nav>
+    </>
   )
 }

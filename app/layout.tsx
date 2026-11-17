@@ -32,6 +32,7 @@ export const dynamic = "force-dynamic";
 
 export const viewport: Viewport = {
   themeColor: "#0f1115",
+  viewportFit: "cover",
 };
 
 export default function RootLayout({
@@ -46,7 +47,7 @@ export default function RootLayout({
     >
       <body className="min-h-full flex flex-col">
         <AppHeader />
-        <div className="flex-1">{children}</div>
+        <div className="min-w-0 flex-1 pb-[calc(76px+env(safe-area-inset-bottom))]">{children}</div>
       </body>
     </html>
   );
