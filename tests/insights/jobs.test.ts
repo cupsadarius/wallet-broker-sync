@@ -22,7 +22,7 @@ import { complete } from '@/src/ask/run'
 import { readMirror, type MirrorSnapshot } from '@/src/dashboards/mirror'
 import { db } from '@/src/storage/db'
 import { budgetProposal, config, weeklyNote } from '@/src/storage/schema'
-import { maybeWriteWeeklyNote, proposeBudgets } from '@/src/insights/jobs'
+import { maybeWriteWeeklyNote, proposeBudgets, writeNoteNow } from '@/src/insights/jobs'
 
 const groceries = { id: 'groceries', name: 'Groceries', envelopeId: 1000, groupName: 'Food & Drinks' }
 const snapshot = {
@@ -69,6 +69,13 @@ describe('maybeWriteWeeklyNote', () => {
     expect(await db.select().from(weeklyNote)).toHaveLength(1)
   })
 
+  it('"Write now" writes the note on demand and counts it as the week\'s note', async () => {
+    vi.mocked(complete).mockResolvedValue(GOOD)
+    expect(await writeNoteNow(new Date('2026-11-17T10:00:00Z'))).toMatchObject({ status: 'ok' })
+    await maybeWriteWeeklyNote(new Date('2026-11-17T11:00:00Z'))
+    expect(complete).toHaveBeenCalledTimes(1)
+  })
+
   it('stores a note that fails the number check twice as flagged, and does not push it', async () => {
     vi.mocked(complete).mockResolvedValue('Groceries cost 610 RON.')
     await maybeWriteWeeklyNote(MONDAY_9)
@@ -88,12 +95,18 @@ describe('proposeBudgets', () => {
 
   it('stores each new proposal once; a rejected one stays rejected', async () => {
     vi.mocked(complete).mockResolvedValue('{"proposals":[{"budgetId":"-Budget_g","limit":650,"reason":"You spend about 600."}]}')
-    expect(await proposeBudgets(new Date('2026-11-17T10:00:00Z'))).toBe(1)
+    expect(await proposeBudgets(new Date('2026-11-17T10:00:00Z'))).toBe('stored')
     await db.update(budgetProposal).set({ status: 'rejected' })
-    expect(await proposeBudgets(new Date('2026-11-18T10:00:00Z'))).toBe(1)
+    expect(await proposeBudgets(new Date('2026-11-18T10:00:00Z'))).toBe('stored')
     expect(await db.select().from(budgetProposal)).toEqual([expect.objectContaining({
       budgetId: '-Budget_g', currentLimit: 50_000, limit: 65_000, reason: 'You spend about 600.', status: 'rejected',
     })])
     expect(vi.mocked(complete).mock.calls[0][1]).toContain('"spent":{"2025-11":0,')
+  })
+
+  it('tells an unreachable AI apart from an unusable reply', async () => {
+    vi.mocked(complete).mockRejectedValueOnce(new Error('fetch failed')).mockResolvedValueOnce('no idea')
+    expect(await proposeBudgets()).toBe('unavailable')
+    expect(await proposeBudgets()).toBe('invalid')
   })
 })

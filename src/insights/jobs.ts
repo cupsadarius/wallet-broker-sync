@@ -6,7 +6,7 @@ import { readConfigMap, readMirror, writeConfig } from '@/src/dashboards/mirror'
 import { sendPush } from '@/src/push/push'
 import { buildBudgetPrompt, parseBudgetProposals } from '@/src/spending/budget-proposals'
 import { loadInsights } from './load'
-import { buildFigures, composeNote, weeklyDue, type Note } from './weekly'
+import { buildFigures, composeNote, weekOf, weeklyDue, type Note } from './weekly'
 
 const DONE_KEY = 'weekly.doneWeek'
 const ATTEMPT_KEY = 'weekly.lastAttempt'
@@ -50,16 +50,26 @@ export async function maybeWriteWeeklyNote(now = new Date()): Promise<void> {
   await writeConfig(DONE_KEY, week)
 }
 
-/** Asks for budget limits from the last 12 months and stores new proposals; returns how many the AI made. */
-export async function proposeBudgets(now = new Date()): Promise<number> {
+export type ProposalOutcome = 'stored' | 'none' | 'unavailable' | 'invalid'
+
+/** Asks for budget limits from the last 12 months and stores the new proposals. */
+export async function proposeBudgets(now = new Date()): Promise<ProposalOutcome> {
   const s = await mirror()
   const { budgets } = await loadInsights(s, PROPOSAL_MONTHS, now)
   const inputs = budgets.map(v => ({
     id: v.budget.id, name: v.budget.name, currency: v.status.currency, limit: v.status.limit,
     months: v.history(PROPOSAL_MONTHS).map(h => ({ month: h.month, spent: h.spent })),
   }))
-  if (inputs.length === 0) return 0
-  const proposals = parseBudgetProposals(await ask(buildBudgetPrompt(inputs)), inputs)
+  if (inputs.length === 0) return 'none'
+  let reply: string
+  try {
+    reply = await ask(buildBudgetPrompt(inputs))
+  } catch (e) {
+    console.warn('[insights.budgets]', e instanceof Error ? e.message : e)
+    return 'unavailable'
+  }
+  let proposals
+  try { proposals = parseBudgetProposals(reply, inputs) } catch { return 'invalid' }
   for (const b of inputs) {
     for (const p of proposals.filter(x => x.budgetId === b.id)) {
       await db.insert(budgetProposal).values({
@@ -68,5 +78,13 @@ export async function proposeBudgets(now = new Date()): Promise<number> {
       }).onConflictDoNothing()
     }
   }
-  return proposals.length
+  return proposals.length ? 'stored' : 'none'
+}
+
+/** "Write now": this week's note on demand; it counts as the week's note. */
+export async function writeNoteNow(now = new Date()): Promise<Note> {
+  const week = weekOf(now)
+  const note = await writeWeeklyNote(week, now)
+  await writeConfig(DONE_KEY, week)
+  return note
 }

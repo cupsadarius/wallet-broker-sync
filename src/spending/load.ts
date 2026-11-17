@@ -1,17 +1,20 @@
-import { eq } from 'drizzle-orm'
+import { desc, eq } from 'drizzle-orm'
 import { z } from 'zod'
 import { db } from '@/src/storage/db'
-import { ruleProposal } from '@/src/storage/schema'
+import { budgetProposal, ruleProposal, weeklyNote } from '@/src/storage/schema'
 import { ensureFreshMirror, getBaseCurrency, readConfigMap } from '@/src/dashboards/mirror'
 import { aggregateSpending } from '@/src/dashboards/compute/spending'
 import { latestFx } from '@/src/dashboards/prices'
 import { matchingRecords } from './proposals'
 import { reviewQueue, unexplainedOutflows, type ReviewState } from './review'
+import { loadInsights } from '@/src/insights/load'
+import { categorySpikes } from '@/src/insights/cards'
 
 export const REVIEW_CURSOR_KEY = 'spending.reviewCursor'
 export const REVIEW_ACCEPTED_KEY = 'spending.reviewAccepted'
 const FIRST_REVIEW_DAYS = 14
 const PAGE_MAX_AGE_MS = 5 * 60_000
+const NOTES_SHOWN = 5
 
 export async function readReviewState(now = new Date()): Promise<ReviewState> {
   const cfg = await readConfigMap()
@@ -48,8 +51,17 @@ export async function loadSpending() {
     return { ...p, pastMatchCount: matches.length, toChange: matches.filter(r => r.categoryId !== p.categoryId) }
   })
 
+  const insights = await loadInsights(s, 6, now)
+  const budgets = insights.budgets.map(v => v.status)
+  const byBudget = new Map(budgets.map(b => [b.id, b]))
+  const budgetProposals = (await db.select().from(budgetProposal).where(eq(budgetProposal.status, 'open')))
+    .flatMap(p => { const b = byBudget.get(p.budgetId); return b ? [{ ...p, budget: b }] : [] })
+
   return {
     snapshot: s, base, today,
+    budgets, budgetProposals,
+    spikes: categorySpikes(s.records, insights.spend, insights.today),
+    notes: await db.select().from(weeklyNote).orderBy(desc(weeklyNote.id)).limit(NOTES_SHOWN),
     queue: reviewQueue(s.records, await readReviewState(now)),
     monthExpense: month.totals.expense,
     topCategories, outflows, proposals,
