@@ -14,10 +14,12 @@ WALLET_COUCH_LOGIN=<login>
 WALLET_COUCH_TOKEN=<token>
 WALLET_ALLOWED_USERS=<your tailscale login>
 WALLET_ALLOWED_HOSTS=<mac-pro>.<tailnet>.ts.net
+WALLET_VAPID_SUBJECT=mailto:<your email>
 ```
 
 - Get the Couch values on the work Mac: open Settings in the app, or read the Keychain entry `wallet-broker-sync`.
 - Get the Tailscale login with `tailscale whois $(tailscale ip -4)`.
+- Use a real address in `WALLET_VAPID_SUBJECT`. Apple push rejects a `localhost` address.
 - Append `:<path to investment-wallet-sync>/deploy/compose.wallet-sync.yml` to `COMPOSE_FILE`.
 
 ## 2. Move the data

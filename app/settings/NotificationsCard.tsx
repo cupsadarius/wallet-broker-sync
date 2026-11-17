@@ -53,9 +53,15 @@ export default function NotificationsCard() {
   }
 
   async function test() {
-    const { result } = await (await fetch('/api/push/test', { method: 'POST' })).json()
-    setMessage(result === 'sent' ? 'Test sent.' : result === 'gone' ? 'Subscription expired. Enable again.' : 'No subscription.')
-    if (result === 'gone') setState('off')
+    try {
+      const res = await fetch('/api/push/test', { method: 'POST' })
+      if (!res.ok) throw new Error(`push failed (${res.status})`)
+      const { result } = await res.json()
+      setMessage(result === 'sent' ? 'Test sent.' : result === 'gone' ? 'Subscription expired. Enable again.' : 'No subscription.')
+      if (result === 'gone') setState('off')
+    } catch (err) {
+      setMessage(err instanceof Error ? err.message : 'Push failed.')
+    }
   }
 
   return (

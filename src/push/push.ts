@@ -50,7 +50,7 @@ export async function sendPush(msg: PushMessage): Promise<'sent' | 'no-subscript
   try {
     await sendNotification(JSON.parse(stored), JSON.stringify(msg), {
       TTL: TTL_SECONDS,
-      vapidDetails: { subject: process.env.WALLET_VAPID_SUBJECT ?? 'mailto:wallet-sync@localhost', publicKey, privateKey },
+      vapidDetails: { subject: process.env.WALLET_VAPID_SUBJECT || 'mailto:wallet-sync@localhost', publicKey, privateKey },
     })
     return 'sent'
   } catch (err) {

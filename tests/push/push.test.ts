@@ -47,6 +47,16 @@ describe('push', () => {
     expect(await sendPush(MSG)).toBe('sent')
   })
 
+  it('sendPush uses the default subject when WALLET_VAPID_SUBJECT is empty', async () => {
+    process.env.WALLET_VAPID_SUBJECT = ''
+    await saveSubscription(SUB)
+    vi.mocked(webpush.sendNotification).mockResolvedValueOnce({ statusCode: 201, body: '', headers: {} })
+    await sendPush(MSG)
+    delete process.env.WALLET_VAPID_SUBJECT
+    const opts = vi.mocked(webpush.sendNotification).mock.calls[0][2]
+    expect(opts?.vapidDetails?.subject).toMatch(/^mailto:.+@/)
+  })
+
   it('getVapidPublicKey generates once and returns the same key on the next call', async () => {
     expect(await getVapidPublicKey()).toBe('pub-1')
     expect(await getVapidPublicKey()).toBe('pub-1')
