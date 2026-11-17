@@ -42,7 +42,8 @@ export function buildPositions(
   for (const m of running) {
     const rate = rateToBase.get(m.currency) ?? 0
     positions.push({
-      key: `maturity:${m.id}`, symbol: m.kind === 'bond' ? (m.symbol ?? m.name) : m.name, name: m.name,
+      key: `maturity:${m.id}`, symbol: m.kind === 'bond' ? (m.symbol ?? m.name) : m.name,
+      name: m.kind === 'bond' ? m.name : undefined,
       group: m.kind === 'bond' ? 'Bond' : 'Deposit', quantity: null,
       valueBase: valueAt(m, asOf) * rate, costBase: m.principal * rate,
       basis: 'par', kind: m.kind, priceDate: null,
