@@ -49,3 +49,5 @@ sources/
 # pouchdb-server dev artifacts (created when pouchdb-server starts in project root)
 config.json
 log.txt
+
+.superpowers/

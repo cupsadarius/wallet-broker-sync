@@ -1,0 +1,9 @@
+.git
+.next
+node_modules
+.superpowers
+.env*
+tests
+docs
+deploy
+*.log

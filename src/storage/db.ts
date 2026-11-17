@@ -5,7 +5,7 @@ import { homedir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { mkdirSync, existsSync } from 'node:fs'
 
-const dataDir = join(homedir(), '.wallet-broker-sync')
+const dataDir = process.env.WALLET_DATA_DIR ?? join(homedir(), '.wallet-broker-sync')
 if (!existsSync(dataDir)) mkdirSync(dataDir, { recursive: true })
 
 const sqlite = new Database(join(dataDir, 'audit.sqlite'))

@@ -20,6 +20,9 @@ export async function register(): Promise<void> {
 
   // Defer the import: instrumentation runs early in the boot sequence and we
   // don't want to load better-sqlite3 + drizzle until after Next is ready.
+  // An empty data volume has no tables until the first migration.
+  const { runMigrations } = await import('./src/storage/db')
+  runMigrations()
   const { applyEnvConnection } = await import('./src/storage/credentials')
   await applyEnvConnection()
   const { syncMirror, getMirrorIntervalMs } = await import('./src/dashboards/mirror')
