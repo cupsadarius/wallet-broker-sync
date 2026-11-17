@@ -38,6 +38,11 @@ export function fmtAmount(n: number, ccy: string): string {
   return `${n.toLocaleString('en-US', { maximumFractionDigits: 0 })} ${ccy}`
 }
 
+export function fmtSigned(n: number, digits = 0): string {
+  const s = Math.abs(n).toLocaleString('en-US', { maximumFractionDigits: digits, minimumFractionDigits: digits })
+  return `${n >= 0 ? '+' : '−'}${s}`
+}
+
 function maxDate(dates: (string | undefined | null)[]): string | null {
   let best: string | null = null
   for (const d of dates) if (d && (best === null || d > best)) best = d

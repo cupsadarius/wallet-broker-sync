@@ -4,7 +4,7 @@ import { loadCouchCreds } from '@/src/storage/credentials'
 import { db } from '@/src/storage/db'
 import { config, brokerAccountMap } from '@/src/storage/schema'
 import { loadToday } from '@/src/dashboards/portfolio'
-import { fmtAmount, fmtDay } from '@/src/dashboards/compute/today'
+import { fmtAmount, fmtDay, fmtSigned } from '@/src/dashboards/compute/today'
 import { cn } from '@/lib/utils'
 
 export default async function TodayPage() {
@@ -33,7 +33,7 @@ export default async function TodayPage() {
         </div>
         {t.change30dPct !== null && (
           <div className={cn('shrink-0 font-semibold', t.change30dPct >= 0 ? 'text-up' : 'text-down')}>
-            {signed(t.change30dPct, 1)}% <span className="text-xs font-normal text-muted-foreground">30d</span>
+            {fmtSigned(t.change30dPct, 1)}% <span className="text-xs font-normal text-muted-foreground">30d</span>
           </div>
         )}
       </div>
@@ -41,7 +41,7 @@ export default async function TodayPage() {
       <div className="grid grid-cols-2 gap-2.5">
         <Card label="Invested" value={fmtAmount(t.invested.value, base)}>
           <span className={t.invested.gain >= 0 ? 'text-up' : 'text-down'}>
-            {signed(t.invested.gain, 0)}{gainPct !== null && ` · ${signed(gainPct, 1)}%`}
+            {fmtSigned(t.invested.gain, 0)}{gainPct !== null && ` · ${fmtSigned(gainPct, 1)}%`}
           </span>
         </Card>
         <Card label="Cash" value={fmtAmount(t.cash.total, base)}>
@@ -124,11 +124,6 @@ function Section({ title, link }: { title: string; link?: { href: string; label:
       {link && <Link href={link.href} className="text-[13px] text-primary">{link.label}</Link>}
     </div>
   )
-}
-
-function signed(n: number, digits: number): string {
-  const s = Math.abs(n).toLocaleString('en-US', { maximumFractionDigits: digits, minimumFractionDigits: digits })
-  return `${n >= 0 ? '+' : '−'}${s}`
 }
 
 function shortDay(iso: string): string {
