@@ -135,3 +135,14 @@ export const plan = sqliteTable('plan', {
   targetProduct: text('target_product'),
   status: text('status', { enum: ['active', 'paused', 'archived'] }).notNull().default('active'),
 })
+
+// AI rule proposals. `id` is the MagicRule `_id` the proposal would write, so a rejected
+// proposal stays rejected when the model suggests it again. `keywords` is a JSON string array.
+export const ruleProposal = sqliteTable('rule_proposal', {
+  id: text('id').primaryKey(),
+  name: text('name').notNull(),
+  keywords: text('keywords', { mode: 'json' }).$type<string[]>().notNull(),
+  categoryId: text('category_id').notNull(),
+  status: text('status', { enum: ['open', 'approved', 'rejected'] }).notNull().default('open'),
+  createdAt: text('created_at').notNull(),
+})

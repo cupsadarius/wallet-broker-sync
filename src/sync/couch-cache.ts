@@ -4,7 +4,7 @@
  * walk the _changes feed from the last persisted seq and apply deltas, so
  * dry-runs after the first one only download what changed.
  */
-import { eq, and } from 'drizzle-orm'
+import { eq, and, inArray } from 'drizzle-orm'
 import { db } from '@/src/storage/db'
 import { config, couchDocCache, couchCacheMeta } from '@/src/storage/schema'
 import type { CouchClient } from './couch'
@@ -112,4 +112,22 @@ export async function refreshCache(
 export async function invalidateCache(scope: string): Promise<void> {
   await db.delete(couchDocCache).where(eq(couchDocCache.scope, scope))
   await db.delete(couchCacheMeta).where(eq(couchCacheMeta.scope, scope))
+}
+
+/** Cached docs by id, as last seen in Couch (with their `_rev`). */
+export async function cachedDocs(scope: string, ids: string[]): Promise<Array<Record<string, unknown> & { _id: string }>> {
+  if (ids.length === 0) return []
+  const rows = await db.select({ json: couchDocCache.json }).from(couchDocCache)
+    .where(and(eq(couchDocCache.scope, scope), inArray(couchDocCache.docId, ids)))
+  return rows.map(r => JSON.parse(r.json))
+}
+
+/** Stores docs this app just wrote, so pages show them before the next `_changes` pull. */
+export async function cacheDocs(scope: string, docs: Array<Record<string, unknown> & { _id: string }>): Promise<void> {
+  for (const doc of docs) {
+    const modelType = String(doc['reservedModelType'] ?? '')
+    const json = JSON.stringify(doc)
+    await db.insert(couchDocCache).values({ scope, docId: doc._id, modelType, json })
+      .onConflictDoUpdate({ target: [couchDocCache.scope, couchDocCache.docId], set: { modelType, json } })
+  }
 }

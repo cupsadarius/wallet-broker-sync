@@ -57,6 +57,13 @@
       "when": 1795392600000,
       "tag": "0007_plans",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "6",
+      "when": 1795479000000,
+      "tag": "0008_rule_proposals",
+      "breakpoints": true
     }
   ]
 }
