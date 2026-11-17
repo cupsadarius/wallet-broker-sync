@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import crypto from 'node:crypto'
 import { z } from 'zod'
 import { eq } from 'drizzle-orm'
-import { db, runMigrations } from '@/src/storage/db'
+import { db } from '@/src/storage/db'
 import { config, brokerAccountMap, syncRun, syncRunDoc, assetAlias, recordFallback as recordFallbackTable, manualLink as manualLinkTable } from '@/src/storage/schema'
 import { loadCouchCreds } from '@/src/storage/credentials'
 import { CouchClient } from '@/src/sync/couch'
@@ -12,7 +12,6 @@ import { refreshCache, scopeFor } from '@/src/sync/couch-cache'
 import { parsers } from '@/src/parsers/registry'
 import { formatError } from '@/src/sync/format-error'
 
-runMigrations()
 
 const TOOL_VERSION = '1.0.0'
 const MAX_UPLOAD_BYTES = 10 * 1024 * 1024  // 10 MB — XTB exports are typically <500KB; IBKR statements can be larger

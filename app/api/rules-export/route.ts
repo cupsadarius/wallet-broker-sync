@@ -1,9 +1,8 @@
 import { NextResponse } from 'next/server'
-import { db, runMigrations } from '@/src/storage/db'
+import { db } from '@/src/storage/db'
 import { config, brokerAccountMap, assetAlias, recordFallback, manualLink } from '@/src/storage/schema'
 import { inArray } from 'drizzle-orm'
 
-runMigrations()
 
 export const EXPORT_VERSION = 1
 

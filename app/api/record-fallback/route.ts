@@ -1,10 +1,9 @@
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { and, eq } from 'drizzle-orm'
-import { db, runMigrations } from '@/src/storage/db'
+import { db } from '@/src/storage/db'
 import { recordFallback } from '@/src/storage/schema'
 
-runMigrations()
 
 const RuleSchema = z.object({
   broker: z.string().min(1),

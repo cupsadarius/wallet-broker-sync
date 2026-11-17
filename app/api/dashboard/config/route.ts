@@ -4,11 +4,10 @@ import {
   setBaseCurrency, getBaseCurrency,
   DEFAULT_MIRROR_INTERVAL_MS, getMirrorIntervalMs, MIRROR_INTERVAL_KEY,
 } from '@/src/dashboards/mirror'
-import { db, runMigrations } from '@/src/storage/db'
+import { db } from '@/src/storage/db'
 import { config } from '@/src/storage/schema'
 import { formatError } from '@/src/sync/format-error'
 
-runMigrations()
 
 const PayloadSchema = z.object({
   baseCurrency: z.string().length(3).optional(),

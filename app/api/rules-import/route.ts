@@ -1,10 +1,9 @@
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
-import { db, runMigrations } from '@/src/storage/db'
+import { db } from '@/src/storage/db'
 import { config, brokerAccountMap, assetAlias, recordFallback, manualLink } from '@/src/storage/schema'
 import { formatError } from '@/src/sync/format-error'
 
-runMigrations()
 
 const BackupSchema = z.object({
   version: z.number().int().min(1),

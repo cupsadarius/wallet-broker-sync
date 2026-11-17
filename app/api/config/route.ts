@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
-import { db, runMigrations } from '@/src/storage/db'
+import { db } from '@/src/storage/db'
 import { config, brokerAccountMap, couchDocCache, couchCacheMeta } from '@/src/storage/schema'
 import { saveCouchCreds, loadCouchCreds, deleteCouchCreds, isConnectionManagedByEnv } from '@/src/storage/credentials'
 import { inArray } from 'drizzle-orm'
@@ -9,8 +9,6 @@ import { formatError } from '@/src/sync/format-error'
 const managedByEnv = () =>
   NextResponse.json({ ok: false, error: 'connection is managed by environment variables' }, { status: 409 })
 
-// Run migrations on first import
-runMigrations()
 
 export async function GET() {
   try {

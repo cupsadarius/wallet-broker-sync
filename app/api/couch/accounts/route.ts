@@ -1,12 +1,11 @@
 import { NextResponse } from 'next/server'
-import { db, runMigrations } from '@/src/storage/db'
+import { db } from '@/src/storage/db'
 import { config } from '@/src/storage/schema'
 import { loadCouchCreds } from '@/src/storage/credentials'
 import { CouchClient } from '@/src/sync/couch'
 import { LookupService } from '@/src/sync/lookup'
 import { formatError } from '@/src/sync/format-error'
 
-runMigrations()
 
 export async function GET() {
   try {

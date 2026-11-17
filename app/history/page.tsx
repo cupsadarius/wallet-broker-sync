@@ -1,10 +1,9 @@
-import { db, runMigrations } from '@/src/storage/db'
+import { db } from '@/src/storage/db'
 import { syncRun } from '@/src/storage/schema'
 import { desc } from 'drizzle-orm'
 import HistoryList from './HistoryList'
 import Link from 'next/link'
 
-runMigrations()
 
 export default async function HistoryPage() {
   const runs = await db.select().from(syncRun).orderBy(desc(syncRun.startedAt))

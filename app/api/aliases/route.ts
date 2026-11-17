@@ -1,11 +1,10 @@
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { eq, and } from 'drizzle-orm'
-import { db, runMigrations } from '@/src/storage/db'
+import { db } from '@/src/storage/db'
 import { assetAlias } from '@/src/storage/schema'
 import { formatError } from '@/src/sync/format-error'
 
-runMigrations()
 
 const BrokerSchema = z.enum(['xtb', 'ibkr', 'tradeville'])
 const AliasSchema = z.object({

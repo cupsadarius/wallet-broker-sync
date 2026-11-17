@@ -1,10 +1,9 @@
 import { NextResponse } from 'next/server'
 import { desc, eq } from 'drizzle-orm'
-import { db, runMigrations } from '@/src/storage/db'
+import { db } from '@/src/storage/db'
 import { syncRun, syncRunDoc } from '@/src/storage/schema'
 import { formatError } from '@/src/sync/format-error'
 
-runMigrations()
 
 export type SyncRun = {
   id: number

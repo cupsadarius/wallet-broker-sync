@@ -1,9 +1,8 @@
 import { NextResponse } from 'next/server'
 import { and, eq } from 'drizzle-orm'
-import { db, runMigrations } from '@/src/storage/db'
+import { db } from '@/src/storage/db'
 import { manualLink } from '@/src/storage/schema'
 
-runMigrations()
 
 export async function GET() {
   const links = await db.select().from(manualLink)
