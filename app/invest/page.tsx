@@ -3,11 +3,11 @@ import Menu from '@/app/components/Menu'
 import { db } from '@/src/storage/db'
 import { brokerAccountMap } from '@/src/storage/schema'
 import { ensureFreshMirror } from '@/src/dashboards/mirror'
-import { loadMaturities, loadPerformance, loadPlans, loadPositions } from '@/src/dashboards/portfolio'
+import { loadInvestCards, loadMaturities, loadPerformance, loadPlans, loadPositions } from '@/src/dashboards/portfolio'
 import { SUGGESTED_PLANS } from '@/src/dashboards/compute/plans'
 import { PlanTagPill } from '@/app/components/PlanBits'
 import { addSuggestedPlan, setPlanStatus } from './plans/actions'
-import { fmtAmount, fmtSigned } from '@/src/dashboards/compute/today'
+import { fmtAmount, fmtDay, fmtSigned } from '@/src/dashboards/compute/today'
 import type { Position } from '@/src/dashboards/compute/positions'
 import { cn } from '@/lib/utils'
 import PerformanceChart from './PerformanceChart'
@@ -33,6 +33,7 @@ export default async function InvestPage({ searchParams }: { searchParams: Promi
         <h1 className="text-2xl font-semibold">Invest</h1>
         <Menu items={MENU} label="Invest menu" />
       </div>
+      <InsightCards />
       <nav className="my-3 flex rounded-xl border bg-card p-[3px]">
         {TABS.map(t => (
           <Link
@@ -49,6 +50,23 @@ export default async function InvestPage({ searchParams }: { searchParams: Promi
       {tab === 'plans' && <Plans />}
     </main>
   )
+}
+
+async function InsightCards() {
+  const d = await loadInvestCards()
+  if (!d) return null
+  const cards = [
+    ...d.idle.map(c => ({
+      key: c.accountId, href: '/invest?tab=plans',
+      text: <><b>{fmtAmount(c.cash, c.currency)}</b> idle at {c.name} since {fmtDay(c.since)}. Invest it or move it.</>,
+    })),
+    ...d.gaps.map(t => ({ key: t.id, href: t.href ?? '/invest?tab=plans', text: <><b>{t.title}.</b> {t.detail}</> })),
+  ]
+  return cards.map(c => (
+    <Link key={c.key} href={c.href} className="mt-2 block rounded-[14px] border border-warn/40 bg-warn/10 px-3.5 py-2.5 text-[13px]">
+      {c.text}
+    </Link>
+  ))
 }
 
 function NotConfigured() {
