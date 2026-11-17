@@ -26,13 +26,23 @@ export async function register(): Promise<void> {
   const { applyEnvConnection } = await import('./src/storage/credentials')
   await applyEnvConnection()
   const { syncMirror, getMirrorIntervalMs } = await import('./src/dashboards/mirror')
+  const { loadTasks, loadMaturities } = await import('./src/dashboards/portfolio')
+  const { notifyNewTasks } = await import('./src/push/tasks')
+  const { ensurePricesForHoldings } = await import('./src/dashboards/prices')
 
+  const PRICE_REFRESH_MS = 12 * 60 * 60_000
+  let lastPriceRefresh = 0
   let busy = false
   const tick = async () => {
     if (busy) return
     busy = true
     try {
-      await syncMirror()
+      const snapshot = await syncMirror()
+      if (snapshot) await notifyNewTasks(await loadTasks(snapshot, await loadMaturities()))
+      if (Date.now() - lastPriceRefresh > PRICE_REFRESH_MS) {
+        lastPriceRefresh = Date.now()
+        await ensurePricesForHoldings()
+      }
     } catch (err) {
       console.warn('[dashboard.mirror] background sync failed', err)
     } finally {
