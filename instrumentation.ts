@@ -29,16 +29,25 @@ export async function register(): Promise<void> {
   const { loadTasks, loadMaturities } = await import('./src/dashboards/portfolio')
   const { notifyNewTasks } = await import('./src/push/tasks')
   const { ensurePricesForHoldings } = await import('./src/dashboards/prices')
+  const { maybeWriteWeeklyNote } = await import('./src/insights/jobs')
 
   const PRICE_REFRESH_MS = 12 * 60 * 60_000
   let lastPriceRefresh = 0
   let busy = false
+  let noteBusy = false
   const tick = async () => {
     if (busy) return
     busy = true
     try {
       const snapshot = await syncMirror()
       if (snapshot) await notifyNewTasks(await loadTasks(snapshot, await loadMaturities()))
+      // The AI run can take minutes, so it must not hold up the next mirror sync.
+      if (snapshot && !noteBusy) {
+        noteBusy = true
+        void maybeWriteWeeklyNote()
+          .catch(err => console.warn('[insights.weekly] note failed', err instanceof Error ? err.message : err))
+          .finally(() => { noteBusy = false })
+      }
       if (Date.now() - lastPriceRefresh > PRICE_REFRESH_MS) {
         lastPriceRefresh = Date.now()
         await ensurePricesForHoldings()

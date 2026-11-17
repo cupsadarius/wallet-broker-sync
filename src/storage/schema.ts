@@ -170,3 +170,25 @@ export const askMessage = sqliteTable('ask_message', {
 }, (t) => ({
   idxChat: index('ask_message_chat').on(t.chatId),
 }))
+
+// AI budget limit proposals. `id` is the budget id plus the proposed limit, so a rejected proposal stays
+// rejected when the model suggests it again. Limits are int*100 in the budget currency.
+export const budgetProposal = sqliteTable('budget_proposal', {
+  id: text('id').primaryKey(),
+  budgetId: text('budget_id').notNull(),
+  currentLimit: integer('current_limit').notNull(),
+  limit: integer('limit').notNull(),
+  reason: text('reason').notNull(),
+  status: text('status', { enum: ['open', 'approved', 'rejected'] }).notNull().default('open'),
+  createdAt: text('created_at').notNull(),
+})
+
+// Weekly AI money notes. `week` is the Monday of the week the note is for; a flagged note failed the number check.
+export const weeklyNote = sqliteTable('weekly_note', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  week: text('week').notNull(),
+  text: text('text').notNull(),
+  status: text('status', { enum: ['ok', 'flagged'] }).notNull(),
+  problem: text('problem'),
+  createdAt: text('created_at').notNull(),
+})

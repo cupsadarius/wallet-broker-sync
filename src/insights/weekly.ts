@@ -22,12 +22,18 @@ export function localParts(now: Date): { day: string; weekday: number; hour: num
   }
 }
 
+/** The Monday of the Bucharest week that holds `now`. */
+export function weekOf(now: Date): string {
+  const { day, weekday } = localParts(now)
+  return addDays(day, 1 - weekday)
+}
+
 export type WeeklyState = { doneWeek: string | null; lastAttempt: string | null }
 
 /** The Monday key of the week whose note is due now, or null. A missed Monday catches up later that week. */
 export function weeklyDue(now: Date, state: WeeklyState): string | null {
-  const { day, weekday, hour } = localParts(now)
-  const week = addDays(day, 1 - weekday)
+  const { weekday, hour } = localParts(now)
+  const week = weekOf(now)
   if (weekday === 1 && hour < DUE_HOUR) return null
   if (state.doneWeek === week) return null
   if (state.lastAttempt && now.getTime() - Date.parse(state.lastAttempt) < RETRY_MS) return null
