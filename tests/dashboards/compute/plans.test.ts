@@ -91,7 +91,10 @@ describe('planProgress · recurring', () => {
 
   it('shows a paused plan without an action', () => {
     const p = planProgress({ ...vuaa, status: 'paused' }, ctx)
-    expect(p).toMatchObject({ tag: 'paused', action: null, line: 'Paused · last buy 31 Aug 2026', ring: 1 })
+    expect(p).toMatchObject({
+      tag: 'paused', action: null, line: 'Paused · last buy 31 Aug 2026', ring: 1,
+      detail: '100 EUR/month · whole shares · last buy 31 Aug 2026', holding: '11 VUAA',
+    })
   })
 
   it('reads fallback-record trades for the target', () => {

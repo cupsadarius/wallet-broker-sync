@@ -125,20 +125,24 @@ function recurring(p: RecurringPlan, ctx: PlanContext): PlanProgress {
     : `Next ${fmtAmount(p.amount, p.currency)} by ${fmtDay(nextDue)}`
   const tag: PlanTag = p.status !== 'active' ? p.status : periodsBehind > 0 ? 'behind' : 'on track'
   const lastBuy = trades.filter(t => t.transactionType === 0).at(-1)
+  const active = p.status === 'active'
+  const lastText = lastBuy ? [`last buy ${fmtDay(lastBuy.date)}`] : []
   const status = tag === 'behind' ? `${plural(periodsBehind, unit)} behind`
     : tag === 'on track' ? 'On track'
-    : `${tag === 'paused' ? 'Paused' : 'Archived'}${lastBuy ? ` · last buy ${fmtDay(lastBuy.date)}` : ''}`
+    : [tag === 'paused' ? 'Paused' : 'Archived', ...lastText].join(' · ')
 
+  // Paused plans skip deposits and cash: the account may fund other things meanwhile.
   return {
     tag,
-    ring: p.status !== 'active' || expected === 0 ? 1 : Math.min(1, paid / expected),
+    ring: !active || expected === 0 ? 1 : Math.min(1, paid / expected),
     line: action ? `${status} · ${lower(action)}` : status,
     detail: [
-      `${paid.toLocaleString('en-US', { maximumFractionDigits: 0 })} of ${fmtAmount(expected, p.currency)} since ${fmtMonth(p.startDate)}`,
+      ...(active ? [`${paid.toLocaleString('en-US', { maximumFractionDigits: 0 })} of ${fmtAmount(expected, p.currency)} since ${fmtMonth(p.startDate)}`] : []),
       `${fmtAmount(p.amount, p.currency)}/${unit}`,
       ...(p.wholeShares && p.targetSymbol ? ['whole shares'] : []),
+      ...(active ? [] : lastText),
     ].join(' · '),
-    holding: [...(p.targetSymbol ? [`${held} ${p.targetSymbol}`] : []), `${fmtAmount(cash, p.currency)} cash`].join(' · '),
+    holding: [...(p.targetSymbol ? [`${held} ${p.targetSymbol}`] : []), ...(active ? [`${fmtAmount(cash, p.currency)} cash`] : [])].join(' · ') || null,
     action,
     expected, deposited: paid, periodsBehind, held, cash,
   }

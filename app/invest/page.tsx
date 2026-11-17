@@ -206,7 +206,7 @@ async function Plans() {
           <div className="relative mt-2.5 mb-1.5 h-[7px] overflow-hidden rounded bg-border">
             <b className={cn('absolute inset-y-0 left-0 rounded', p.status === 'active' ? 'bg-primary' : 'bg-[#3c4049]')} style={{ width: `${Math.round(g.ring * 100)}%` }} />
           </div>
-          <div className="text-[13px] text-muted-foreground">{p.status === 'active' ? g.detail : g.line}</div>
+          <div className="text-[13px] text-muted-foreground">{g.detail}</div>
           {(g.holding || g.action) && (
             <div className="mt-2 flex items-center justify-between gap-2">
               <span className="min-w-0 text-[13px] text-muted-foreground">{g.holding}</span>
