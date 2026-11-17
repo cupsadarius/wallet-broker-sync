@@ -4,7 +4,7 @@ import type { Maturity } from './maturities'
 
 export type Task = {
   id: string                 // stable: a push goes out once per id
-  kind: 'upload' | 'bank' | 'maturity'
+  kind: 'upload' | 'bank' | 'maturity' | 'plan'
   title: string
   detail: string
   href?: string
@@ -61,11 +61,16 @@ export function accountBalances(
   return new Map([...cents].map(([id, c]) => [id, c / 100]))
 }
 
+/** An outgoing record on another account that pays into `accountId`, by link or by broker payee. */
+export function paysInto(r: MirrorRecord, accountId: string, broker: BrokerId | null): boolean {
+  return r.accountId !== accountId && r.recordType === 1 && (r.transferAccountId === accountId
+    || (broker !== null && BROKER_PAYEE[broker].test(`${r.payee ?? ''} ${r.note ?? ''}`)))
+}
+
 function isDepositTo(r: MirrorRecord, broker: BrokerId, accountId: string): boolean {
   if (!r.bankSynced) return false
   if (r.accountId === accountId) return r.recordType === 0 && r.transfer
-  return r.recordType === 1
-    && (r.transferAccountId === accountId || BROKER_PAYEE[broker].test(`${r.payee ?? ''} ${r.note ?? ''}`))
+  return paysInto(r, accountId, broker)
 }
 
 /**

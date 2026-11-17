@@ -90,6 +90,7 @@ export type MirrorRecord = {
   isTradeFallback: boolean
   transfer: boolean
   transferAccountId?: string
+  transferId?: string      // shared by both legs of a Wallet transfer
   bankSynced: boolean
 }
 
@@ -331,7 +332,7 @@ function projectBuckets(buckets: DocBucket): MirrorSnapshot {
       recordDate?: string; date?: string; note?: string;
       payee?: string; payer?: string;
       reservedSource?: string; externalSource?: string;
-      transfer?: boolean; transferAccountId?: string;
+      transfer?: boolean; transferAccountId?: string; transferId?: string;
       reservedIntegrationSource?: string;
     }
     if (!r._id || !r.accountId) continue
@@ -355,6 +356,7 @@ function projectBuckets(buckets: DocBucket): MirrorSnapshot {
       isTradeFallback,
       transfer: r.transfer === true,
       transferAccountId: r.transferAccountId,
+      transferId: r.transferId,
       bankSynced: !!r.reservedIntegrationSource,
     })
   }
