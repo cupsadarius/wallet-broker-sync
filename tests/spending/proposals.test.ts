@@ -24,7 +24,7 @@ function rec(p: Partial<MirrorRecord> & { id: string }): MirrorRecord {
   }
 }
 const pos = (merchant: string, day: string) =>
-  `Plata la POS non-BT cu card MASTERCARD;POS ${day}/11/2026 617200098 TID:21989250 ${merchant} RO 55396837 valoare tranzactie: 11.16 RON RRN:631807115684`
+  `Plata la POS non-BT cu card MASTERCARD;POS ${day}/11/2026 000000001 TID:00000002 ${merchant} RO 00001111 valoare tranzactie: 11.16 RON RRN:000000000003`
 
 describe('payeeLabel and groupKey', () => {
   it('prefers the payee, else the merchant in a card payment note, else the note', () => {

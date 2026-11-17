@@ -23,7 +23,7 @@ const RECATEGORIZED_DAYS = 90
 const MAX_CANDIDATES = 40
 const MAX_EXAMPLES = 3
 
-// A card payment note from the bank: "...TID:<terminal> <MERCHANT> RO 55396837 valoare tranzactie...".
+// A card payment note from the bank: "...TID:<terminal> <MERCHANT> RO 00001111 valoare tranzactie...".
 const CARD_NOTE = /TID:?\s*\S+\s+(.+?)(?:\s{2,}|\s+[A-Z]{2,3}\s+\d{6,}|\s+valoare tranzactie|;|$)/i
 
 export function payeeLabel(r: Pick<MirrorRecord, 'payee' | 'note'>): string {

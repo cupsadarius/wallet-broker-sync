@@ -109,7 +109,7 @@ describe('markTransfer', () => {
   const TRANSFER = '-Category_transfer'
   const topUp: Doc = {
     _id: 'Record_topup', _rev: '1-a', reservedModelType: 'Record', type: 0, amount: 490_000, accountId: '-Account_joint',
-    categoryId: '-Category_income', originalCategoryId: '-Category_income', note: 'Top-Up by *6837', reservedIntegrationSource: 'saltedge_partners',
+    categoryId: '-Category_income', originalCategoryId: '-Category_income', note: 'Top-Up by *1111', reservedIntegrationSource: 'saltedge_partners',
   }
   const sent: Doc = {
     _id: 'Record_sent', _rev: '1-b', reservedModelType: 'Record', type: 1, amount: 490_000, accountId: '-Account_bt',

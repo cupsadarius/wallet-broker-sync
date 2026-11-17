@@ -47,7 +47,7 @@ describe('unexplainedOutflows', () => {
   const accounts = [acc('bt', 'Banca Transilvania', true), acc('rev', 'Revolut', false), acc('rev-eur', 'Revolut', false)]
   const now = new Date('2026-11-17T12:00:00Z')
   const topUp = (id: string, recordDate: string, amount = 200_000) =>
-    rec({ id, recordDate, amount, transfer: true, note: `EPOS ${recordDate} TID: Revolut**4794* 70 SI` })
+    rec({ id, recordDate, amount, transfer: true, note: `EPOS ${recordDate} TID: Revolut**2222* 70 SI` })
 
   it('sums large outflows to a provider whose sync is stale, since it went stale and within 6 weeks', () => {
     const out = unexplainedOutflows(accounts, [
@@ -56,7 +56,7 @@ describe('unexplainedOutflows', () => {
       topUp('t2', '2026-10-26'),
       rec({ id: 'linked', recordDate: '2026-10-30', amount: 50_000, transfer: true, transferAccountId: 'rev-eur' }),
       topUp('before-stale', '2026-10-20'),
-      rec({ id: 'fee', recordDate: '2026-10-30', amount: 2_000, note: 'Comision Revolut7723' }),
+      rec({ id: 'fee', recordDate: '2026-10-30', amount: 2_000, note: 'Comision Revolut3333' }),
       rec({ id: 'incoming', recordDate: '2026-10-30', recordType: 0, amount: 90_000, note: 'Revolut' }),
       rec({ id: 'spend-on-rev', accountId: 'rev', recordDate: '2026-11-02', amount: 90_000, note: 'Revolut', bankSynced: false }),
     ], now)
@@ -76,7 +76,7 @@ describe('unexplainedOutflows', () => {
 })
 
 describe('findTransferCounterparts', () => {
-  const topUp = rec({ id: 'topup', accountId: 'r-joint', recordType: 0, amount: 490_000, recordDate: '2026-10-30', note: 'Top-Up by *6837' })
+  const topUp = rec({ id: 'topup', accountId: 'r-joint', recordType: 0, amount: 490_000, recordDate: '2026-10-30', note: 'Top-Up by *1111' })
   const out = (id: string, p: Partial<MirrorRecord> = {}) =>
     rec({ id, accountId: 'bt', recordType: 1, amount: 490_000, recordDate: '2026-10-29', payee: 'Revolut', ...p })
 
