@@ -6,12 +6,18 @@ import { ensureFreshMirror, getBaseCurrency, readConfigMap } from '@/src/dashboa
 import { aggregateSpending } from '@/src/dashboards/compute/spending'
 import { latestFx } from '@/src/dashboards/prices'
 import { matchingRecords } from './proposals'
-import { reviewQueue, unexplainedOutflows, type ReviewState } from './review'
+import { likelyTransfers, reviewQueue, unexplainedOutflows, type ReviewState } from './review'
 import { loadInsights } from '@/src/insights/load'
 import { categorySpikes } from '@/src/insights/cards'
 
 export const REVIEW_CURSOR_KEY = 'spending.reviewCursor'
 export const REVIEW_ACCEPTED_KEY = 'spending.reviewAccepted'
+export const TRANSFERS_DISMISSED_KEY = 'spending.transfersDismissed'
+
+export async function readDismissedTransfers(): Promise<string[]> {
+  const cfg = await readConfigMap()
+  try { return z.array(z.string()).parse(JSON.parse(cfg[TRANSFERS_DISMISSED_KEY] ?? '[]')) } catch { return [] }
+}
 const FIRST_REVIEW_DAYS = 14
 const PAGE_MAX_AGE_MS = 5 * 60_000
 const NOTES_SHOWN = 5
@@ -63,6 +69,7 @@ export async function loadSpending() {
     spikes: categorySpikes(s.records, insights.spend, insights.today),
     notes: await db.select().from(weeklyNote).orderBy(desc(weeklyNote.id)).limit(NOTES_SHOWN),
     queue: reviewQueue(s.records, await readReviewState(now)),
+    transfers: likelyTransfers(s.records, today, new Set(await readDismissedTransfers())),
     monthExpense: month.totals.expense,
     topCategories, outflows, proposals,
   }

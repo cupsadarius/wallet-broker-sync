@@ -2,10 +2,10 @@ import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { loadSpending } from '@/src/spending/load'
 import { isUncategorized, payeeLabel } from '@/src/spending/proposals'
-import { findTransferCounterparts } from '@/src/spending/review'
+import { findTransferCounterparts, pairKey } from '@/src/spending/review'
 import { fmtAmount, fmtDay } from '@/src/dashboards/compute/today'
 import type { MirrorRecord } from '@/src/dashboards/mirror'
-import { acceptAll, acceptRecord, approveBudgetProposal, approveProposal, rejectBudgetProposal, rejectProposal } from './actions'
+import { acceptAll, acceptRecord, approveBudgetProposal, dismissTransfer, markAsTransfer, approveProposal, rejectBudgetProposal, rejectProposal } from './actions'
 import type { BudgetStatus } from '@/src/dashboards/compute/budgets'
 import { cn } from '@/lib/utils'
 import { ActionForm, CategoryChip, TransferButton, type CategoryGroup } from './ui'
@@ -138,6 +138,32 @@ export default async function SpendingPage({ searchParams }: { searchParams: Pro
           <span className="w-28 shrink-0 truncate">{c.name}</span>
           <span className="h-2 rounded bg-primary" style={{ width: `${Math.max(2, (c.expense / maxCategory) * 100) * 0.55}%` }} />
           <span className="ml-auto shrink-0 tabular-nums">{Math.round(c.expense).toLocaleString('en-US')}</span>
+        </div>
+      ))}
+
+      {d.transfers.length > 0 && <Section id="transfers" title={`Likely transfers · ${d.transfers.length}`} />}
+      {d.transfers.map(({ record: r, candidates }) => (
+        <div key={r.id} className="my-2 rounded-[14px] border bg-card px-3.5 py-3">
+          <div className="flex items-baseline justify-between gap-2 text-sm">
+            <span className="min-w-0 truncate font-semibold">{accountName(r.accountId)} · {payeeLabel(r) || '(no note)'}</span>
+            <span className="shrink-0 font-semibold tabular-nums">{money(r)} <span className="text-xs font-normal text-muted-foreground">{r.currencyCode}</span></span>
+          </div>
+          <div className="text-xs text-muted-foreground">{shortDay(r.recordDate)}</div>
+          {candidates.map(c => (
+            <ActionForm key={c.id} action={markAsTransfer} className="mt-2 flex items-center gap-2 border-t pt-2">
+              <input type="hidden" name="recordId" value={r.id} />
+              <input type="hidden" name="counterpartId" value={c.id} />
+              <div className="min-w-0 flex-1">
+                <div className="truncate text-sm"><b>{accountName(c.accountId)}</b> {money(c)} {c.currencyCode}</div>
+                <div className="truncate text-xs text-muted-foreground">{shortDay(c.recordDate)}{payeeLabel(c) ? ` · ${payeeLabel(c)}` : ''}</div>
+              </div>
+              <button className="shrink-0 rounded-[10px] bg-primary px-3 py-1.5 text-[13px] font-bold text-primary-foreground">Link</button>
+            </ActionForm>
+          ))}
+          <form action={dismissTransfer} className="mt-2 text-right">
+            {candidates.map(c => <input key={c.id} type="hidden" name="key" value={pairKey(r.id, c.id)} />)}
+            <button className="text-[13px] text-muted-foreground underline">Not a transfer</button>
+          </form>
         </div>
       ))}
 

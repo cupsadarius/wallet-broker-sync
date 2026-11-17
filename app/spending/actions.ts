@@ -12,7 +12,7 @@ import { formatError } from '@/src/sync/format-error'
 import { matchingRecords } from '@/src/spending/proposals'
 import { magicRuleDoc, markTransfer, patchDocs, writeRule } from '@/src/spending/write'
 import { findTransferCounterparts, reviewable } from '@/src/spending/review'
-import { readReviewState, REVIEW_ACCEPTED_KEY, REVIEW_CURSOR_KEY } from '@/src/spending/load'
+import { readDismissedTransfers, readReviewState, REVIEW_ACCEPTED_KEY, REVIEW_CURSOR_KEY, TRANSFERS_DISMISSED_KEY } from '@/src/spending/load'
 import { limitChanges } from '@/src/dashboards/compute/budgets'
 
 export type ActionState = { error?: string } | null
@@ -21,6 +21,12 @@ export async function acceptRecord(form: FormData) {
   const id = z.string().min(1).parse(form.get('id'))
   const { accepted } = await readReviewState()
   await writeConfig(REVIEW_ACCEPTED_KEY, JSON.stringify([...new Set([...accepted, id])]))
+  refresh()
+}
+
+export async function dismissTransfer(form: FormData) {
+  const keys = z.array(z.string().min(1)).min(1).parse(form.getAll('key'))
+  await writeConfig(TRANSFERS_DISMISSED_KEY, JSON.stringify([...new Set([...await readDismissedTransfers(), ...keys])]))
   refresh()
 }
 
