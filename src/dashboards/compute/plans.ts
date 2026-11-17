@@ -80,7 +80,7 @@ function deposited(p: RecurringPlan, ctx: PlanContext): number {
 }
 
 /** Cash a trade took from (+) or paid into (−) the account, in `currency`; 0 when in another currency. */
-function tradeCash(t: MirrorAssetTransaction, currency: string): number {
+export function tradeCash(t: MirrorAssetTransaction, currency: string): number {
   const sign = t.transactionType === 1 ? -1 : 1
   if (t.cashAmount !== undefined && t.cashAmountCurrencyCode === currency) return sign * t.cashAmount / 100
   if (t.priceCurrencyCode === currency) return sign * t.quantity * t.price / 100

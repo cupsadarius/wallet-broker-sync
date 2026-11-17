@@ -27,8 +27,8 @@ export type BudgetStatus = BudgetSpend & {
 const NOT_SPEND_GROUPS = new Set(['Income', 'Unknown', 'System'])
 
 const monthOf = (date: string) => date.slice(0, 7)
-const monthEnd = (ym: string) => new Date(Date.UTC(Number(ym.slice(0, 4)), Number(ym.slice(5, 7)), 0)).toISOString().slice(0, 10)
-const shiftMonth = (ym: string, n: number) => {
+export const monthEnd = (ym: string) => new Date(Date.UTC(Number(ym.slice(0, 4)), Number(ym.slice(5, 7)), 0)).toISOString().slice(0, 10)
+export const shiftMonth = (ym: string, n: number) => {
   const i = Number(ym.slice(0, 4)) * 12 + Number(ym.slice(5, 7)) - 1 + n
   return `${Math.floor(i / 12)}-${String((i % 12) + 1).padStart(2, '0')}`
 }
