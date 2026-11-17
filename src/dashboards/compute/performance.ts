@@ -43,6 +43,7 @@ type Ctx = {
   txns: MirrorAssetTransaction[]
   byAssetId: Map<string, MirrorAsset>
   accountIds?: Set<string>
+  extraFlows?: CashFlow[]   // income (dividends, coupons): counts in XIRR and totals, not in cashFlows
 }
 
 /**
@@ -109,12 +110,12 @@ async function buildValueSeries(ctx: Ctx): Promise<ValuePoint[]> {
     let total = 0
     for (const h of holdings) {
       const ticker = resolveYahooTicker(h.symbol, h.exchangeCode)
-      if (!ticker) continue
-      const close = await latestClose(ticker, asOf)
-      if (!close) continue
-      const fx = await latestFx(close.currency || h.currency || ctx.baseCurrency, ctx.baseCurrency, asOf)
+      const close = ticker ? await latestClose(ticker, asOf) : null
+      // No price: hold the position at cost so the series does not drop to zero.
+      const px = close ? close.close : h.avgCost
+      const fx = await latestFx(close?.currency || h.currency || ctx.baseCurrency, ctx.baseCurrency, asOf)
       if (fx === null) continue
-      total += close.close * h.quantity * fx
+      total += px * h.quantity * fx
     }
     points.push({ date: asOf, valueBase: total })
   }
@@ -172,19 +173,21 @@ export async function computePerformance(ctx: Ctx): Promise<PerformanceResult> {
     buildValueSeries(ctx),
   ])
   const currentValueBase = series.length > 0 ? series[series.length - 1].valueBase : 0
+  const allFlows = [...cashFlows, ...(ctx.extraFlows ?? [])]
+    .sort((a, b) => a.date.localeCompare(b.date))
 
   let totalContributed = 0
   let totalRealized = 0
-  for (const cf of cashFlows) {
+  for (const cf of allFlows) {
     if (cf.amountBase < 0) totalContributed += -cf.amountBase
     else totalRealized += cf.amountBase
   }
 
   // XIRR: cash flows + terminal value as positive flow today.
   let mwr: number | null = null
-  if (cashFlows.length > 0 && currentValueBase > 0) {
+  if (allFlows.length > 0 && currentValueBase > 0) {
     const xirrInput = [
-      ...cashFlows.map(cf => ({ amount: cf.amountBase, when: new Date(cf.date + 'T00:00:00Z') })),
+      ...allFlows.map(cf => ({ amount: cf.amountBase, when: new Date(cf.date + 'T00:00:00Z') })),
       { amount: currentValueBase, when: new Date() },
     ]
     try {
@@ -195,7 +198,7 @@ export async function computePerformance(ctx: Ctx): Promise<PerformanceResult> {
     }
   }
 
-  const twr = modifiedDietz(series, cashFlows)
+  const twr = modifiedDietz(series, allFlows)
 
   const totalReturnBase = currentValueBase + totalRealized - totalContributed
   const totalReturnPct = totalContributed > 0 ? (totalReturnBase / totalContributed) * 100 : null

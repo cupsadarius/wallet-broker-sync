@@ -16,7 +16,7 @@
 import { db, runMigrations } from '@/src/storage/db'
 import { priceHistory, fxHistory, assetAlias } from '@/src/storage/schema'
 import { sql } from 'drizzle-orm'
-import { readMirror, getBaseCurrency } from './mirror'
+import { readMirror, getBaseCurrency, withFallbackTrades } from './mirror'
 import { crossRate } from './compute/fx'
 
 // ISO MIC codes the user's brokers (XTB / IBKR / Tradeville) actually trade
@@ -259,8 +259,9 @@ export async function ensurePricesForHoldings(): Promise<{
   }
 
   // Compute first trade date per asset.
+  const { transactions, byAssetId } = withFallbackTrades(snapshot)
   const firstTradeByAsset = new Map<string, string>()
-  for (const t of snapshot.transactions) {
+  for (const t of transactions) {
     const prev = firstTradeByAsset.get(t.assetId)
     if (!prev || t.date < prev) firstTradeByAsset.set(t.assetId, t.date)
   }
@@ -272,7 +273,7 @@ export async function ensurePricesForHoldings(): Promise<{
   void aliasRows
 
   const resolutions: SymbolResolution[] = []
-  for (const a of snapshot.assets) {
+  for (const a of byAssetId.values()) {
     if (!firstTradeByAsset.has(a.id)) continue  // never traded — skip
     resolutions.push({
       assetId: a.id,

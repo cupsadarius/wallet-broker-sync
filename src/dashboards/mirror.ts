@@ -14,11 +14,12 @@
  */
 import { eq } from 'drizzle-orm'
 import { db, runMigrations } from '@/src/storage/db'
-import { config, couchDocCache } from '@/src/storage/schema'
+import { config, couchDocCache, recordFallback } from '@/src/storage/schema'
 import { CouchClient } from '@/src/sync/couch'
 import { refreshCache, scopeFor, type DocBucket } from '@/src/sync/couch-cache'
 import { loadCouchCreds } from '@/src/storage/credentials'
 import { envelopeGroupName } from './envelopes'
+import { fallbackTrades } from './compute/fallback'
 
 export const LAST_SYNC_KEY = 'dashboard.lastMirrorSync'
 export const BASE_CCY_KEY = 'dashboard.baseCurrency'
@@ -200,6 +201,19 @@ export async function readMirror(): Promise<MirrorSnapshot | null> {
 export async function ensureFreshMirror(maxAgeMs = DEFAULT_MIRROR_INTERVAL_MS): Promise<MirrorSnapshot | null> {
   if (await isMirrorStale(maxAgeMs)) return syncMirror()
   return readMirror()
+}
+
+/** Asset transactions plus the trades Wallet holds as fallback Records. */
+export function withFallbackTrades(s: MirrorSnapshot): {
+  transactions: MirrorAssetTransaction[]
+  byAssetId: Map<string, MirrorAsset>
+} {
+  const exchange = new Map(db.select().from(recordFallback).all().map(r => [r.symbol.toUpperCase(), r.exchange]))
+  const fb = fallbackTrades(s.records, sym => exchange.get(sym.toUpperCase()) ?? 'XBSE')
+  return {
+    transactions: [...s.transactions, ...fb.transactions],
+    byAssetId: new Map([...s.byAssetId, ...fb.assets.map(a => [a.id, a] as const)]),
+  }
 }
 
 function projectBuckets(buckets: DocBucket): MirrorSnapshot {
