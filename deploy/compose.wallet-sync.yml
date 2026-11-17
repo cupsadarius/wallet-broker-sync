@@ -4,8 +4,8 @@ services:
     build:
       context: ${WALLET_SYNC_DIR:?absolute path to the investment-wallet-sync checkout}
     restart: unless-stopped
-    # Default network only: any container on a shared network could forge Tailscale-User-Login.
-    networks: [default]
+    # Own network: any container that shares a network with this one could forge Tailscale-User-Login.
+    networks: [wallet_sync]
     ports: ["127.0.0.1:8090:8090"]
     volumes: ["wallet_sync_data:/data"]
     environment:
@@ -16,6 +16,9 @@ services:
       WALLET_ALLOWED_USERS: ${WALLET_ALLOWED_USERS:?comma-separated Tailscale logins}
       WALLET_ALLOWED_HOSTS: ${WALLET_ALLOWED_HOSTS:-}
       WALLET_VAPID_SUBJECT: ${WALLET_VAPID_SUBJECT:-}
+
+networks:
+  wallet_sync: {}
 
 volumes:
   wallet_sync_data:

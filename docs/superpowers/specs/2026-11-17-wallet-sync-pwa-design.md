@@ -94,7 +94,7 @@ Mockups: `.superpowers/brainstorm/75982-1794931843/content/` (`today-v3.html`, `
 - **Container.** Dockerfile for the Next app (standalone output if this Next supports it; check the docs).
   better-sqlite3 needs a native build for linux/amd64.
 - **Compose.** A `wallet-sync` service in body-ledger's `compose.body-ledger.yml` (or an extra compose file
-  in the same `COMPOSE_FILE` list). Network `default` only (`ai` joins in Phase 4, see Header trust). Port `127.0.0.1:<port>` only. Volume for the
+  in the same `COMPOSE_FILE` list). Own network `wallet_sync`, shared with no other service (`ai` joins in Phase 4, see Header trust). Port `127.0.0.1:<port>` only. Volume for the
   data dir.
 - **Secrets.** Replace keytar with env-based secrets: `WALLET_COUCH_URL`, `WALLET_COUCH_DB`,
   `WALLET_COUCH_LOGIN`, `WALLET_COUCH_TOKEN`. Keep keytar out of the container image. The setup wizard's
@@ -145,7 +145,7 @@ Mockups: `.superpowers/brainstorm/75982-1794931843/content/` (`today-v3.html`, `
   host check.
 - **Header trust (security review, 2026-11-17):** any container on the `ai` network can reach the app port and
   send a forged `Tailscale-User-Login`. When the app joins `ai`, requests from that network get access only to
-  `/mcp` with the bearer token, never through the login header. Phase 1 keeps the app off `ai` for this reason.
+  `/mcp` with the bearer token, never through the login header. Phase 1 keeps the app on its own network for this reason.
 - **Ask tab:** chat UI; the app calls opencode's session API (as body-ledger does) with tools = this MCP +
   opencode web search/fetch. Answers come back as text plus a json-render spec. The catalog = `@json-render/shadcn`
   components + the app's Recharts charts (line, bar, area, allocation) wrapped with zod schemas. Invalid specs
