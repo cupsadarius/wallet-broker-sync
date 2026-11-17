@@ -25,7 +25,7 @@ export const BASE_CCY_KEY = 'dashboard.baseCurrency'
 export const MIRROR_INTERVAL_KEY = 'dashboard.mirrorIntervalMs'
 
 export const DEFAULT_BASE_CURRENCY = 'EUR'
-export const DEFAULT_MIRROR_INTERVAL_MS = 5 * 60 * 1000  // 5 min
+export const DEFAULT_MIRROR_INTERVAL_MS = 60 * 1000
 
 // Typed views over the raw Couch docs. Money fields use the same int*100
 // representation as Couch — convert at display time, not here.

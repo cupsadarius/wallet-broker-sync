@@ -1,17 +1,20 @@
 /**
  * SQLite-backed mirror of CouchDB docs we care about (Account, Currency,
- * StocksFundsAsset, Category, AssetTransaction, Record). On each refresh we
+ * StocksFundsAsset, Category, AssetTransaction, Record, MagicRule, HashTag). On each refresh we
  * walk the _changes feed from the last persisted seq and apply deltas, so
  * dry-runs after the first one only download what changed.
  */
 import { eq, and } from 'drizzle-orm'
 import { db } from '@/src/storage/db'
-import { couchDocCache, couchCacheMeta } from '@/src/storage/schema'
+import { config, couchDocCache, couchCacheMeta } from '@/src/storage/schema'
 import type { CouchClient } from './couch'
 
 export type DocBucket = Map<string, Record<string, unknown>[]>
 
-const TYPES = ['Account', 'Currency', 'StocksFundsAsset', 'Category', 'AssetTransaction', 'Record'] as const
+export const TYPES = ['Account', 'Currency', 'StocksFundsAsset', 'Category', 'AssetTransaction', 'Record', 'MagicRule', 'HashTag'] as const
+
+const TYPES_KEY = 'couchCache.types'
+const TYPES_VALUE = TYPES.join(',')
 
 export function scopeFor(couchUrl: string, dbName: string): string {
   return `${couchUrl}|${dbName}`
@@ -31,7 +34,10 @@ export async function refreshCache(
     .from(couchCacheMeta)
     .where(eq(couchCacheMeta.scope, scope))
     .limit(1)
-  const since: string | number = metaRow[0]?.lastSeq ?? 0
+  // A changed type list needs a full pass: docs of new types sit before the stored seq.
+  const typesRow = await db.select().from(config).where(eq(config.key, TYPES_KEY)).limit(1)
+  const typesChanged = typesRow[0]?.value !== TYPES_VALUE
+  const since: string | number = typesChanged ? 0 : (metaRow[0]?.lastSeq ?? 0)
 
   let lastSeq: string | number = since
   let upserts = 0
@@ -70,6 +76,11 @@ export async function refreshCache(
         target: couchCacheMeta.scope,
         set: { lastSeq: String(lastSeq) },
       })
+  }
+
+  if (typesChanged) {
+    await db.insert(config).values({ key: TYPES_KEY, value: TYPES_VALUE })
+      .onConflictDoUpdate({ target: config.key, set: { value: TYPES_VALUE } })
   }
 
   void upserts; void deletes  // useful for log/debug; intentionally unused
