@@ -64,6 +64,13 @@
       "when": 1795479000000,
       "tag": "0008_rule_proposals",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "6",
+      "when": 1795480000000,
+      "tag": "0009_ask_chats",
+      "breakpoints": true
     }
   ]
 }

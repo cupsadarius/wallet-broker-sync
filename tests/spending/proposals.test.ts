@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest'
 import {
-  buildPrompt, groupKey, parseProposals, payeeLabel, requestRuleProposals, ruleId, ruleMatches, selectCandidates,
+  buildPrompt, groupKey, parseProposals, payeeLabel, ruleId, ruleMatches, selectCandidates,
 } from '@/src/spending/proposals'
 import type { MirrorCategory, MirrorRecord, MirrorRule } from '@/src/dashboards/mirror'
 
@@ -129,11 +129,5 @@ describe('ruleId', () => {
     expect(ruleId(' leroy ', ['dedeman', 'LEROY MERLIN'])).toBe(id)
     expect(ruleId('Leroy', ['Leroy Merlin'])).not.toBe(id)
     expect(ruleId('Hardware', ['Leroy Merlin', 'Dedeman'])).not.toBe(id)
-  })
-})
-
-describe('requestRuleProposals', () => {
-  it('is a stub until the opencode client is merged', async () => {
-    await expect(requestRuleProposals('x')).rejects.toThrow('not wired: opencode client')
   })
 })

@@ -1,4 +1,6 @@
 import { sqliteTable, text, integer, primaryKey, index } from 'drizzle-orm/sqlite-core'
+import type { Spec } from '@json-render/core'
+import type { Tools } from '@/src/ask/run'
 
 export const config = sqliteTable('config', {
   key: text('key').primaryKey(),
@@ -146,3 +148,25 @@ export const ruleProposal = sqliteTable('rule_proposal', {
   status: text('status', { enum: ['open', 'approved', 'rejected'] }).notNull().default('open'),
   createdAt: text('created_at').notNull(),
 })
+
+// Ask tab chats. `session_id` is the chat's opencode session, so follow-ups keep their context.
+export const askChat = sqliteTable('ask_chat', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  title: text('title').notNull(),
+  sessionId: text('session_id'),
+  createdAt: integer('created_at').notNull(),
+  updatedAt: integer('updated_at').notNull(),
+})
+
+export const askMessage = sqliteTable('ask_message', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  chatId: integer('chat_id').notNull().references(() => askChat.id, { onDelete: 'cascade' }),
+  role: text('role', { enum: ['user', 'assistant'] }).notNull(),
+  status: text('status', { enum: ['running', 'done', 'failed'] }).notNull(),
+  text: text('text').notNull(),
+  spec: text('spec', { mode: 'json' }).$type<Spec>(),
+  tools: text('tools', { mode: 'json' }).$type<Tools>(),
+  createdAt: integer('created_at').notNull(),
+}, (t) => ({
+  idxChat: index('ask_message_chat').on(t.chatId),
+}))

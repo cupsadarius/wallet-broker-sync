@@ -1,3 +1,5 @@
+import { createClient } from '@/src/ask/opencode'
+import { complete } from '@/src/ask/run'
 import { v5 as uuidv5 } from 'uuid'
 import { z } from 'zod'
 import type { MirrorCategory, MirrorRecord, MirrorRule } from '@/src/dashboards/mirror'
@@ -146,7 +148,5 @@ export function ruleId(name: string, keywords: string[]): string {
 }
 
 export async function requestRuleProposals(prompt: string): Promise<string> {
-  void prompt
-  // razor: wired to src/ask opencode client after merge
-  throw new Error('not wired: opencode client')
+  return complete(createClient(), prompt)
 }

@@ -73,25 +73,39 @@ The app serves a read-only MCP server at `/mcp` (streamable HTTP, stateless). Th
 
    The compose fragment passes it to `wallet-sync` and to `opencode`. It also puts `wallet-sync` in front of `WALLET_ALLOWED_HOSTS`, so the Host `wallet-sync:8090` passes the host check. You do not add `wallet-sync` to `.env`. Without the token, `/mcp` answers 404.
 
-2. Add the server to body-ledger's `opencode/opencode.json`, next to `health`, and deny its tools by default:
+2. Add the server to body-ledger's `opencode/opencode.json`, deny its tools by default, and add the `wallet-sync` agent. opencode 2.x reads MCP servers from `mcp.servers` and has no `enabled` key, so move `health` there too:
 
    ```json
    {
      "$schema": "https://opencode.ai/config.json",
      "mcp": {
-       "health": { "...": "unchanged" },
-       "wallet": {
-         "type": "remote",
-         "url": "http://wallet-sync:8090/mcp",
-         "enabled": true,
-         "headers": { "Authorization": "Bearer {env:WALLET_MCP_TOKEN}" }
+       "servers": {
+         "health": { "...": "unchanged, without \"enabled\"" },
+         "wallet": {
+           "type": "remote",
+           "url": "http://wallet-sync:8090/mcp",
+           "headers": { "Authorization": "Bearer {env:WALLET_MCP_TOKEN}" },
+           "codemode": false
+         }
        }
      },
+     "websearch": { "provider": "random" },
      "permissions": [
        { "action": "wallet_*", "resource": "*", "effect": "deny" }
-     ]
+     ],
+     "agents": {
+       "wallet-sync": {
+         "description": "wallet-sync's Ask answers: the wallet MCP tools only",
+         "mode": "primary",
+         "hidden": true,
+         "permissions": [{ "action": "wallet_*", "resource": "*", "effect": "allow" }]
+       }
+     }
    }
    ```
+
+   - `codemode: false` puts each wallet tool on the model's own tool list, so each answer can list the tools it called. With Code Mode, every call shows as `execute`.
+   - `websearch` picks a search provider. Without it, the first `websearch` call waits for a form that no one answers, and fails after about a minute.
 
 3. Recreate the services: `docker compose up -d wallet-sync opencode`.
 
@@ -104,13 +118,13 @@ The app serves a read-only MCP server at `/mcp` (streamable HTTP, stateless). Th
 
 ### Money data only in wallet-sync sessions
 
-`"enabled": false` does not work for this: opencode then never connects the server, and no session can turn it on. Instead, the server stays connected and a permission rule hides its tools. opencode names MCP tools `<server>_<tool>` (for example `wallet_query_records`), and the last matching rule wins.
+`"disabled": true` does not work for this: opencode then never connects the server, and no session can turn it on. Instead, the server stays connected and a permission rule hides its tools. opencode names MCP tools `<server>_<tool>` (for example `wallet_query_records`), and the last matching rule wins.
 
 - **Default (any session):** the config rule `wallet_*` → `deny` hides the tools.
-- **wallet-sync sessions:** create the session with rules that end in an allow for the wallet tools, for example `[{"action": "*", "resource": "*", "effect": "deny"}, {"action": "wallet_*", "resource": "*", "effect": "allow"}]`. This step has no web tools, as the two-step research pattern requires.
-- **body-ledger sessions:** `run_tools` in `server/src/health/ai/llm.py` creates sessions with the single rule allow `*`. That rule comes after the config deny, so it can turn the wallet tools back on. Add `{"action": "wallet_*", "resource": "*", "effect": "deny"}` after it.
+- **wallet-sync sessions:** the Ask answer step creates its session with the agent `wallet-sync`, whose rules allow `wallet_*` after the config deny. The session rules are `[{"action": "*", "resource": "*", "effect": "deny"}, {"action": "wallet_*", "resource": "*", "effect": "allow"}]`, so this step has no web tools, as the two-step research pattern requires.
+- **body-ledger sessions:** `run_tools` in `server/src/health/ai/llm.py` creates sessions with the rules allow `*`, then deny `wallet_*`. The deny comes last, so it wins wherever opencode puts session rules.
 
-> **Caution:** The opencode docs do not say where session rules sit relative to config rules. After the change, start a body-ledger tools session and ask it to list its tools. Make sure no `wallet_*` tool is in the list.
+> **Caution:** The opencode docs say that agent rules come after config rules. They do not say where session rules sit. The agent makes the wallet tools work in both cases. After the change, check both sides as in section 6.
 
 ### Tools
 
@@ -131,3 +145,47 @@ All tools are read-only. Each result has `asOf` (the last Wallet mirror sync), a
 | `data_freshness` | Last mirror sync, last import per broker, latest price and FX dates |
 
 To add a tool, add one entry to `TOOLS` in `src/mcp/tools.ts`.
+
+## 6. Ask tab
+
+The Ask tab sends each question to body-ledger's `opencode` service, with the OpenCode Go model `opencode-go/claude-haiku-5-5` (as body-ledger's research job). No free models: their providers may keep prompts.
+
+Each question runs in two opencode sessions:
+
+1. **Research:** a new session sees only the questions of the chat. It may use `websearch` and `webfetch`; every other tool, and `wallet_*`, is denied. It replies `NONE` when the question needs no outside facts. The app deletes this session after the step.
+2. **Answer:** the chat's own session (one per chat, so follow-ups keep their context) gets the research and the question. It may use only `wallet_*`. It replies with text and an optional json-render spec, which the app checks against its catalog. An invalid spec is dropped, and the text alone shows.
+
+The job runs on the server, so it finishes when the phone disconnects. A push notification says when the answer is ready. Each answer lists the tools it called: own data and web.
+
+### Environment
+
+| Variable | Default | Use |
+|---|---|---|
+| `WALLET_OPENCODE_URL` | `http://opencode:4096` | The opencode server, on the `ai` network |
+| `WALLET_OPENCODE_PASSWORD` | empty | opencode's `OPENCODE_SERVER_PASSWORD` (user `opencode`) |
+
+The compose fragment passes both to `wallet-sync`:
+
+```yaml
+      WALLET_OPENCODE_URL: http://opencode:4096
+      WALLET_OPENCODE_PASSWORD: ${OPENCODE_SERVER_PASSWORD:-}
+```
+
+`OPENCODE_SERVER_PASSWORD` is already in body-ledger's `.env`. The opencode service needs no new variable: the fragment already gives it `WALLET_MCP_TOKEN`.
+
+### Check the permissions
+
+After `docker compose up -d wallet-sync opencode`, ask opencode how it decides for a wallet tool in each kind of session. The endpoint evaluates the rules; it runs no model. Use a throwaway container on the `ai` network, with `P` set to `OPENCODE_SERVER_PASSWORD`:
+
+```sh
+oc() { docker run --rm --network garmin-grafana_ai curlimages/curl:8.11.1 -s -u "opencode:$P" \
+  -H 'content-type: application/json' "$@"; }
+for s in '"permissions":[{"action":"*","resource":"*","effect":"allow"},{"action":"wallet_*","resource":"*","effect":"deny"}]' \
+         '"agent":"wallet-sync","permissions":[{"action":"*","resource":"*","effect":"deny"},{"action":"wallet_*","resource":"*","effect":"allow"}]'; do
+  id=$(oc -d "{\"location\":{\"directory\":\"/work\"},$s}" http://opencode:4096/api/session | sed 's/.*"id":"\([^"]*\)".*/\1/')
+  oc -d '{"action":"wallet_list_accounts","resources":["*"]}' "http://opencode:4096/api/session/$id/permission"; echo
+  oc -X DELETE "http://opencode:4096/api/session/$id"
+done
+```
+
+Make sure the first line (a body-ledger session) shows `"effect":"deny"` and the second (a wallet-sync answer session) shows `"effect":"allow"`. Also check that `GET /api/mcp` lists `health` and `wallet` as connected.
