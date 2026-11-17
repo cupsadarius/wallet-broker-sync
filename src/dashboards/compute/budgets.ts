@@ -90,13 +90,16 @@ export function limitChanges(changes: { amount: number; date: string }[] | undef
   return [...(changes ?? []).filter(c => monthOf(c.date) < monthOf(now)), { amount: Math.round(limit * 100), date: now }]
 }
 
+/** One Today task for every budget past its limit; its id changes when the month or the set changes. */
 export function budgetTasks(statuses: BudgetStatus[]): Task[] {
-  return statuses.filter(s => s.state === 'over').map(s => ({
-    id: `budget:${s.id}:${s.period}`,
+  const over = statuses.filter(s => s.state === 'over')
+  if (over.length === 0) return []
+  return [{
+    id: `budget:${over[0].period}:${over.map(s => s.id).sort().join(',')}`,
     kind: 'budget',
-    title: `${s.name} budget passed`,
-    detail: `${Math.round(s.spent ?? 0).toLocaleString('en-US')} of ${fmtAmount(s.limit, s.currency)} spent this month.`,
+    title: over.length === 1 ? `${over[0].name} budget passed` : `${over.length} budgets passed`,
+    detail: `${over.map(s => `${s.name} ${Math.round(s.spent ?? 0).toLocaleString('en-US')} of ${fmtAmount(s.limit, s.currency)}`).join(' · ')}.`,
     href: '/spending#budgets',
     action: 'Open',
-  }))
+  }]
 }

@@ -130,12 +130,17 @@ describe('limitChanges', () => {
 })
 
 describe('budgetTasks', () => {
-  it('makes a Today task for each budget past its limit, new each month', () => {
+  it('makes one Today task for the budgets past their limit, new when the set or the month changes', () => {
     const over = budgetStatus(budget(), [rec({ id: 'a', amount: 62_000 })], ctx)
-    const ok = budgetStatus(budget({ id: '-Budget_c', name: 'Car' }), [], ctx)
+    const car = budgetStatus(budget({ id: '-Budget_c', name: 'Car', envelopes: [5000], amount: 60_000 }), [rec({ id: 'f', categoryId: 'fuel', amount: 518_998 })], ctx)
+    const ok = budgetStatus(budget({ id: '-Budget_t', name: 'Transport' }), [], ctx)
+    expect(budgetTasks([ok])).toEqual([])
     expect(budgetTasks([over, ok])).toEqual([{
-      id: 'budget:-Budget_g:2026-11', kind: 'budget', title: 'Groceries budget passed',
-      detail: '620 of 500 RON spent this month.', href: '/spending#budgets', action: 'Open',
+      id: 'budget:2026-11:-Budget_g', kind: 'budget', title: 'Groceries budget passed',
+      detail: 'Groceries 620 of 500 RON.', href: '/spending#budgets', action: 'Open',
+    }])
+    expect(budgetTasks([over, car, ok])).toMatchObject([{
+      id: 'budget:2026-11:-Budget_c,-Budget_g', title: '2 budgets passed', detail: 'Groceries 620 of 500 RON · Car 5,190 of 600 RON.',
     }])
   })
 })

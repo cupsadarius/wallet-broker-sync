@@ -16,6 +16,9 @@ import {
   accountBalances, bankTasks, dataAge, maturityTasks, uploadTasks, type Task,
 } from './compute/today'
 import { planProgress, planTasks, type Plan, type PlanProgress } from './compute/plans'
+import { budgetTasks } from './compute/budgets'
+import { loadInsights } from '@/src/insights/load'
+import { idleBrokerCash } from '@/src/insights/cards'
 
 const PAGE_MAX_AGE_MS = 5 * 60_000
 const DAY_MS = 86_400_000
@@ -84,6 +87,7 @@ export async function loadTasks(s: MirrorSnapshot, maturities: Maturity[], today
     ...planTasks(await loadPlans(s, maturities, today)),
     ...maturityTasks(maturities, today),
     ...bankTasks(s.accounts, s.records),
+    ...budgetTasks((await loadInsights(s, 0)).budgets.map(v => v.status)),
   ]
 }
 
@@ -191,5 +195,23 @@ export async function loadPerformance() {
     series,
     brokers: brokers.map((a, i) => ({ name: a.name, perf: perBroker[i] })),
     incomeTotals,
+  }
+}
+
+/** Invest insight cards: broker cash that sits idle, and plans behind their deposits. */
+export async function loadInvestCards() {
+  const s = await ensureFreshMirror(PAGE_MAX_AGE_MS)
+  if (!s) return null
+  const today = isoDay(new Date())
+  const base = await getBaseCurrency()
+  const brokers = (await db.select().from(brokerAccountMap)).flatMap(m => {
+    const a = s.byAccountId.get(m.accountId)
+    return a ? [{ accountId: a.id, name: a.name, broker: m.broker as BrokerId, currency: a.currencyCode }] : []
+  })
+  const rates = new Map<string, number | null>()
+  for (const b of brokers) rates.set(b.currency, await latestFx(b.currency, base, today))
+  return {
+    idle: idleBrokerCash(brokers, s.records, s.transactions, c => rates.get(c) ?? null, today),
+    gaps: planTasks(await loadPlans(s, await loadMaturities(), today)),
   }
 }
