@@ -25,7 +25,9 @@ export default async function TodayPage() {
   const topShare = t.cash.top && t.cash.total > 0 ? Math.round((t.cash.top.base / t.cash.total) * 100) : null
 
   return (
-    <main className="mx-auto max-w-xl px-4">
+    <main className="mx-auto max-w-xl px-4 lg:max-w-6xl lg:px-8">
+      <div className="lg:grid lg:grid-cols-[2fr_3fr] lg:items-start lg:gap-10">
+      <div>
       <div className="mt-1 mb-3 flex items-end justify-between gap-3">
         <div className="min-w-0">
           <div className="text-[11px] uppercase tracking-wider text-muted-foreground">Net worth</div>
@@ -55,7 +57,9 @@ export default async function TodayPage() {
           {t.cash.top && topShare !== null && <span className="text-muted-foreground">{topShare}% in {t.cash.top.name}</span>}
         </Card>
       </div>
+      </div>
 
+      <div className="lg:[&>div:first-child]:mt-1">
       <Section title={`What needs you${t.tasks.length ? ` · ${t.tasks.length}` : ''}`} />
       {t.tasks.length === 0 && <p className="text-sm text-muted-foreground">Nothing needs you now.</p>}
       {t.tasks.map(task => (
@@ -109,6 +113,8 @@ export default async function TodayPage() {
           ))}
         </div>
       )}
+      </div>
+      </div>
 
       <p className="mt-6 mb-2 text-xs leading-relaxed text-muted-foreground">
         Data age:{' '}

@@ -53,10 +53,12 @@ export default async function Retirement() {
       )}
 
       {s.accounts.length > 0 && <Section title="Accounts" />}
-      {s.accounts.map(a => <AccountCard key={a.id} a={a} base={s.base} today={today} />)}
+      <div className="lg:grid lg:grid-cols-2 lg:items-start lg:gap-x-4">
+        {s.accounts.map(a => <AccountCard key={a.id} a={a} base={s.base} today={today} />)}
+      </div>
 
       {s.pilon1 && <Section title="State pension · Pilon 1" />}
-      {s.pilon1 && <Pilon1Card p={s.pilon1} />}
+      {s.pilon1 && <div className="lg:grid lg:grid-cols-2 lg:gap-x-4"><Pilon1Card p={s.pilon1} /></div>}
 
       <div className="my-5 text-center">
         <Link href="/upload" className="rounded-[10px] bg-primary px-3.5 py-2 text-[13px] font-bold text-primary-foreground">Upload statement</Link>

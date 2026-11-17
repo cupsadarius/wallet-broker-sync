@@ -30,14 +30,14 @@ export default async function InvestPage({ searchParams }: { searchParams: Promi
   const { tab: raw } = await searchParams
   const tab: Tab = TABS.find(t => t.id === raw)?.id ?? 'positions'
   return (
-    <main className="mx-auto max-w-xl px-4">
+    <main className="mx-auto max-w-xl px-4 lg:max-w-6xl lg:px-8">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold">Invest</h1>
         <Menu items={MENU} label="Invest menu" />
       </div>
       <NetWorthSplit />
       <InsightCards />
-      <nav className="my-3 flex rounded-xl border bg-card p-[3px]">
+      <nav className="my-3 flex rounded-xl border bg-card p-[3px] lg:max-w-xl">
         {TABS.map(t => (
           <Link
             key={t.id}
@@ -107,6 +107,7 @@ async function Positions() {
         </div>
         <div className="text-[13px] text-muted-foreground">Cost {fmtAmount(d.costBase, d.base)} · deposits count as cash</div>
       </div>
+      <div className="lg:grid lg:grid-cols-2 lg:items-start lg:gap-x-6">
       {[...groups].map(([group, rows]) => (
         <section key={group} className="mt-4">
           <div className="mb-1 flex justify-between text-xs font-semibold uppercase tracking-wider text-muted-foreground">
@@ -118,6 +119,7 @@ async function Positions() {
           </div>
         </section>
       ))}
+      </div>
     </>
   )
 }
@@ -165,9 +167,11 @@ async function Performance() {
 
       <section className="mt-4 rounded-2xl border bg-card p-3">
         <div className="mb-1 text-xs text-muted-foreground">Value (blue) vs money put in (dashed), {base}</div>
-        <div className="h-56"><PerformanceChart series={d.series} baseCurrency={base} /></div>
+        <div className="h-56 lg:h-80"><PerformanceChart series={d.series} baseCurrency={base} /></div>
       </section>
 
+      <div className="lg:grid lg:grid-cols-2 lg:items-start lg:gap-x-6">
+      <div>
       <h3 className="mt-5 mb-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Return per broker</h3>
       <div className="rounded-2xl border bg-card px-3.5">
         {d.brokers.map(b => (
@@ -184,6 +188,8 @@ async function Performance() {
         ))}
       </div>
 
+      </div>
+      <div>
       <h3 className="mt-5 mb-1 text-xs font-semibold uppercase tracking-wider text-muted-foreground">Income received</h3>
       <div className="rounded-2xl border bg-card px-3.5">
         {d.incomeTotals.map(i => (
@@ -194,6 +200,8 @@ async function Performance() {
             </span>
           </div>
         ))}
+      </div>
+      </div>
       </div>
     </>
   )
@@ -231,6 +239,7 @@ async function Plans() {
         <Link href="/invest/plans" className="shrink-0 rounded-xl bg-primary px-3.5 py-2 text-sm font-bold text-primary-foreground">+ New plan</Link>
       </div>
 
+      <div className="lg:grid lg:grid-cols-2 lg:items-start lg:gap-x-4">
       {views.map(({ plan: p, accountName, progress: g }) => (
         <div key={p.id} className={cn('my-2 rounded-2xl border bg-card px-3.5 py-3', p.status === 'archived' && 'opacity-60')}>
           <div className="flex items-baseline justify-between gap-2">
@@ -255,6 +264,7 @@ async function Plans() {
           </div>
         </div>
       ))}
+      </div>
 
       {suggestions.length > 0 && (
         <>

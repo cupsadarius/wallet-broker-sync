@@ -45,7 +45,7 @@ export default async function SpendingPage({ searchParams }: { searchParams: Pro
   const openAccounts = s.accounts.filter(a => !a.archived).sort((a, b) => a.name.localeCompare(b.name)).map(a => ({ id: a.id, name: a.name }))
 
   return (
-    <main className="mx-auto max-w-xl px-4">
+    <main className="mx-auto max-w-xl px-4 lg:max-w-6xl lg:px-8">
       <div className="mt-1 mb-2 flex items-baseline justify-between">
         <h1 className="text-2xl font-semibold">Spending</h1>
         <Link href="/dashboard/spending" className="text-[13px] text-primary">Charts ›</Link>
@@ -67,6 +67,8 @@ export default async function SpendingPage({ searchParams }: { searchParams: Pro
         </div>
       ))}
 
+      <div className="lg:grid lg:grid-cols-2 lg:items-start lg:gap-10">
+      <div>
       <Section id="budgets" title={`Budgets${d.budgets.length ? ` · ${monthName(d.today)}` : ''}`} />
       {d.budgets.length === 0 && <p className="text-sm text-muted-foreground">No monthly budgets in Wallet.</p>}
       {d.budgets.length > 0 && (
@@ -141,6 +143,8 @@ export default async function SpendingPage({ searchParams }: { searchParams: Pro
         </div>
       ))}
 
+      </div>
+      <div>
       {d.transfers.length > 0 && <Section id="transfers" title={`Likely transfers · ${d.transfers.length}`} />}
       {d.transfers.map(({ record: r, candidates }) => (
         <div key={r.id} className="my-2 rounded-[14px] border bg-card px-3.5 py-3">
@@ -255,6 +259,8 @@ export default async function SpendingPage({ searchParams }: { searchParams: Pro
       <form method="post" action="/api/spending/proposals" encType="multipart/form-data" className="mt-2">
         <button className="rounded-[10px] border border-primary/40 px-3 py-1.5 text-[13px] font-bold text-primary">Suggest rules</button>
       </form>
+      </div>
+      </div>
     </main>
   )
 }

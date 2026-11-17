@@ -47,7 +47,7 @@ export default function RootLayout({
     >
       <body className="min-h-full flex flex-col">
         <AppHeader />
-        <div className="min-w-0 flex-1 pb-[calc(76px+env(safe-area-inset-bottom))]">{children}</div>
+        <div className="min-w-0 flex-1 pb-[calc(76px+env(safe-area-inset-bottom))] lg:pb-10 lg:pl-56 lg:pt-6">{children}</div>
       </body>
     </html>
   );
