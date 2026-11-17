@@ -6,6 +6,7 @@ import { config, brokerAccountMap } from '@/src/storage/schema'
 import { loadToday } from '@/src/dashboards/portfolio'
 import { fmtAmount, fmtDay, fmtSigned } from '@/src/dashboards/compute/today'
 import { cn } from '@/lib/utils'
+import { PlanRing, PlanTagPill } from '@/app/components/PlanBits'
 
 export default async function TodayPage() {
   const creds = await loadCouchCreds()
@@ -20,6 +21,7 @@ export default async function TodayPage() {
   if (!t) redirect('/setup')
   const { base } = t
   const gainPct = t.invested.cost > 0 ? (t.invested.gain / t.invested.cost) * 100 : null
+  const behind = t.plans.filter(v => v.progress.tag === 'behind').length
   const topShare = t.cash.top && t.cash.total > 0 ? Math.round((t.cash.top.base / t.cash.total) * 100) : null
 
   return (
@@ -65,11 +67,21 @@ export default async function TodayPage() {
         </div>
       ))}
 
-      {/* Phase 3 slot: compact plan rows (ring, one status line, tag) for active plans. */}
-      <section data-slot="plans">
-        <Section title="Investment plans" />
-        <p className="text-sm text-muted-foreground">Plans come in a later update.</p>
-      </section>
+      <Section
+        title={`Investment plans${behind ? ` · ${behind} behind` : ''}`}
+        link={{ href: '/invest?tab=plans', label: 'All plans ›' }}
+      />
+      {t.plans.length === 0 && <p className="text-sm text-muted-foreground">No active plans.</p>}
+      {t.plans.map(({ plan: p, accountName, progress: g }) => (
+        <Link key={p.id} href="/invest?tab=plans" className="my-1.5 flex items-center gap-2.5 rounded-[14px] border bg-card px-3 py-2.5">
+          <PlanRing ring={g.ring} tag={g.tag} />
+          <div className="min-w-0 flex-1">
+            <div className="truncate text-sm font-semibold">{p.name} <span className="font-normal text-muted-foreground">· {accountName}</span></div>
+            <div className="truncate text-xs text-muted-foreground">{g.line}</div>
+          </div>
+          <PlanTagPill tag={g.tag} />
+        </Link>
+      ))}
 
       <Section title="Coming up" link={{ href: '/invest/maturities', label: 'Maturities ›' }} />
       {t.events.length === 0 ? (

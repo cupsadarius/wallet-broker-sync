@@ -15,7 +15,7 @@ import { incomeKind, type IncomeKind } from './compute/income'
 import {
   accountBalances, bankTasks, dataAge, maturityTasks, uploadTasks, type Task,
 } from './compute/today'
-import { planProgress, type Plan, type PlanProgress } from './compute/plans'
+import { planProgress, planTasks, type Plan, type PlanProgress } from './compute/plans'
 
 const PAGE_MAX_AGE_MS = 5 * 60_000
 const DAY_MS = 86_400_000
@@ -81,6 +81,7 @@ export async function loadTasks(s: MirrorSnapshot, maturities: Maturity[], today
     .map(r => ({ broker: r.broker as BrokerId, accountId: r.accountId }))
   return [
     ...uploadTasks({ brokers, records: s.records, transactions: s.transactions, lastImport: await lastImports() }),
+    ...planTasks(await loadPlans(s, maturities, today)),
     ...maturityTasks(maturities, today),
     ...bankTasks(s.accounts, s.records),
   ]
@@ -134,6 +135,7 @@ export async function loadToday() {
     invested: { value: inv.investedBase, gain: inv.investedBase - inv.costBase, cost: inv.costBase },
     cash: { total: cash.totalBase, top: cash.accounts[0] ?? null },
     tasks: await loadTasks(s, maturities, today),
+    plans: (await loadPlans(s, maturities, today)).filter(v => v.plan.status === 'active'),
     events: comingUp(maturities, today),
     age: dataAge({
       accounts: s.accounts, records: s.records, lastImport: await lastImports(),
