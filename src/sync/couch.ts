@@ -53,6 +53,17 @@ export class CouchClient {
     })
   }
 
+  /** The current revision of one doc, or null when it does not exist. */
+  async getDoc(id: string): Promise<Record<string, unknown> | null> {
+    try {
+      return (await (await this.req(`/${encodeURIComponent(id)}`)).json()) as Record<string, unknown>
+    } catch (e) {
+      const err = e as CouchError
+      if (err.kind === 'http' && err.status === 404) return null
+      throw e
+    }
+  }
+
   async listAssetTransactions(accountId: string): Promise<Array<Record<string, unknown>>> {
     return this.list(d => d['reservedModelType'] === 'AssetTransaction' && d['accountId'] === accountId)
   }

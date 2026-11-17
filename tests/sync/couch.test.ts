@@ -26,6 +26,15 @@ describe('CouchClient', () => {
     expect(JSON.parse(call[1].body)).toMatchObject({ new_edits: true })
   })
 
+  it('getDoc reads one doc by its encoded id and returns null on 404', async () => {
+    ;(fetch as any)
+      .mockResolvedValueOnce(new Response(JSON.stringify({ _id: 'Record_a', _rev: '2-x' })))
+      .mockResolvedValueOnce(new Response('{"error":"not_found"}', { status: 404 }))
+    expect(await client().getDoc('Record_a')).toEqual({ _id: 'Record_a', _rev: '2-x' })
+    expect(await client().getDoc('-MagicRule_x/y')).toBeNull()
+    expect((fetch as any).mock.calls[1][0]).toBe('https://example.test/bb-user/-MagicRule_x%2Fy')
+  })
+
   it('throws on 401', async () => {
     ;(fetch as any).mockResolvedValueOnce(new Response('unauth', { status: 401 }))
     await expect(client().bulkDocs([{ _id: 'a' }])).rejects.toMatchObject({ kind: 'unauthorized' })
