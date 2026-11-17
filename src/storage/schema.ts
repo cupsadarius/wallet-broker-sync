@@ -1,4 +1,4 @@
-import { sqliteTable, text, integer, primaryKey } from 'drizzle-orm/sqlite-core'
+import { sqliteTable, text, integer, primaryKey, index } from 'drizzle-orm/sqlite-core'
 
 export const config = sqliteTable('config', {
   key: text('key').primaryKey(),
@@ -78,3 +78,27 @@ export const couchCacheMeta = sqliteTable('couch_cache_meta', {
   scope: text('scope').primaryKey(),
   lastSeq: text('last_seq').notNull(),
 })
+
+// Daily closing prices for assets held in the portfolio. Keyed by the Yahoo
+// ticker (canonical symbol + exchange suffix). `close` is int*10000 so we
+// preserve 4 decimals without floats; `currency` is the listing currency.
+export const priceHistory = sqliteTable('price_history', {
+  symbol: text('symbol').notNull(),
+  date: text('date').notNull(),
+  close: integer('close').notNull(),
+  currency: text('currency').notNull(),
+}, (t) => ({
+  pk: primaryKey({ columns: [t.symbol, t.date] }),
+  idxSymbol: index('price_history_symbol').on(t.symbol),
+}))
+
+// Daily FX rates: 1 unit of `base` in `quote` currency. Stored int*1000000
+// (6 decimals).
+export const fxHistory = sqliteTable('fx_history', {
+  base: text('base').notNull(),
+  quote: text('quote').notNull(),
+  date: text('date').notNull(),
+  rate: integer('rate').notNull(),
+}, (t) => ({
+  pk: primaryKey({ columns: [t.base, t.quote, t.date] }),
+}))

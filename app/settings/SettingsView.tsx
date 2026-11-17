@@ -52,12 +52,18 @@ type ManualLink = {
   existingDocId: string
 }
 
+type DashboardSettings = {
+  baseCurrency: string
+  mirrorIntervalMs: number
+}
+
 type Props = {
   connection: ConnectionInfo
   mappings: Mapping[]
   aliases: Alias[]
   fallbacks: Fallback[]
   links: ManualLink[]
+  dashboard: DashboardSettings
 }
 
 const BROKERS = ['ibkr', 'xtb', 'tradeville'] as const
@@ -535,7 +541,7 @@ function ManualLinksSection({ links }: { links: ManualLink[] }) {
 
 // ---------- Main SettingsView ----------
 
-export default function SettingsView({ connection, mappings, aliases, fallbacks, links }: Props) {
+export default function SettingsView({ connection, mappings, aliases, fallbacks, links, dashboard }: Props) {
   return (
     <main className="container mx-auto max-w-3xl py-20 px-6">
       <div className="mb-14">
@@ -552,12 +558,131 @@ export default function SettingsView({ connection, mappings, aliases, fallbacks,
       <div className="space-y-6">
         <ConnectionSection connection={connection} />
         <MappingsSection mappings={mappings} />
+        <DashboardSection initial={dashboard} />
         <AliasSection aliases={aliases} />
         <RecordFallbackSection fallbacks={fallbacks} />
         <ManualLinksSection links={links} />
         <BackupRestoreSection />
       </div>
     </main>
+  )
+}
+
+// ---------- Section: Dashboard ----------
+
+function DashboardSection({ initial }: { initial: DashboardSettings }) {
+  const router = useRouter()
+  const [baseCurrency, setBaseCurrency] = useState(initial.baseCurrency)
+  const [intervalMin, setIntervalMin] = useState(Math.round(initial.mirrorIntervalMs / 60_000))
+  const [saving, startSave] = useTransition()
+  const [backfilling, setBackfilling] = useState(false)
+  const [savedAt, setSavedAt] = useState<number | null>(null)
+  const [err, setErr] = useState<string | null>(null)
+  const [backfillSummary, setBackfillSummary] = useState<string | null>(null)
+
+  async function handleSave(e: { preventDefault: () => void }) {
+    e.preventDefault()
+    setErr(null)
+    startSave(async () => {
+      const res = await fetch('/api/dashboard/config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          baseCurrency: baseCurrency.toUpperCase().slice(0, 3),
+          mirrorIntervalMs: intervalMin * 60_000,
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok || !data.ok) {
+        setErr(data.error ?? 'Save failed')
+        return
+      }
+      setSavedAt(Date.now())
+      router.refresh()
+    })
+  }
+
+  async function handleBackfill() {
+    setBackfilling(true)
+    setBackfillSummary(null)
+    try {
+      const res = await fetch('/api/dashboard/backfill-prices', { method: 'POST' })
+      const data = await res.json()
+      if (!res.ok || !data.ok) {
+        setBackfillSummary(`Failed: ${data.error ?? 'unknown'}`)
+      } else {
+        const parts = [
+          `${data.withCoverage}/${data.symbols} symbols`,
+          `${data.fxPairs} FX pairs`,
+          `${data.durationMs}ms`,
+        ]
+        if (data.unsupported?.length) parts.push(`${data.unsupported.length} unsupported`)
+        setBackfillSummary(parts.join(' · '))
+      }
+    } catch {
+      setBackfillSummary('Network error')
+    } finally {
+      setBackfilling(false)
+    }
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Dashboards</CardTitle>
+        <CardDescription>
+          Base currency for portfolio totals and how often the local Couch mirror auto-refreshes.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <form onSubmit={handleSave} className="space-y-4">
+          <div className="grid gap-3 sm:grid-cols-2">
+            <div>
+              <label className="text-xs text-muted-foreground mb-1 block">Base currency (ISO)</label>
+              <Input
+                value={baseCurrency}
+                onChange={e => setBaseCurrency(e.target.value.toUpperCase().slice(0, 3))}
+                maxLength={3}
+                placeholder="EUR"
+              />
+            </div>
+            <div>
+              <label className="text-xs text-muted-foreground mb-1 block">
+                Auto-refresh interval (minutes)
+              </label>
+              <Input
+                type="number"
+                min={1}
+                max={1440}
+                value={intervalMin}
+                onChange={e => setIntervalMin(Number(e.target.value) || 5)}
+              />
+            </div>
+          </div>
+          {err && <p className="text-sm text-destructive">{err}</p>}
+          <div className="flex flex-wrap items-center gap-2">
+            <Button type="submit" size="sm" disabled={saving}>
+              {saving ? 'Saving…' : 'Save'}
+            </Button>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              disabled={backfilling}
+              onClick={handleBackfill}
+            >
+              {backfilling ? 'Fetching prices…' : 'Backfill prices now'}
+            </Button>
+            {savedAt && !saving && (
+              <span className="text-xs text-muted-foreground">Saved</span>
+            )}
+            {backfillSummary && (
+              <span className="text-xs text-muted-foreground">{backfillSummary}</span>
+            )}
+          </div>
+        </form>
+      </CardContent>
+    </Card>
   )
 }
 

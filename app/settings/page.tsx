@@ -1,6 +1,7 @@
 import { loadCouchCreds } from '@/src/storage/credentials'
 import { db } from '@/src/storage/db'
 import { config, brokerAccountMap, assetAlias, recordFallback, manualLink } from '@/src/storage/schema'
+import { getBaseCurrency, getMirrorIntervalMs } from '@/src/dashboards/mirror'
 import SettingsView from './SettingsView'
 
 export default async function SettingsPage() {
@@ -28,6 +29,11 @@ export default async function SettingsPage() {
   const fallbacks = await db.select().from(recordFallback)
   const links = await db.select().from(manualLink)
 
+  const [baseCurrency, mirrorIntervalMs] = await Promise.all([
+    getBaseCurrency(),
+    getMirrorIntervalMs(),
+  ])
+
   return (
     <SettingsView
       connection={connectionInfo}
@@ -35,6 +41,7 @@ export default async function SettingsPage() {
       aliases={aliases}
       fallbacks={fallbacks}
       links={links}
+      dashboard={{ baseCurrency, mirrorIntervalMs }}
     />
   )
 }
