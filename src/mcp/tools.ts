@@ -1,7 +1,7 @@
 import { z } from 'zod'
-import { sql } from 'drizzle-orm'
+import { desc, sql } from 'drizzle-orm'
 import { db } from '@/src/storage/db'
-import { brokerAccountMap } from '@/src/storage/schema'
+import { brokerAccountMap, weeklyNote } from '@/src/storage/schema'
 import { readMirror, getBaseCurrency, getLastMirrorSync, isMirrorStale, type MirrorRecord } from '@/src/dashboards/mirror'
 import { latestFx, resolveYahooTicker } from '@/src/dashboards/prices'
 import { computeHoldings } from '@/src/dashboards/compute/holdings'
@@ -11,6 +11,7 @@ import { computeNetWorth } from '@/src/dashboards/compute/networth'
 import { aggregateSpending } from '@/src/dashboards/compute/spending'
 import { accrued, payout } from '@/src/dashboards/compute/maturities'
 import { loadMaturities, loadPlans } from '@/src/dashboards/portfolio'
+import { loadInsights } from '@/src/insights/load'
 
 export type McpTool = {
   name: string
@@ -347,6 +348,37 @@ export const TOOLS: McpTool[] = [
           }
         }),
       }
+    },
+  }),
+
+  tool({
+    name: 'list_budgets',
+    description: 'Wallet monthly budgets for the current month: limit in force, spent (expenses minus refunds in the budget '
+      + 'scope, never below 0), remaining, and state: over (past the limit), pace (on pace to pass it by month end) or ok. '
+      + '`months` adds that many earlier months of spent and limit. Amounts are in the budget currency; spent is null '
+      + 'when a record has no exchange rate.',
+    input: z.object({ months: z.number().int().min(0).max(12).default(0) }),
+    async run({ months }) {
+      const { snap } = await load()
+      const { budgets } = await loadInsights(snap, months)
+      return {
+        budgets: budgets.map(({ budget, status: b, history }) => ({
+          id: budget.id, name: b.name, currency: b.currency, month: b.period, limit: b.limit, spent: b.spent,
+          remaining: b.spent === null ? null : money(b.limit - b.spent), expenses: b.expenses, incomes: b.incomes,
+          projected: b.projected, state: b.state, history: history(months),
+        })),
+      }
+    },
+  }),
+
+  tool({
+    name: 'weekly_notes',
+    description: 'The AI-written weekly money notes, newest first. numbersChecked is false when a number in the note did '
+      + 'not match the computed figures; problem then names it.',
+    input: z.object({ limit: z.number().int().min(1).max(20).default(4) }),
+    async run({ limit }) {
+      const rows = await db.select().from(weeklyNote).orderBy(desc(weeklyNote.id)).limit(limit)
+      return { notes: rows.map(n => ({ week: n.week, text: n.text, numbersChecked: n.status === 'ok', problem: n.problem })) }
     },
   }),
 

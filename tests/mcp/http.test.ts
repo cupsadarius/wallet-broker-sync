@@ -11,7 +11,7 @@ vi.mock('@/src/storage/db', async () => {
 vi.mock('@/src/storage/credentials', () => ({ loadCouchCreds: async () => ({ login: 'u', token: 't' }) }))
 
 import { db } from '@/src/storage/db'
-import { config, couchDocCache, maturity, plan } from '@/src/storage/schema'
+import { config, couchDocCache, maturity, plan, weeklyNote } from '@/src/storage/schema'
 import { scopeFor } from '@/src/sync/couch-cache'
 import { handleMcp } from '@/src/mcp/http'
 
@@ -42,10 +42,15 @@ beforeAll(async () => {
     { _id: '-Account_1', reservedModelType: 'Account', name: 'BT - Curent', accountType: 0, currencyId: '-Currency_1', initAmount: 100000 },
     { _id: '-Category_food', reservedModelType: 'Category', name: 'Groceries', envelopeId: 1000 },
     { _id: '-Record_1', reservedModelType: 'Record', accountId: '-Account_1', amount: 50000, type: 0, currencyId: '-Currency_1', recordDate: '2026-11-01T09:00:00.000Z', note: 'Salary from RO49AAAA1B31007593840000' },
+    { _id: '-Budget_1', reservedModelType: 'Budget', name: 'Food', amount: 10000, type: 1, envelopes: [1000], categoryIds: [], accountIds: [], labels: [], closed: false },
     { _id: '-Record_2', reservedModelType: 'Record', accountId: '-Account_1', categoryId: '-Category_food', amount: 12345, type: 1, currencyId: '-Currency_1', recordDate: '2026-11-03T18:00:00.000Z', payee: 'Mega Image' },
   ]
   await db.insert(couchDocCache).values(docs.map(d => ({ scope: SCOPE, docId: d._id, modelType: d.reservedModelType, json: JSON.stringify(d) })))
   await db.insert(maturity).values({ id: 1, kind: 'deposit', name: 'BT deposit', accountId: '-Account_1', currency: 'RON', principal: 100_000, rateBps: 500, startDate: '2026-01-01', maturityDate: '2027-01-01' })
+  await db.insert(weeklyNote).values([
+    { week: '2026-11-09', text: 'Older note.', status: 'ok', createdAt: '2026-11-09T07:00:00.000Z' },
+    { week: '2026-11-16', text: 'Groceries 123 RON.', status: 'flagged', problem: 'Numbers not in the figures: 123', createdAt: '2026-11-16T07:00:00.000Z' },
+  ])
   await db.insert(plan).values([
     { type: 'recurring', name: 'Save monthly', accountId: '-Account_1', amount: 10_000, currency: 'RON', frequency: 'monthly', startDate: '2026-11-01' },
     { type: 'rollover', name: 'Rollover to Fidelis', accountId: '-Account_1', startDate: '2026-11-01', maturityId: 1, targetProduct: 'Fidelis RON 2028' },
@@ -111,6 +116,25 @@ describe('tools/call', () => {
     expect(data.plans[0]).toMatchObject({ type: 'recurring', account: 'BT - Curent', amount: 100, currency: 'RON', progress: { deposited: 500, tag: 'on track' } })
     expect(data.plans[1]).toMatchObject({ type: 'rollover', targetProduct: 'Fidelis RON 2028', progress: { maturityDate: '2027-01-01' } })
     expect((await call('list_plans', { includeArchived: true })).data.plans).toHaveLength(3)
+  })
+
+  it('list_budgets gives each budget\'s spent and limit this month', async () => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(new Date('2026-11-17T10:00:00Z'))
+    try {
+      const { data } = await call('list_budgets', { months: 1 })
+      expect(data.budgets).toEqual([expect.objectContaining({
+        name: 'Food', currency: 'RON', month: '2026-11', limit: 100, spent: 123.45, remaining: -23.45, state: 'over',
+        history: [{ month: '2026-10', spent: 0, limit: 100 }],
+      })])
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('weekly_notes returns the newest notes first, with the number check result', async () => {
+    const { data } = await call('weekly_notes', { limit: 1 })
+    expect(data.notes).toEqual([{ week: '2026-11-16', text: 'Groceries 123 RON.', numbersChecked: false, problem: 'Numbers not in the figures: 123' }])
   })
 
   it('list_maturities returns the payout at maturity', async () => {
