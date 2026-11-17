@@ -107,9 +107,9 @@ export function uploadTasks(input: {
   return tasks
 }
 
-type BankGroup = { provider: string; active: boolean; asOf: string | null }
+type BankGroup = { provider: string; accountIds: string[]; active: boolean; asOf: string | null }
 
-function bankGroups(accounts: MirrorAccount[], records: MirrorRecord[]): BankGroup[] {
+export function bankGroups(accounts: MirrorAccount[], records: MirrorRecord[]): BankGroup[] {
   const groups = new Map<string, MirrorAccount[]>()
   for (const a of accounts) {
     if (!a.bank) continue
@@ -119,6 +119,7 @@ function bankGroups(accounts: MirrorAccount[], records: MirrorRecord[]): BankGro
     const ids = new Set(accs.map(a => a.id))
     return {
       provider,
+      accountIds: [...ids],
       active: accs.some(a => a.bank!.active),
       asOf: maxDate(accs.map(a => a.bank!.lastRefresh))
         ?? maxDate(records.filter(r => ids.has(r.accountId) && r.bankSynced).map(r => r.recordDate)),
@@ -149,6 +150,10 @@ export function maturityTasks(maturities: Maturity[], today: string): Task[] {
     }))
 }
 
+export function bankStale(g: BankGroup, now: Date): boolean {
+  return !g.active || g.asOf === null || now.getTime() - Date.parse(g.asOf) > STALE_MS.bank
+}
+
 export function dataAge(input: {
   accounts: MirrorAccount[]
   records: MirrorRecord[]
@@ -162,7 +167,7 @@ export function dataAge(input: {
   return [
     { label: 'Wallet', asOf: input.mirrorAsOf, stale: age(input.mirrorAsOf, STALE_MS.mirror) },
     ...bankGroups(input.accounts, input.records).map(g => ({
-      label: g.provider, asOf: g.asOf, stale: !g.active || age(g.asOf, STALE_MS.bank),
+      label: g.provider, asOf: g.asOf, stale: bankStale(g, input.now),
     })),
     ...(Object.keys(BROKER_LABEL) as BrokerId[]).map(b => ({
       label: BROKER_LABEL[b], asOf: input.lastImport[b] ?? null, stale: age(input.lastImport[b] ?? null, STALE_MS.broker),
