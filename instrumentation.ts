@@ -14,6 +14,10 @@
 export async function register(): Promise<void> {
   if (process.env.NEXT_RUNTIME !== 'nodejs') return
 
+  // Fail at boot, not on the first request, when the access env is wrong.
+  const { policyFromEnv } = await import('./src/security/access')
+  policyFromEnv(process.env)
+
   // Defer the import: instrumentation runs early in the boot sequence and we
   // don't want to load better-sqlite3 + drizzle until after Next is ready.
   const { applyEnvConnection } = await import('./src/storage/credentials')
