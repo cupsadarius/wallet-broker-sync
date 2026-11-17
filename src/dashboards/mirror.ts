@@ -35,6 +35,8 @@ export type MirrorAccount = {
   accountType: number   // 7 = investment
   currencyCode: string  // resolved via Currency map
   assetTypes: number[]
+  initAmount: number    // int*100 opening balance
+  archived: boolean
 }
 
 export type MirrorAsset = {
@@ -76,6 +78,7 @@ export type MirrorRecord = {
   currencyCode: string
   recordDate: string       // ISO YYYY-MM-DD
   note?: string
+  payee?: string           // doc.payee, else doc.payer
   /**
    * Records created by this tool's record-fallback path (e.g. Tradeville XBSE
    * trades that have no StocksFundsAsset doc in Wallet, so they're written as
@@ -85,12 +88,29 @@ export type MirrorRecord = {
   isTradeFallback: boolean
 }
 
+export type MirrorRule = {
+  id: string
+  name: string
+  keywords: string[]
+  categoryId?: string
+  recordType?: number
+}
+
+export type MirrorLabel = {
+  id: string
+  name: string
+  archived: boolean
+  system: boolean  // Wallet's built-in mood/goal labels
+}
+
 export type MirrorSnapshot = {
   accounts: MirrorAccount[]
   assets: MirrorAsset[]
   categories: MirrorCategory[]
   transactions: MirrorAssetTransaction[]
   records: MirrorRecord[]
+  rules: MirrorRule[]
+  labels: MirrorLabel[]
   byAssetId: Map<string, MirrorAsset>
   byAccountId: Map<string, MirrorAccount>
   byCategoryId: Map<string, MirrorCategory>
@@ -208,6 +228,7 @@ function projectBuckets(buckets: DocBucket): MirrorSnapshot {
     const a = raw as {
       _id?: string; name?: string; accountType?: number;
       currencyId?: string; investmentInfo?: { assetTypes?: number[] }
+      initAmount?: number; archived?: boolean
     }
     if (!a._id) continue
     accounts.push({
@@ -216,6 +237,8 @@ function projectBuckets(buckets: DocBucket): MirrorSnapshot {
       accountType: a.accountType ?? 0,
       currencyCode: (a.currencyId && currencyMap.get(a.currencyId)) || DEFAULT_BASE_CURRENCY,
       assetTypes: a.investmentInfo?.assetTypes ?? [],
+      initAmount: a.initAmount ?? 0,
+      archived: a.archived === true,
     })
   }
 
@@ -278,6 +301,7 @@ function projectBuckets(buckets: DocBucket): MirrorSnapshot {
       _id?: string; accountId?: string; categoryId?: string;
       amount?: number; type?: number; currencyId?: string;
       recordDate?: string; date?: string; note?: string;
+      payee?: string; payer?: string;
       reservedSource?: string; externalSource?: string;
     }
     if (!r._id || !r.accountId) continue
@@ -297,8 +321,23 @@ function projectBuckets(buckets: DocBucket): MirrorSnapshot {
       currencyCode: (r.currencyId && currencyMap.get(r.currencyId)) || '',
       recordDate: normalizeDate(dateStr),
       note: r.note,
+      payee: r.payee || r.payer || undefined,
       isTradeFallback,
     })
+  }
+
+  const rules: MirrorRule[] = []
+  for (const raw of buckets.get('MagicRule') ?? []) {
+    const m = raw as { _id?: string; name?: string; keywords?: string[]; categoryId?: string; recordType?: number }
+    if (!m._id) continue
+    rules.push({ id: m._id, name: m.name ?? '', keywords: m.keywords ?? [], categoryId: m.categoryId, recordType: m.recordType })
+  }
+
+  const labels: MirrorLabel[] = []
+  for (const raw of buckets.get('HashTag') ?? []) {
+    const h = raw as { _id?: string; name?: string; archived?: boolean; systemLabelType?: number }
+    if (!h._id) continue
+    labels.push({ id: h._id, name: h.name ?? '', archived: h.archived === true, system: h.systemLabelType !== undefined })
   }
 
   return {
@@ -307,6 +346,8 @@ function projectBuckets(buckets: DocBucket): MirrorSnapshot {
     categories,
     transactions,
     records,
+    rules,
+    labels,
     byAssetId: new Map(assets.map(a => [a.id, a])),
     byAccountId: new Map(accounts.map(a => [a.id, a])),
     byCategoryId: categoryById,
