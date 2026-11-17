@@ -7,14 +7,15 @@ export type DocWriter = Pick<CouchClient, 'bulkDocs' | 'getDoc'>
 /**
  * Writes `patch` onto existing docs, each with the `_rev` it was read with.
  * A conflicted doc is re-read and retried once; what still fails is returned in `failed`.
+ * A function patch is built again from the re-read doc.
  */
 export async function patchDocs(
-  client: DocWriter, docs: Doc[], patch: Record<string, unknown>, now: string,
+  client: DocWriter, docs: Doc[], patch: Record<string, unknown> | ((d: Doc) => Record<string, unknown>), now: string,
 ): Promise<{ written: Doc[]; failed: string[] }> {
   const written: Doc[] = []
   const failed: string[] = []
   const write = async (batch: Doc[], onConflict: (id: string) => void) => {
-    const sent = batch.map(d => ({ ...d, ...patch, reservedUpdatedAt: now }))
+    const sent = batch.map(d => ({ ...d, ...(typeof patch === 'function' ? patch(d) : patch), reservedUpdatedAt: now }))
     const results = new Map((await client.bulkDocs(sent)).map(r => [r.id, r]))
     for (const d of sent) {
       const r = results.get(d._id)

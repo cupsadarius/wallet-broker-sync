@@ -1,6 +1,6 @@
 /**
  * SQLite-backed mirror of CouchDB docs we care about (Account, Currency,
- * StocksFundsAsset, Category, AssetTransaction, Record, MagicRule, HashTag). On each refresh we
+ * StocksFundsAsset, Category, AssetTransaction, Record, MagicRule, HashTag, Budget). On each refresh we
  * walk the _changes feed from the last persisted seq and apply deltas, so
  * dry-runs after the first one only download what changed.
  */
@@ -11,7 +11,7 @@ import type { CouchClient } from './couch'
 
 export type DocBucket = Map<string, Record<string, unknown>[]>
 
-export const TYPES = ['Account', 'Currency', 'StocksFundsAsset', 'Category', 'AssetTransaction', 'Record', 'MagicRule', 'HashTag'] as const
+export const TYPES = ['Account', 'Currency', 'StocksFundsAsset', 'Category', 'AssetTransaction', 'Record', 'MagicRule', 'HashTag', 'Budget'] as const
 
 const TYPES_KEY = 'couchCache.types'
 const TYPES_VALUE = TYPES.join(',')

@@ -94,6 +94,7 @@ export type MirrorRecord = {
   transferAccountId?: string
   transferId?: string      // shared by both legs of a Wallet transfer
   bankSynced: boolean
+  labels?: string[]        // HashTag ids
 }
 
 export type MirrorRule = {
@@ -111,6 +112,21 @@ export type MirrorLabel = {
   system: boolean  // Wallet's built-in mood/goal labels
 }
 
+// Wallet Budget doc. Money is int*100; `changes` set the limit from the month of their date on.
+export type MirrorBudget = {
+  id: string
+  name: string
+  currencyCode: string | null  // null: the reference currency
+  amount: number
+  changes: { amount: number; date: string }[]
+  type: number                 // 1 = monthly
+  envelopes: number[]          // categories by envelopeId
+  categoryIds: string[]
+  accountIds: string[]
+  labelIds: string[]
+  closed: boolean
+}
+
 export type MirrorSnapshot = {
   accounts: MirrorAccount[]
   assets: MirrorAsset[]
@@ -119,6 +135,7 @@ export type MirrorSnapshot = {
   records: MirrorRecord[]
   rules: MirrorRule[]
   labels: MirrorLabel[]
+  budgets: MirrorBudget[]
   byAssetId: Map<string, MirrorAsset>
   byAccountId: Map<string, MirrorAccount>
   byCategoryId: Map<string, MirrorCategory>
@@ -336,7 +353,7 @@ function projectBuckets(buckets: DocBucket): MirrorSnapshot {
       reservedSource?: string; externalSource?: string;
       transfer?: boolean; transferAccountId?: string; transferId?: string;
       reservedIntegrationSource?: string;
-      reservedCreatedAt?: string; originalCategoryId?: string;
+      reservedCreatedAt?: string; originalCategoryId?: string; labels?: string[];
     }
     if (!r._id || !r.accountId) continue
     const dateStr = r.recordDate ?? r.date
@@ -363,6 +380,7 @@ function projectBuckets(buckets: DocBucket): MirrorSnapshot {
       transferAccountId: r.transferAccountId,
       transferId: r.transferId,
       bankSynced: !!r.reservedIntegrationSource,
+      labels: r.labels,
     })
   }
 
@@ -380,6 +398,20 @@ function projectBuckets(buckets: DocBucket): MirrorSnapshot {
     labels.push({ id: h._id, name: h.name ?? '', archived: h.archived === true, system: h.systemLabelType !== undefined })
   }
 
+  const budgets: MirrorBudget[] = []
+  for (const raw of buckets.get('Budget') ?? []) {
+    const b = raw as {
+      _id?: string; name?: string; currencyId?: string; amount?: number; changes?: { amount: number; date: string }[]
+      type?: number; envelopes?: number[]; categoryIds?: string[]; accountIds?: string[]; labels?: string[]; closed?: boolean
+    }
+    if (!b._id) continue
+    budgets.push({
+      id: b._id, name: b.name ?? '', currencyCode: (b.currencyId && currencyMap.get(b.currencyId)) || null,
+      amount: b.amount ?? 0, changes: b.changes ?? [], type: b.type ?? 1, envelopes: b.envelopes ?? [],
+      categoryIds: b.categoryIds ?? [], accountIds: b.accountIds ?? [], labelIds: b.labels ?? [], closed: b.closed === true,
+    })
+  }
+
   return {
     accounts,
     assets,
@@ -388,6 +420,7 @@ function projectBuckets(buckets: DocBucket): MirrorSnapshot {
     records,
     rules,
     labels,
+    budgets,
     byAssetId: new Map(assets.map(a => [a.id, a])),
     byAccountId: new Map(accounts.map(a => [a.id, a])),
     byCategoryId: categoryById,

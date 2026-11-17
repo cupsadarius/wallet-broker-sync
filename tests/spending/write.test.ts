@@ -70,6 +70,21 @@ describe('patchDocs', () => {
   })
 })
 
+describe('patchDocs with a patch built from each doc', () => {
+  it('rebuilds the patch from the fresh doc on a conflict, so a budget limit change keeps the other change', async () => {
+    const budget: Doc = { _id: '-Budget_a', _rev: '1-a', reservedModelType: 'Budget', name: 'Car', amount: 60_000, changes: [] }
+    const couch = fakeCouch([budget])
+    couch.bump('-Budget_a', { name: 'Car and fuel', changes: [{ amount: 70_000, date: '2025-01-05T00:00:00.000Z' }] })
+    const patch = (d: Doc) => ({ changes: [...(d.changes as unknown[]), { amount: 65_000, date: NOW }] })
+    const out = await patchDocs(couch, [budget], patch, NOW)
+    expect(out.failed).toEqual([])
+    expect(couch.docs.get('-Budget_a')).toMatchObject({
+      name: 'Car and fuel', amount: 60_000,
+      changes: [{ amount: 70_000, date: '2025-01-05T00:00:00.000Z' }, { amount: 65_000, date: NOW }],
+    })
+  })
+})
+
 describe('magicRuleDoc and writeRule', () => {
   const rule = magicRuleDoc({ name: 'Leroy', keywords: ['Leroy Merlin'], categoryId: '-Category_home' }, 'owner-1', NOW)
 
