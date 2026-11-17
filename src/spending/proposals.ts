@@ -115,20 +115,24 @@ function contradicts(p: z.infer<typeof RawProposal>, rules: MirrorRule[], record
     && rules.some(rule => rule.categoryId !== p.categoryId && ruleMatches(rule.keywords, r)))
 }
 
-/** Parses the model reply; drops what Wallet would reject or what clashes with existing rules. */
-export function parseProposals(
-  text: string,
-  ctx: { records: MirrorRecord[]; rules: MirrorRule[]; byCategoryId: Map<string, MirrorCategory> },
-): Proposal[] {
+/** The `proposals` array of the JSON object in a model reply. */
+export function replyProposals(text: string): unknown[] {
   let body: unknown
   try { body = JSON.parse(text.slice(text.indexOf('{'), text.lastIndexOf('}') + 1)) } catch {
     throw new Error('AI reply has no JSON')
   }
   const list = z.object({ proposals: z.array(z.unknown()) }).safeParse(body)
   if (!list.success) throw new Error('AI reply JSON has no proposals list')
+  return list.data.proposals
+}
 
+/** Parses the model reply; drops what Wallet would reject or what clashes with existing rules. */
+export function parseProposals(
+  text: string,
+  ctx: { records: MirrorRecord[]; rules: MirrorRule[]; byCategoryId: Map<string, MirrorCategory> },
+): Proposal[] {
   const out = new Map<string, Proposal>()
-  for (const item of list.data.proposals) {
+  for (const item of replyProposals(text)) {
     const p = RawProposal.safeParse(item)
     if (!p.success || !ctx.byCategoryId.has(p.data.categoryId)) continue
     if (contradicts(p.data, ctx.rules, ctx.records)) continue
