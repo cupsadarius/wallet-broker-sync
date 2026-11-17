@@ -43,6 +43,13 @@
       "when": 1778889600000,
       "tag": "0005_dashboard_prices",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1795392000000,
+      "tag": "0006_maturities",
+      "breakpoints": true
     }
   ]
 }

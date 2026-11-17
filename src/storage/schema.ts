@@ -102,3 +102,18 @@ export const fxHistory = sqliteTable('fx_history', {
 }, (t) => ({
   pk: primaryKey({ columns: [t.base, t.quote, t.date] }),
 }))
+
+// Deposits and bonds the user enters by hand: Wallet has no maturity or rate fields.
+// `principal` is int*100 in `currency`; `rate_bps` is the annual rate or coupon.
+export const maturity = sqliteTable('maturity', {
+  id: integer('id').primaryKey({ autoIncrement: true }),
+  kind: text('kind', { enum: ['deposit', 'bond'] }).notNull(),
+  name: text('name').notNull(),
+  accountId: text('account_id'),
+  symbol: text('symbol'),
+  currency: text('currency').notNull(),
+  principal: integer('principal').notNull(),
+  rateBps: integer('rate_bps'),
+  startDate: text('start_date'),
+  maturityDate: text('maturity_date').notNull(),
+})
