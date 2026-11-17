@@ -24,7 +24,7 @@ export const LAST_SYNC_KEY = 'dashboard.lastMirrorSync'
 export const BASE_CCY_KEY = 'dashboard.baseCurrency'
 export const MIRROR_INTERVAL_KEY = 'dashboard.mirrorIntervalMs'
 
-export const DEFAULT_BASE_CURRENCY = 'EUR'
+export const DEFAULT_BASE_CURRENCY = 'RON'
 export const DEFAULT_MIRROR_INTERVAL_MS = 60 * 1000
 
 // Typed views over the raw Couch docs. Money fields use the same int*100
@@ -35,6 +35,8 @@ export type MirrorAccount = {
   accountType: number   // 7 = investment
   currencyCode: string  // resolved via Currency map
   assetTypes: number[]
+  initAmount: number    // int*100; balance = initAmount + signed records
+  bank?: { provider: string; lastRefresh?: string; active: boolean }
 }
 
 export type MirrorAsset = {
@@ -83,6 +85,10 @@ export type MirrorRecord = {
    * spending/cashflow aggregators exclude them by default.
    */
   isTradeFallback: boolean
+  transfer: boolean
+  transferAccountId?: string
+  bankSynced: boolean
+  payee?: string
 }
 
 export type MirrorSnapshot = {
@@ -208,7 +214,13 @@ function projectBuckets(buckets: DocBucket): MirrorSnapshot {
     const a = raw as {
       _id?: string; name?: string; accountType?: number;
       currencyId?: string; investmentInfo?: { assetTypes?: number[] }
+      initAmount?: number
+      reservedIntegrationConnection?: {
+        remoteProviderName?: string; lastSuccessRefresh?: string
+        isActive?: boolean; consent?: { granted?: boolean }
+      }
     }
+    const conn = a.reservedIntegrationConnection
     if (!a._id) continue
     accounts.push({
       id: a._id,
@@ -216,6 +228,12 @@ function projectBuckets(buckets: DocBucket): MirrorSnapshot {
       accountType: a.accountType ?? 0,
       currencyCode: (a.currencyId && currencyMap.get(a.currencyId)) || DEFAULT_BASE_CURRENCY,
       assetTypes: a.investmentInfo?.assetTypes ?? [],
+      initAmount: a.initAmount ?? 0,
+      bank: conn ? {
+        provider: conn.remoteProviderName ?? a.name ?? '',
+        lastRefresh: conn.lastSuccessRefresh,
+        active: conn.isActive !== false && conn.consent?.granted !== false,
+      } : undefined,
     })
   }
 
@@ -279,6 +297,8 @@ function projectBuckets(buckets: DocBucket): MirrorSnapshot {
       amount?: number; type?: number; currencyId?: string;
       recordDate?: string; date?: string; note?: string;
       reservedSource?: string; externalSource?: string;
+      transfer?: boolean; transferAccountId?: string;
+      reservedIntegrationSource?: string; payee?: string;
     }
     if (!r._id || !r.accountId) continue
     const dateStr = r.recordDate ?? r.date
@@ -298,6 +318,10 @@ function projectBuckets(buckets: DocBucket): MirrorSnapshot {
       recordDate: normalizeDate(dateStr),
       note: r.note,
       isTradeFallback,
+      transfer: r.transfer === true,
+      transferAccountId: r.transferAccountId,
+      bankSynced: !!r.reservedIntegrationSource,
+      payee: r.payee,
     })
   }
 

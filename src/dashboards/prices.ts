@@ -17,6 +17,7 @@ import { db, runMigrations } from '@/src/storage/db'
 import { priceHistory, fxHistory, assetAlias } from '@/src/storage/schema'
 import { sql } from 'drizzle-orm'
 import { readMirror, getBaseCurrency } from './mirror'
+import { crossRate } from './compute/fx'
 
 // ISO MIC codes the user's brokers (XTB / IBKR / Tradeville) actually trade
 // on, mapped to the Yahoo suffix. US exchanges use no suffix; map to '' so
@@ -354,13 +355,12 @@ export async function latestFx(
   quote: string,
   onDate: string,
 ): Promise<number | null> {
-  if (base.toUpperCase() === quote.toUpperCase()) return 1
-  const rows = db.all<{ rate: number }>(sql`
-    SELECT rate FROM fx_history
-    WHERE base = ${base.toUpperCase()} AND quote = ${quote.toUpperCase()} AND date <= ${onDate}
-    ORDER BY date DESC LIMIT 1
-  `)
-  const row = rows[0]
-  if (!row) return null
-  return row.rate / 1_000_000
+  return crossRate(base, quote, (b, q) => {
+    const rows = db.all<{ rate: number }>(sql`
+      SELECT rate FROM fx_history
+      WHERE base = ${b} AND quote = ${q} AND date <= ${onDate}
+      ORDER BY date DESC LIMIT 1
+    `)
+    return rows[0] ? rows[0].rate / 1_000_000 : null
+  })
 }
