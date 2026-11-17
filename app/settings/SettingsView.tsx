@@ -129,7 +129,7 @@ function ConnectionSection({ connection }: { connection: ConnectionInfo }) {
         {connection.managedByEnv ? (
           <p className="mt-5 text-sm text-muted-foreground">Managed by environment (WALLET_COUCH_*).</p>
         ) : (
-        <div className="mt-5 flex gap-3">
+        <div className="mt-5 flex flex-wrap gap-3">
           <Button
             variant="destructive"
             size="sm"
@@ -549,13 +549,13 @@ function ManualLinksSection({ links }: { links: ManualLink[] }) {
 
 export default function SettingsView({ connection, mappings, aliases, fallbacks, links, dashboard }: Props) {
   return (
-    <main className="container mx-auto max-w-3xl py-20 px-6">
+    <main className="container mx-auto max-w-3xl py-4 px-4 md:py-20 md:px-6">
       <div className="mb-14">
         <p className="mb-6 inline-flex items-center gap-2 rounded-full bg-ghost-blue/10 px-4 py-1.5 text-xs font-medium text-foreground/80 ring-1 ring-lead/30">
           <span className="size-1.5 rounded-full bg-primary" aria-hidden />
           <span className="uppercase tracking-[0.18em]">Configuration</span>
         </p>
-        <h1 className="font-heading text-5xl font-light leading-[1.1] tracking-wide text-foreground">Settings</h1>
+        <h1 className="font-heading text-3xl font-light leading-[1.1] tracking-wide text-foreground md:text-5xl">Settings</h1>
         <p className="mt-5 max-w-xl text-[15px] text-muted-foreground">
           Manage all persistent rules for wallet-broker-sync — connection, mappings, aliases, and overrides.
         </p>

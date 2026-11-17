@@ -46,7 +46,7 @@ export default async function SpendingPage({
 
   return (
     <div className="space-y-6">
-      <div className="flex items-end justify-between gap-2">
+      <div className="flex flex-wrap items-end justify-between gap-2">
         <div className="text-xs text-muted-foreground">
           Window: last {months} months · {cashAccountIds.size} cash accounts · {spending.totals.income + spending.totals.expense > 0 ? '' : 'no data — '}
           {spending.unconverted > 0 ? `${spending.unconverted} unconverted FX` : ''}
@@ -64,7 +64,7 @@ export default async function SpendingPage({
         </div>
       </div>
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-5">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5">
         <StatCard label="Income (period)" value={fmt(spending.totals.income, baseCurrency)} tone="pos" />
         <StatCard label="Expense (period)" value={fmt(spending.totals.expense, baseCurrency)} tone="neg" />
         <StatCard label="Net" value={fmtSigned(spending.totals.net, baseCurrency)} tone={spending.totals.net >= 0 ? 'pos' : 'neg'} />
@@ -91,7 +91,8 @@ export default async function SpendingPage({
         <p className="text-xs text-muted-foreground">
           Income/Expense exclude transfers. Transfers in/out shown separately.
         </p>
-        <table className="mt-3 w-full text-sm">
+        <div className="mt-3 overflow-x-auto">
+        <table className="w-full whitespace-nowrap text-sm">
           <thead className="text-xs text-muted-foreground">
             <tr className="border-b">
               <th className="text-left py-2">Account</th>
@@ -123,6 +124,7 @@ export default async function SpendingPage({
             ))}
           </tbody>
         </table>
+        </div>
       </div>
     </div>
   )

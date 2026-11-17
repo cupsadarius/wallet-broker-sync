@@ -10,7 +10,7 @@ export default async function HistoryPage() {
   const runs = await db.select().from(syncRun).orderBy(desc(syncRun.startedAt))
 
   return (
-    <main className="container mx-auto max-w-5xl py-12 px-4">
+    <main className="container mx-auto max-w-5xl py-4 px-4 md:py-12">
       <div className="flex items-end justify-between gap-4 mb-8">
         <div>
           <p className="mb-2 inline-flex items-center gap-2 rounded-full bg-accent px-3 py-1 text-xs font-medium text-accent-foreground ring-1 ring-accent-foreground/15">

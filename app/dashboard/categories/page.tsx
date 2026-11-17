@@ -48,7 +48,7 @@ export default async function CategoriesPage({
           Scope: {scope} accounts · last {months} months · {spending.byCategory.length} categories ·{' '}
           {spending.unconverted > 0 ? `${spending.unconverted} unconverted FX` : 'all converted'}
         </div>
-        <div className="flex gap-2 text-xs">
+        <div className="flex flex-wrap gap-2 text-xs">
           <div className="flex gap-1">
             {(['cash', 'investment', 'all'] as const).map(s => (
               <Link

@@ -142,7 +142,7 @@ export default function AccountMappingForm({ existingMappings }: Props) {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-zinc-50 p-4">
+    <div className="flex justify-center p-4">
       <Card className="w-full max-w-lg">
         <CardHeader>
           <CardTitle>Map broker accounts</CardTitle>

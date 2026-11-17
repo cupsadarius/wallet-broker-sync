@@ -11,7 +11,7 @@ export default async function AliasesPage({
   const aliases = await db.select().from(assetAlias)
 
   return (
-    <main className="container mx-auto max-w-3xl py-12 px-4">
+    <main className="container mx-auto max-w-3xl py-4 px-4 md:py-12">
       <h1 className="text-2xl font-semibold mb-2">Asset aliases</h1>
       <p className="text-muted-foreground mb-6">
         When a broker reports a ticker your Wallet doesn&apos;t have under that exact symbol/exchange,

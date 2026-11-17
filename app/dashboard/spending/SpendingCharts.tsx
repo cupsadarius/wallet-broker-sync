@@ -47,7 +47,7 @@ export default function SpendingCharts({
   }, [byCategory, catMode])
 
   return (
-    <div className="grid gap-6 lg:grid-cols-[1fr_360px]">
+    <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_360px]">
       <div className="rounded-xl border bg-card p-5">
         <h3 className="text-sm font-medium">Monthly income vs expense</h3>
         <p className="text-xs text-muted-foreground">In {baseCurrency}. Line = net.</p>

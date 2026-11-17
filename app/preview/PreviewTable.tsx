@@ -788,7 +788,7 @@ export default function PreviewTable() {
             <div
               ref={popoverRef}
               role="dialog"
-              style={{ position: 'fixed', top: pickerCoords.top, left: pickerCoords.left, width: 420 }}
+              style={{ position: 'fixed', top: pickerCoords.top, left: pickerCoords.left, width: 'min(420px, calc(100vw - 16px))' }}
               className="z-50 max-h-[360px] overflow-auto rounded-sm border border-lead/40 bg-card text-card-foreground"
             >
               <div className="sticky top-0 z-10 bg-card border-b border-border px-3 py-2 flex items-center justify-between">

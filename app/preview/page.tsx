@@ -15,7 +15,7 @@ export default function PreviewPage() {
 
   if (!dryRun || files.length === 0 || !broker) {
     return (
-      <main className="container mx-auto max-w-3xl py-12 px-4">
+      <main className="container mx-auto max-w-3xl py-4 px-4 md:py-12">
         <p className="text-muted-foreground">Redirecting to /upload…</p>
       </main>
     )
@@ -23,11 +23,11 @@ export default function PreviewPage() {
 
   const summary =
     files.length === 1
-      ? <code className="px-1.5 py-0.5 rounded bg-muted font-mono text-xs">{files[0].name}</code>
+      ? <code className="break-all px-1.5 py-0.5 rounded bg-muted font-mono text-xs">{files[0].name}</code>
       : <span className="font-medium text-foreground">{files.length} files</span>
 
   return (
-    <main className="container mx-auto max-w-5xl py-12 px-4">
+    <main className="container mx-auto max-w-5xl py-4 px-4 md:py-12">
       <div className="mb-6">
         <p className="mb-2 inline-flex items-center gap-2 rounded-full bg-accent px-3 py-1 text-xs font-medium text-accent-foreground ring-1 ring-accent-foreground/15">
           <span className="size-1.5 rounded-full bg-primary" aria-hidden />

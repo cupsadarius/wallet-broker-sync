@@ -58,7 +58,8 @@ export default function CategoryDrillDown({
       {rows.length === 0 ? (
         <p className="mt-4 text-sm text-muted-foreground">No data for this view.</p>
       ) : (
-        <table className="mt-3 w-full text-sm">
+        <div className="mt-3 overflow-x-auto">
+        <table className="w-full text-sm [&_td:not(:first-child)]:whitespace-nowrap [&_td:not(:first-child)]:pl-3">
           <thead className="text-xs text-muted-foreground">
             <tr className="border-b">
               <th className="text-left py-2">Category</th>
@@ -152,6 +153,7 @@ export default function CategoryDrillDown({
             })}
           </tbody>
         </table>
+        </div>
       )}
     </div>
   )

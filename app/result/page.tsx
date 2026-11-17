@@ -15,14 +15,14 @@ export default function ResultPage() {
 
   if (!result) {
     return (
-      <main className="container mx-auto max-w-3xl py-12 px-4">
+      <main className="container mx-auto max-w-3xl py-4 px-4 md:py-12">
         <p className="text-muted-foreground">Redirecting to /upload…</p>
       </main>
     )
   }
 
   return (
-    <main className="container mx-auto max-w-5xl py-12 px-4">
+    <main className="container mx-auto max-w-5xl py-4 px-4 md:py-12">
       <ResultView />
     </main>
   )
