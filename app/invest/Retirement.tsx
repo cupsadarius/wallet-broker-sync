@@ -108,6 +108,7 @@ function AccountCard({ a, base, today }: { a: AccountView; base: string; today: 
           {!a.locked ? 'Released' : years === null ? 'No date set' : `in ${years.toFixed(years < 2 ? 1 : 0)} years`}
         </span>
       </form>
+      <History a={a} />
     </div>
   )
 }
@@ -139,7 +140,76 @@ function Pilon1Card({ p }: { p: Pilon1View }) {
         </label>
         <button className="rounded-md border border-primary/40 px-2 py-1 font-semibold text-primary">Save</button>
       </form>
+      <Pilon1History p={p} />
     </div>
+  )
+}
+
+const SUMMARY = 'flex cursor-pointer list-none justify-between gap-2 [&::-webkit-details-marker]:hidden'
+
+function History({ a }: { a: AccountView }) {
+  const count = a.contributionsByYear.reduce((n, y) => n + y.items.length, 0)
+  const m = (cents: number) => money(cents, a.currency)
+  return (
+    <details className="group/h mt-2.5 border-t pt-2 text-xs">
+      <summary className={cn(SUMMARY, 'text-primary')}>
+        <span>History · {count > 0 ? `${count} contributions` : `${a.statements.length} ${a.statements.length === 1 ? 'statement' : 'statements'}`}</span>
+        <span className="transition-transform group-open/h:rotate-90">›</span>
+      </summary>
+      {count > 0 && (
+        <div className="mt-1.5">
+          {a.contributionsByYear.map(y => (
+            <details key={y.year} className="group/y border-b last:border-0">
+              <summary className={cn(SUMMARY, 'py-1.5')}>
+                <span><span className="inline-block w-3 text-muted-foreground transition-transform group-open/y:rotate-90">›</span>{y.year} · {y.items.length}</span>
+                <span className="tabular-nums">
+                  <b>{m(y.gross)}</b>{y.fee > 0 && <span className="text-muted-foreground"> · fees {m(y.fee)}</span>}
+                </span>
+              </summary>
+              {y.items.map((c, i) => (
+                <div key={i} className="flex justify-between py-0.5 pl-3 text-muted-foreground tabular-nums">
+                  <span>{fmtDay(c.date)}</span>
+                  <span>{m(c.gross)}{c.fee > 0 && ` · fee ${m(c.fee)}`}</span>
+                </div>
+              ))}
+            </details>
+          ))}
+        </div>
+      )}
+      <table className="mt-2 w-full text-right tabular-nums">
+        <thead className="text-muted-foreground">
+          <tr><th className="text-left font-normal">Statement</th><th className="font-normal">Value</th><th className="font-normal">Paid in</th><th className="font-normal">Gain</th></tr>
+        </thead>
+        <tbody>
+          {a.statements.map(x => (
+            <tr key={x.asOf}>
+              <td className="py-0.5 text-left">{fmtDay(x.asOf)}</td>
+              <td>{m(x.value)}</td>
+              <td>{m(x.paidIn)}</td>
+              <td className={x.value >= x.paidIn ? 'text-up' : 'text-down'}>{m(x.value - x.paidIn)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </details>
+  )
+}
+
+function Pilon1History({ p }: { p: Pilon1View }) {
+  return (
+    <details className="group/h mt-2.5 border-t pt-2 text-xs">
+      <summary className={cn(SUMMARY, 'text-primary')}>
+        <span>Points per year · {p.pointsByYear.length} years</span>
+        <span className="transition-transform group-open/h:rotate-90">›</span>
+      </summary>
+      <div className="mt-1.5">
+        {[...p.pointsByYear].sort((x, y) => y.year - x.year).map(y => (
+          <div key={y.year} className="flex justify-between border-b py-1 tabular-nums last:border-0">
+            <span>{y.year}</span><b>{y.points.toFixed(2)}</b>
+          </div>
+        ))}
+      </div>
+    </details>
   )
 }
 

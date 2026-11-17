@@ -24,7 +24,10 @@ export type AccountView = {
   valueBase: number | null; paidInBase: number | null                         // ints ×100, base; null without FX
   yearly: { rate: number; basis: 'contributions' | 'statements'; since: string; months: number } | null
   gainPct: number; releaseDate: string | null; locked: boolean
+  contributionsByYear: { year: number; gross: number; fee: number; items: Contribution[] }[]   // newest first
+  statements: { asOf: string; value: number; paidIn: number; fees: number | null }[]          // newest first
 }
+type Contribution = { date: string; gross: number; fee: number }
 export type Pilon1View = {
   asOf: string; stale: boolean; period: { years: number; months: number; days: number }
   points: number; pointsThisYear: number; pointsByYear: { year: number; points: number }[]
@@ -51,6 +54,18 @@ function rate(flows: { amount: number; when: string }[]): number | null {
 }
 
 type Stmt = SummaryInput['statements'][number]
+
+function byYear(own: Contribution[]): AccountView['contributionsByYear'] {
+  const years = new Map<number, AccountView['contributionsByYear'][number]>()
+  for (const c of [...own].sort((a, b) => b.date.localeCompare(a.date))) {
+    const year = Number(c.date.slice(0, 4))
+    const y = years.get(year) ?? years.set(year, { year, gross: 0, fee: 0, items: [] }).get(year)!
+    y.gross += c.gross
+    y.fee += c.fee
+    y.items.push({ date: c.date, gross: c.gross, fee: c.fee })
+  }
+  return [...years.values()]
+}
 
 function yearlyReturn(stmts: Stmt[], contributions: SummaryInput['contributions']): AccountView['yearly'] {
   const last = stmts[stmts.length - 1]
@@ -96,14 +111,17 @@ export function summarize(input: SummaryInput): RetirementSummary {
       continue
     }
     const value = last.value!, paidIn = last.paidIn!
+    const own = input.contributions.filter(c => c.accountId === a.id)
     accounts.push({
       id: a.id, kind: a.kind, provider: a.provider as Provider, product: a.product, contract: a.contract, currency: a.currency,
       asOf: last.asOf, stale: days(last.asOf, today) > STALE_DAYS,
       value, paidIn, gain: value - paidIn, fees: last.fees,
       valueBase: toBase(value, a.currency), paidInBase: toBase(paidIn, a.currency),
-      yearly: yearlyReturn(stmts, input.contributions.filter(c => c.accountId === a.id)),
+      yearly: yearlyReturn(stmts, own),
       gainPct: paidIn > 0 ? (value - paidIn) / paidIn : 0,
       releaseDate: a.releaseDate, locked: !(a.releaseDate && a.releaseDate <= today),
+      contributionsByYear: byYear(own),
+      statements: stmts.map(x => ({ asOf: x.asOf, value: x.value!, paidIn: x.paidIn!, fees: x.fees })).reverse(),
     })
   }
 

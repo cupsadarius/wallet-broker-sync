@@ -113,3 +113,31 @@ describe('staleness, Pilon 1 and tasks', () => {
     })])
   })
 })
+
+describe('account history', () => {
+  it('groups contributions by year and lists statements, newest first', () => {
+    const s = summarize(input({
+      accounts: [account({ id: 'a' })],
+      statements: [
+        stmt({ accountId: 'a', asOf: '2025-06-30', value: 9000, paidIn: 8000, fees: 100 }),
+        stmt({ accountId: 'a', asOf: '2026-01-01', value: 11000, paidIn: 10000, fees: 150 }),
+      ],
+      contributions: [
+        { accountId: 'a', date: '2025-03-15', gross: 3000, fee: 30 },
+        { accountId: 'a', date: '2024-12-15', gross: 5000, fee: 50 },
+        { accountId: 'a', date: '2025-01-15', gross: 2000, fee: 20 },
+        { accountId: 'b', date: '2025-01-15', gross: 9999, fee: 0 },
+      ],
+    }))
+    expect(s.accounts[0].contributionsByYear).toEqual([
+      { year: 2025, gross: 5000, fee: 50, items: [
+        { date: '2025-03-15', gross: 3000, fee: 30 }, { date: '2025-01-15', gross: 2000, fee: 20 },
+      ] },
+      { year: 2024, gross: 5000, fee: 50, items: [{ date: '2024-12-15', gross: 5000, fee: 50 }] },
+    ])
+    expect(s.accounts[0].statements).toEqual([
+      { asOf: '2026-01-01', value: 11000, paidIn: 10000, fees: 150 },
+      { asOf: '2025-06-30', value: 9000, paidIn: 8000, fees: 100 },
+    ])
+  })
+})
