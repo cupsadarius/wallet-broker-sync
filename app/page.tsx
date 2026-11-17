@@ -33,7 +33,7 @@ export default async function TodayPage() {
             {t.netWorth.toLocaleString('en-US', { maximumFractionDigits: 0 })}<span className="ml-1 text-[15px] font-normal text-muted-foreground">{base}</span>
           </div>
           {t.retirementLocked > 0 && (
-            <Link href="/invest/retirement" className="text-xs text-muted-foreground">
+            <Link href="/invest?tab=retirement" className="text-xs text-muted-foreground">
               + {fmtAmount(t.retirementLocked, base)} locked until retirement ›
             </Link>
           )}

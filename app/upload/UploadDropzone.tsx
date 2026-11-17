@@ -183,7 +183,7 @@ export default function UploadDropzone({ initialBroker }: { initialBroker?: Brok
                 </li>
               ))}
             </ul>
-            <Link href="/invest/retirement" className="mt-2 inline-block text-primary">Open Retirement ›</Link>
+            <Link href="/invest?tab=retirement" className="mt-2 inline-block text-primary">Open Retirement ›</Link>
           </div>
         )}
         {files.length === 0 ? (

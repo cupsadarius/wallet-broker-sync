@@ -11,18 +11,19 @@ import { fmtAmount, fmtDay, fmtSigned } from '@/src/dashboards/compute/today'
 import type { Position } from '@/src/dashboards/compute/positions'
 import { cn } from '@/lib/utils'
 import PerformanceChart from './PerformanceChart'
+import Retirement from './Retirement'
 
 const TABS = [
   { id: 'positions', label: 'Positions' },
   { id: 'performance', label: 'Performance' },
   { id: 'plans', label: 'Plans' },
+  { id: 'retirement', label: 'Retirement' },
 ] as const
 type Tab = (typeof TABS)[number]['id']
 
 const MENU = [
   { href: '/upload', label: 'Upload statement' },
   { href: '/invest/maturities', label: 'Deposits and bonds' },
-  { href: '/invest/retirement', label: 'Retirement' },
 ]
 
 export default async function InvestPage({ searchParams }: { searchParams: Promise<{ tab?: string }> }) {
@@ -46,13 +47,11 @@ export default async function InvestPage({ searchParams }: { searchParams: Promi
             {t.label}
           </Link>
         ))}
-        <Link href="/invest/retirement" className="flex-1 rounded-[9px] py-1.5 text-center text-[13px] text-muted-foreground">
-          Retirement
-        </Link>
       </nav>
       {tab === 'positions' && <Positions />}
       {tab === 'performance' && <Performance />}
       {tab === 'plans' && <Plans />}
+      {tab === 'retirement' && <Retirement />}
     </main>
   )
 }
@@ -61,7 +60,7 @@ async function NetWorthSplit() {
   const d = await loadNetWorthSplit()
   if (!d || d.locked === 0) return null
   return (
-    <Link href="/invest/retirement" className="mt-2 grid grid-cols-3 gap-2 rounded-[14px] border bg-card px-3.5 py-2.5 text-xs text-muted-foreground">
+    <Link href="/invest?tab=retirement" className="mt-2 grid grid-cols-3 gap-2 rounded-[14px] border bg-card px-3.5 py-2.5 text-xs text-muted-foreground">
       <div>Available<b className="block text-sm text-foreground tabular-nums">{fmtAmount(d.available, d.base)}</b></div>
       <div>Locked<b className="block text-sm text-foreground tabular-nums">{fmtAmount(d.locked, d.base)}</b></div>
       <div>Net worth<b className="block text-sm text-foreground tabular-nums">{fmtAmount(d.total, d.base)}</b></div>
