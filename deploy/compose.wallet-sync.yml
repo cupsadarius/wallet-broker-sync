@@ -14,8 +14,16 @@ services:
       WALLET_COUCH_LOGIN: ${WALLET_COUCH_LOGIN:?}
       WALLET_COUCH_TOKEN: ${WALLET_COUCH_TOKEN:?}
       WALLET_ALLOWED_USERS: ${WALLET_ALLOWED_USERS:?comma-separated Tailscale logins}
-      WALLET_ALLOWED_HOSTS: ${WALLET_ALLOWED_HOSTS:-}
+      # wallet-sync: the Host the opencode container sends to /mcp
+      WALLET_ALLOWED_HOSTS: wallet-sync,${WALLET_ALLOWED_HOSTS:-}
+      # /mcp needs Authorization: Bearer <WALLET_MCP_TOKEN>; empty = /mcp answers 404
+      WALLET_MCP_TOKEN: ${WALLET_MCP_TOKEN:-}
       WALLET_VAPID_SUBJECT: ${WALLET_VAPID_SUBJECT:-}
+
+  # body-ledger's opencode service: opencode.json reads the token as {env:WALLET_MCP_TOKEN}.
+  opencode:
+    environment:
+      WALLET_MCP_TOKEN: ${WALLET_MCP_TOKEN:-}
 
 volumes:
   wallet_sync_data:

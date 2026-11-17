@@ -60,3 +60,74 @@ The first start reads the Wallet feed once from the beginning, because the mirro
 3. Open the app from the Home Screen icon.
 4. Go to Settings, then tap Enable under Notifications.
 5. Tap Send test.
+
+## 5. Connect opencode to the MCP server
+
+The app serves a read-only MCP server at `/mcp` (streamable HTTP, stateless). The opencode container reaches it on the `ai` network as `http://wallet-sync:8090/mcp`. Tailscale is not in this path, so `/mcp` needs a bearer token, not a Tailscale login.
+
+1. Add the token to body-ledger's `.env`:
+
+   ```sh
+   WALLET_MCP_TOKEN=<openssl rand -hex 32>
+   ```
+
+   The compose fragment passes it to `wallet-sync` and to `opencode`. It also puts `wallet-sync` in front of `WALLET_ALLOWED_HOSTS`, so the Host `wallet-sync:8090` passes the host check. You do not add `wallet-sync` to `.env`. Without the token, `/mcp` answers 404.
+
+2. Add the server to body-ledger's `opencode/opencode.json`, next to `health`, and deny its tools by default:
+
+   ```json
+   {
+     "$schema": "https://opencode.ai/config.json",
+     "mcp": {
+       "health": { "...": "unchanged" },
+       "wallet": {
+         "type": "remote",
+         "url": "http://wallet-sync:8090/mcp",
+         "enabled": true,
+         "headers": { "Authorization": "Bearer {env:WALLET_MCP_TOKEN}" }
+       }
+     },
+     "permissions": [
+       { "action": "wallet_*", "resource": "*", "effect": "deny" }
+     ]
+   }
+   ```
+
+3. Recreate the services: `docker compose up -d wallet-sync opencode`.
+
+4. Check the endpoint from the Mac Pro:
+
+   ```sh
+   curl -s 127.0.0.1:8092/mcp -H "Authorization: Bearer $WALLET_MCP_TOKEN" \
+     -H 'content-type: application/json' -d '{"jsonrpc":"2.0","id":1,"method":"tools/list"}'
+   ```
+
+### Money data only in wallet-sync sessions
+
+`"enabled": false` does not work for this: opencode then never connects the server, and no session can turn it on. Instead, the server stays connected and a permission rule hides its tools. opencode names MCP tools `<server>_<tool>` (for example `wallet_query_records`), and the last matching rule wins.
+
+- **Default (any session):** the config rule `wallet_*` → `deny` hides the tools.
+- **wallet-sync sessions:** create the session with rules that end in an allow for the wallet tools, for example `[{"action": "*", "resource": "*", "effect": "deny"}, {"action": "wallet_*", "resource": "*", "effect": "allow"}]`. This step has no web tools, as the two-step research pattern requires.
+- **body-ledger sessions:** `run_tools` in `server/src/health/ai/llm.py` creates sessions with the single rule allow `*`. That rule comes after the config deny, so it can turn the wallet tools back on. Add `{"action": "wallet_*", "resource": "*", "effect": "deny"}` after it.
+
+> **Caution:** The opencode docs do not say where session rules sit relative to config rules. After the change, start a body-ledger tools session and ask it to list its tools. Make sure no `wallet_*` tool is in the list.
+
+### Tools
+
+All tools are read-only. Each result has `asOf` (the last Wallet mirror sync), and each amount has its currency. IBANs and bank account numbers show only their last 4 characters.
+
+| Tool | Returns |
+|---|---|
+| `list_accounts` | Accounts with balance (opening balance plus records) in the account currency |
+| `query_records` | Records filtered by dates, account, category, text; `groupBy` category or month; `currency` converts with `fx_history` |
+| `holdings` | Positions with price, value, cost, and unrealized P&L in the base currency; filter by broker or account |
+| `performance` | XIRR (money-weighted) and time-weighted return per broker and in total |
+| `net_worth` | Month-end cash, investments, and total in the base currency |
+| `spending_by_category` | Income and expense per category for a period (default: this month) |
+| `list_categories` | Categories with id and group |
+| `rules_and_labels` | Wallet record rules (MagicRule) and labels (HashTag) |
+| `price_history` | Daily closes for a Wallet symbol or Yahoo ticker |
+| `fx_history` | Daily FX rates for a currency pair |
+| `data_freshness` | Last mirror sync, last import per broker, latest price and FX dates |
+
+To add a tool, add one entry to `TOOLS` in `src/mcp/tools.ts`.
