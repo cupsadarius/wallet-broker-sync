@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Inter, Manrope, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import AppHeader from "./components/AppHeader";
@@ -23,6 +23,12 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Wallet Sync",
   description: "Import broker exports into BudgetBakers Wallet — locally, idempotently.",
+  appleWebApp: { capable: true, title: "Wallet", statusBarStyle: "black-translucent" },
+  icons: { apple: "/icons/180" },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#0f1115",
 };
 
 export default function RootLayout({

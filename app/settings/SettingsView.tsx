@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import BackupRestore from '@/app/components/BackupRestore'
+import NotificationsCard from './NotificationsCard'
 import {
   Table,
   TableBody,
@@ -562,6 +563,7 @@ export default function SettingsView({ connection, mappings, aliases, fallbacks,
 
       <div className="space-y-6">
         <ConnectionSection connection={connection} />
+        <NotificationsCard />
         <MappingsSection mappings={mappings} />
         <DashboardSection initial={dashboard} />
         <AliasSection aliases={aliases} />
