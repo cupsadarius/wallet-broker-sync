@@ -79,6 +79,8 @@ export type MirrorRecord = {
   recordType?: number      // 0 income, 1 expense, 2 transfer
   currencyCode: string
   recordDate: string       // ISO YYYY-MM-DD
+  createdAt?: string       // doc.reservedCreatedAt: when the record reached Wallet
+  originalCategoryId?: string  // the category Wallet first gave a bank-synced record
   note?: string
   payee?: string           // doc.payee, else doc.payer
   /**
@@ -122,12 +124,12 @@ export type MirrorSnapshot = {
   byCategoryId: Map<string, MirrorCategory>
 }
 
-async function readConfigMap(): Promise<Record<string, string>> {
+export async function readConfigMap(): Promise<Record<string, string>> {
   const rows = await db.select().from(config)
   return Object.fromEntries(rows.map(r => [r.key, r.value]))
 }
 
-async function writeConfig(key: string, value: string): Promise<void> {
+export async function writeConfig(key: string, value: string): Promise<void> {
   await db
     .insert(config)
     .values({ key, value })
@@ -163,9 +165,9 @@ export async function isMirrorStale(maxAgeMs = DEFAULT_MIRROR_INTERVAL_MS): Prom
   return Date.now() - last.getTime() > maxAgeMs
 }
 
-type CouchContext = { client: CouchClient; scope: string }
+export type CouchContext = { client: CouchClient; scope: string }
 
-async function buildCouchContext(): Promise<CouchContext | null> {
+export async function buildCouchContext(): Promise<CouchContext | null> {
   const [cfg, creds] = await Promise.all([readConfigMap(), loadCouchCreds()])
   const couchUrl = cfg['couchUrl']
   const dbName = cfg['dbName']
@@ -334,6 +336,7 @@ function projectBuckets(buckets: DocBucket): MirrorSnapshot {
       reservedSource?: string; externalSource?: string;
       transfer?: boolean; transferAccountId?: string; transferId?: string;
       reservedIntegrationSource?: string;
+      reservedCreatedAt?: string; originalCategoryId?: string;
     }
     if (!r._id || !r.accountId) continue
     const dateStr = r.recordDate ?? r.date
@@ -351,6 +354,8 @@ function projectBuckets(buckets: DocBucket): MirrorSnapshot {
       recordType: r.type,
       currencyCode: (r.currencyId && currencyMap.get(r.currencyId)) || '',
       recordDate: normalizeDate(dateStr),
+      createdAt: r.reservedCreatedAt,
+      originalCategoryId: r.originalCategoryId,
       note: r.note,
       payee: r.payee || r.payer || undefined,
       isTradeFallback,

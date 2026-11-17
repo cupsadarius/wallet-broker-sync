@@ -19,7 +19,7 @@ const TRANSFER_CATEGORY_NAMES = new Set([
   'transfer', 'transfers', 'internal transfer', 'account transfer',
 ])
 
-function isTransfer(r: MirrorRecord): boolean {
+export function isTransfer(r: MirrorRecord): boolean {
   if (r.recordType === 2) return true
   const name = (r.categoryName ?? '').trim().toLowerCase()
   return TRANSFER_CATEGORY_NAMES.has(name)
