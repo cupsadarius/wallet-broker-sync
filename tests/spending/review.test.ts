@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { reviewQueue, unexplainedOutflows } from '@/src/spending/review'
+import { findTransferCounterparts, reviewQueue, unexplainedOutflows } from '@/src/spending/review'
 import type { MirrorAccount, MirrorRecord } from '@/src/dashboards/mirror'
 
 function rec(p: Partial<MirrorRecord> & { id: string }): MirrorRecord {
@@ -72,5 +72,34 @@ describe('unexplainedOutflows', () => {
     expect(unexplainedOutflows(accounts, records, now)[0].records.map(r => r.id)).toEqual(['t'])
     expect(unexplainedOutflows([acc('bt', 'Banca Transilvania', true)], records, now)).toEqual([])
     expect(unexplainedOutflows(accounts, records.slice(0, 2), now)).toEqual([])
+  })
+})
+
+describe('findTransferCounterparts', () => {
+  const topUp = rec({ id: 'topup', accountId: 'r-joint', recordType: 0, amount: 490_000, recordDate: '2026-10-30', note: 'Top-Up by *6837' })
+  const out = (id: string, p: Partial<MirrorRecord> = {}) =>
+    rec({ id, accountId: 'bt', recordType: 1, amount: 490_000, recordDate: '2026-10-29', payee: 'Revolut', ...p })
+
+  it('finds the opposite record in another account with the same amount and currency, nearest date first', () => {
+    const records = [
+      topUp,
+      out('far', { recordDate: '2026-11-03' }),
+      out('near'),
+      out('edge-before', { recordDate: '2026-10-26' }),
+      out('too-late', { recordDate: '2026-11-04' }),
+      out('same-account', { accountId: 'r-joint' }),
+      out('same-direction', { recordType: 0 }),
+      out('other-amount', { amount: 480_000 }),
+      out('other-currency', { currencyCode: 'EUR' }),
+      out('already-transfer', { transfer: true }),
+      out('transfer-category', { categoryName: 'Transfer' }),
+      out('trade', { isTradeFallback: true }),
+    ]
+    expect(findTransferCounterparts(topUp, records).map(r => r.id)).toEqual(['near', 'far', 'edge-before'])
+  })
+
+  it('works from the outgoing side too', () => {
+    const sent = out('sent')
+    expect(findTransferCounterparts(sent, [sent, topUp]).map(r => r.id)).toEqual(['topup'])
   })
 })

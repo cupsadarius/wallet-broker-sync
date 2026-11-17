@@ -10,7 +10,8 @@ import { buildCouchContext, readMirror, writeConfig } from '@/src/dashboards/mir
 import { cacheDocs, cachedDocs } from '@/src/sync/couch-cache'
 import { formatError } from '@/src/sync/format-error'
 import { matchingRecords } from '@/src/spending/proposals'
-import { magicRuleDoc, patchDocs, writeRule } from '@/src/spending/write'
+import { magicRuleDoc, markTransfer, patchDocs, writeRule } from '@/src/spending/write'
+import { findTransferCounterparts, reviewable } from '@/src/spending/review'
 import { readReviewState, REVIEW_ACCEPTED_KEY, REVIEW_CURSOR_KEY } from '@/src/spending/load'
 import { limitChanges } from '@/src/dashboards/compute/budgets'
 
@@ -52,6 +53,36 @@ export async function changeCategory(_: ActionState, form: FormData): Promise<Ac
     const docs = await cachedDocs(scope, [recordId])
     if (docs.length === 0) return { error: 'Record not found' }
     const { written, failed } = await patchDocs(client, docs, { categoryId }, new Date().toISOString())
+    await cacheDocs(scope, written)
+    refresh()
+    return failed.length ? { error: 'Wallet changed this record at the same time. Try again.' } : null
+  } catch (e) {
+    return { error: formatError(e).message }
+  }
+}
+
+/** Links a record to its counterpart, or to an account when Wallet has no counterpart, as a transfer. */
+export async function markAsTransfer(_: ActionState, form: FormData): Promise<ActionState> {
+  try {
+    const { recordId, counterpartId, accountId } = z.object({
+      recordId: z.string().min(1), counterpartId: z.string().min(1).optional(), accountId: z.string().min(1).optional(),
+    }).parse(Object.fromEntries(form))
+    const { client, scope, snapshot } = await walletContext()
+    const record = snapshot.records.find(r => r.id === recordId)
+    const category = snapshot.categories.find(c => c.name === 'Transfer')
+    if (!record || !reviewable(record)) return { error: 'This record is gone or already a transfer' }
+    if (!category) return { error: 'Wallet has no Transfer category' }
+    if (counterpartId && !findTransferCounterparts(record, snapshot.records).some(r => r.id === counterpartId)) {
+      return { error: 'That match is gone' }
+    }
+    if (!counterpartId && (!accountId || accountId === record.accountId || !snapshot.byAccountId.has(accountId))) {
+      return { error: 'Pick the other account' }
+    }
+    const docs = new Map((await cachedDocs(scope, [recordId, counterpartId ?? recordId])).map(d => [d._id, d]))
+    const doc = docs.get(recordId)
+    const other = counterpartId ? docs.get(counterpartId) : accountId
+    if (!doc || !other) return { error: 'Record not found' }
+    const { written, failed } = await markTransfer(client, doc, other, category.id, new Date().toISOString())
     await cacheDocs(scope, written)
     refresh()
     return failed.length ? { error: 'Wallet changed this record at the same time. Try again.' } : null

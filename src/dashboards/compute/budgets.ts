@@ -42,7 +42,7 @@ export function effectiveLimit(b: MirrorBudget, ym: string): number {
 
 function inScope(b: MirrorBudget, r: MirrorRecord, byCategoryId: Map<string, MirrorCategory>): boolean {
   const c = r.categoryId ? byCategoryId.get(r.categoryId) : undefined
-  if (!c || NOT_SPEND_GROUPS.has(c.groupName) || r.transfer || isTransfer(r)) return false
+  if (!c || NOT_SPEND_GROUPS.has(c.groupName) || isTransfer(r)) return false
   if ((b.envelopes.length || b.categoryIds.length)
     && !(c.envelopeId !== undefined && b.envelopes.includes(c.envelopeId)) && !b.categoryIds.includes(c.id)) return false
   if (b.accountIds.length && !b.accountIds.includes(r.accountId)) return false

@@ -2,12 +2,13 @@ import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { loadSpending } from '@/src/spending/load'
 import { isUncategorized, payeeLabel } from '@/src/spending/proposals'
+import { findTransferCounterparts } from '@/src/spending/review'
 import { fmtAmount, fmtDay } from '@/src/dashboards/compute/today'
 import type { MirrorRecord } from '@/src/dashboards/mirror'
 import { acceptAll, acceptRecord, approveBudgetProposal, approveProposal, rejectBudgetProposal, rejectProposal } from './actions'
 import type { BudgetStatus } from '@/src/dashboards/compute/budgets'
 import { cn } from '@/lib/utils'
-import { ActionForm, CategoryChip, type CategoryGroup } from './ui'
+import { ActionForm, CategoryChip, TransferButton, type CategoryGroup } from './ui'
 
 const AI_MESSAGE: Record<string, string> = {
   unavailable: 'AI proposals are not available yet.',
@@ -40,6 +41,8 @@ export default async function SpendingPage({ searchParams }: { searchParams: Pro
     c => c.groupName,
   )).sort(([a], [b]) => a.localeCompare(b)).map(([group, cs]) => ({ group, options: (cs ?? []).map(c => ({ id: c.id, name: c.name })) }))
   const maxCategory = d.topCategories[0]?.expense ?? 1
+  const accountName = (id: string) => s.byAccountId.get(id)?.name ?? 'Unknown account'
+  const openAccounts = s.accounts.filter(a => !a.archived).sort((a, b) => a.name.localeCompare(b.name)).map(a => ({ id: a.id, name: a.name }))
 
   return (
     <main className="mx-auto max-w-xl px-4">
@@ -145,12 +148,23 @@ export default async function SpendingPage({ searchParams }: { searchParams: Pro
           <div className="min-w-0 flex-1">
             <div className="truncate text-sm font-semibold">{payeeLabel(r) || '(no note)'}</div>
             <div className="truncate text-xs text-muted-foreground">
-              {shortDay(r.recordDate)} · {s.byAccountId.get(r.accountId)?.name ?? 'Unknown account'}
+              {shortDay(r.recordDate)} · {accountName(r.accountId)}
             </div>
-            <CategoryChip
-              recordId={r.id} categoryId={r.categoryId} label={categoryName(r.categoryId)}
-              unknown={isUncategorized(r, s.byCategoryId)} groups={groups}
-            />
+            <div className="flex items-start gap-1.5">
+              <CategoryChip
+                recordId={r.id} categoryId={r.categoryId} label={categoryName(r.categoryId)}
+                unknown={isUncategorized(r, s.byCategoryId)} groups={groups}
+              />
+              <TransferButton
+                recordId={r.id} incoming={r.recordType === 0}
+                summary={`${payeeLabel(r) || '(no note)'} · ${money(r)} ${r.currencyCode} · ${accountName(r.accountId)} · ${shortDay(r.recordDate)}`}
+                candidates={findTransferCounterparts(r, s.records).map(c => ({
+                  id: c.id, account: accountName(c.accountId), date: shortDay(c.recordDate),
+                  amount: `${money(c)} ${c.currencyCode}`, payee: payeeLabel(c),
+                }))}
+                accounts={openAccounts.filter(a => a.id !== r.accountId)}
+              />
+            </div>
           </div>
           <div className="shrink-0 text-right text-sm font-semibold tabular-nums">
             {money(r)} <span className="text-xs font-normal text-muted-foreground">{r.currencyCode}</span>

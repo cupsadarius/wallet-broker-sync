@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { magicRuleDoc, patchDocs, writeRule, type Doc } from '@/src/spending/write'
+import { magicRuleDoc, markTransfer, patchDocs, writeRule, type Doc } from '@/src/spending/write'
 import type { BulkDocResult } from '@/src/sync/couch'
 
 const NOW = '2026-11-17T10:00:00.000Z'
@@ -102,5 +102,59 @@ describe('magicRuleDoc and writeRule', () => {
     expect(await writeRule(couch, rule)).toMatchObject({ _id: rule._id, _rev: '1-ok' })
     expect(await writeRule(couch, rule)).toMatchObject({ _id: rule._id, _rev: '1-ok' })
     expect(couch.docs.size).toBe(1)
+  })
+})
+
+describe('markTransfer', () => {
+  const TRANSFER = '-Category_transfer'
+  const topUp: Doc = {
+    _id: 'Record_topup', _rev: '1-a', reservedModelType: 'Record', type: 0, amount: 490_000, accountId: '-Account_joint',
+    categoryId: '-Category_income', originalCategoryId: '-Category_income', note: 'Top-Up by *6837', reservedIntegrationSource: 'saltedge_partners',
+  }
+  const sent: Doc = {
+    _id: 'Record_sent', _rev: '1-b', reservedModelType: 'Record', type: 1, amount: 490_000, accountId: '-Account_bt',
+    categoryId: '-Category_other', originalCategoryId: '-Category_other', note: 'Revolut', reservedIntegrationSource: 'saltedge_partners',
+  }
+  const linked = { transfer: true, categoryId: TRANSFER, categoryConfirmReason: 3, categoryChanged: true }
+
+  it('links both records with one transferId, each pointing at the other account; type and amount stay', async () => {
+    const couch = fakeCouch([topUp, sent])
+    const out = await markTransfer(couch, topUp, sent, TRANSFER, NOW)
+    expect(out.failed).toEqual([])
+    const a = couch.docs.get('Record_topup')!
+    const b = couch.docs.get('Record_sent')!
+    expect(a).toMatchObject({ ...linked, transferAccountId: '-Account_bt', type: 0, amount: 490_000, originalCategoryId: '-Category_income', reservedUpdatedAt: NOW })
+    expect(b).toMatchObject({ ...linked, transferAccountId: '-Account_joint', type: 1, amount: 490_000, originalCategoryId: '-Category_other' })
+    expect(a.transferId).toMatch(/^[0-9a-f-]{36}$/)
+    expect(b.transferId).toBe(a.transferId)
+  })
+
+  it('a retry, from either side and with stale revisions, gives the same transferId', async () => {
+    const couch = fakeCouch([topUp, sent])
+    await markTransfer(couch, topUp, sent, TRANSFER, NOW)
+    const first = couch.docs.get('Record_topup')!.transferId
+    const out = await markTransfer(couch, sent, topUp, TRANSFER, NOW)
+    expect(out.failed).toEqual([])
+    expect(couch.docs.get('Record_topup')!.transferId).toBe(first)
+    expect(couch.docs.get('Record_sent')!.transferId).toBe(first)
+  })
+
+  it('marks one record as a transfer to an account when there is no counterpart', async () => {
+    const couch = fakeCouch([topUp, sent])
+    const out = await markTransfer(couch, topUp, '-Account_bt', TRANSFER, NOW)
+    expect(out.written.map(d => d._id)).toEqual(['Record_topup'])
+    expect(couch.docs.get('Record_topup')).toMatchObject({ ...linked, transferAccountId: '-Account_bt', type: 0 })
+    expect(couch.docs.get('Record_sent')).toEqual(sent)
+    const again = fakeCouch([topUp])
+    await markTransfer(again, topUp, '-Account_bt', TRANSFER, NOW)
+    expect(again.docs.get('Record_topup')!.transferId).toBe(couch.docs.get('Record_topup')!.transferId)
+  })
+
+  it('re-reads a record that changed in Wallet and keeps that change', async () => {
+    const couch = fakeCouch([topUp, sent])
+    couch.bump('Record_sent', { note: 'edited in the app' })
+    const out = await markTransfer(couch, topUp, sent, TRANSFER, NOW)
+    expect(out.failed).toEqual([])
+    expect(couch.docs.get('Record_sent')).toMatchObject({ ...linked, note: 'edited in the app', transferAccountId: '-Account_joint' })
   })
 })

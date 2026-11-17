@@ -27,7 +27,7 @@ export const addDays = (day: string, n: number) => new Date(Date.parse(day + 'T0
 export function categoryTotals(records: MirrorRecord[], ctx: SpendContext, from: string, to: string): CategoryTotal[] {
   const totals = new Map<string, CategoryTotal>()
   for (const r of records) {
-    if (r.recordDate < from || r.recordDate > to || r.transfer || r.isTradeFallback || isTransfer(r)) continue
+    if (r.recordDate < from || r.recordDate > to || r.isTradeFallback || isTransfer(r)) continue
     if (r.recordType !== 0 && r.recordType !== 1) continue
     const c = r.categoryId ? ctx.byCategoryId.get(r.categoryId) : undefined
     if (c && NOT_SPEND_GROUPS.has(c.groupName)) continue

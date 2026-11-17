@@ -20,7 +20,7 @@ const TRANSFER_CATEGORY_NAMES = new Set([
 ])
 
 export function isTransfer(r: MirrorRecord): boolean {
-  if (r.recordType === 2) return true
+  if (r.transfer || r.recordType === 2) return true
   const name = (r.categoryName ?? '').trim().toLowerCase()
   return TRANSFER_CATEGORY_NAMES.has(name)
 }

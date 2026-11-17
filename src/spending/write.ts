@@ -1,4 +1,6 @@
 import type { CouchClient } from '@/src/sync/couch'
+import { v5 as uuidv5 } from 'uuid'
+import { NAMESPACE_WALLET_SYNC } from '@/src/sync/namespace'
 import { ruleId } from './proposals'
 
 export type Doc = Record<string, unknown> & { _id: string }
@@ -36,6 +38,21 @@ export async function patchDocs(
     if (fresh.length) await write(fresh, id => failed.push(id))
   }
   return { written, failed }
+}
+
+/**
+ * Makes a Wallet transfer: with a counterpart doc, both legs; with an account id, a single leg to that account.
+ * The transferId comes from the record ids, so a retry writes the same transfer.
+ */
+export function markTransfer(client: DocWriter, record: Doc, other: Doc | string, transferCategoryId: string, now: string) {
+  const docs = typeof other === 'string' ? [record] : [record, other]
+  const transferId = uuidv5(`transfer:${docs.map(d => d._id).sort().join('|')}`, NAMESPACE_WALLET_SYNC)
+  const otherAccount = (d: Doc) =>
+    typeof other === 'string' ? other : String(d._id === record._id ? other.accountId : record.accountId)
+  return patchDocs(client, docs, d => ({
+    transfer: true, transferId, transferAccountId: otherAccount(d),
+    categoryId: transferCategoryId, categoryChanged: true, categoryConfirmReason: 3,
+  }), now)
 }
 
 export function magicRuleDoc(

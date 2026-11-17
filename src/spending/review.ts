@@ -4,10 +4,22 @@ import { bankGroups, bankStale } from '@/src/dashboards/compute/today'
 
 /** Real income or spend: not a transfer leg and not one of this app's trade-fallback records. */
 export function reviewable(r: MirrorRecord): boolean {
-  return !r.transfer && !isTransfer(r) && !r.isTradeFallback && (r.recordType === 0 || r.recordType === 1)
+  return !isTransfer(r) && !r.isTradeFallback && (r.recordType === 0 || r.recordType === 1)
 }
 
-export type ReviewState = { cursor: string; accepted: string[] }
+const TRANSFER_WINDOW_DAYS = 4
+
+/** The other leg of a transfer between own accounts: opposite direction, same amount and currency, within 4 days. */
+export function findTransferCounterparts(record: MirrorRecord, records: MirrorRecord[]): MirrorRecord[] {
+  const days = (r: MirrorRecord) => Math.abs(Date.parse(r.recordDate) - Date.parse(record.recordDate)) / 86_400_000
+  return records
+    .filter(r => reviewable(r) && r.accountId !== record.accountId && r.recordType !== record.recordType
+      && Math.abs(r.amount) === Math.abs(record.amount) && r.currencyCode === record.currencyCode
+      && days(r) <= TRANSFER_WINDOW_DAYS)
+    .sort((a, b) => days(a) - days(b))
+}
+
+export type ReviewState ={ cursor: string; accepted: string[] }
 
 const reachedWallet = (r: MirrorRecord) => Date.parse(r.createdAt ?? r.recordDate)
 
