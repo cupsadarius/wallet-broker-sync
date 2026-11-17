@@ -11,7 +11,7 @@ vi.mock('@/src/storage/db', async () => {
 vi.mock('@/src/storage/credentials', () => ({ loadCouchCreds: async () => ({ login: 'u', token: 't' }) }))
 
 import { db } from '@/src/storage/db'
-import { config, couchDocCache } from '@/src/storage/schema'
+import { config, couchDocCache, maturity, plan } from '@/src/storage/schema'
 import { scopeFor } from '@/src/sync/couch-cache'
 import { handleMcp } from '@/src/mcp/http'
 
@@ -45,6 +45,12 @@ beforeAll(async () => {
     { _id: '-Record_2', reservedModelType: 'Record', accountId: '-Account_1', categoryId: '-Category_food', amount: 12345, type: 1, currencyId: '-Currency_1', recordDate: '2026-11-03T18:00:00.000Z', payee: 'Mega Image' },
   ]
   await db.insert(couchDocCache).values(docs.map(d => ({ scope: SCOPE, docId: d._id, modelType: d.reservedModelType, json: JSON.stringify(d) })))
+  await db.insert(maturity).values({ id: 1, kind: 'deposit', name: 'BT deposit', accountId: '-Account_1', currency: 'RON', principal: 100_000, rateBps: 500, startDate: '2026-01-01', maturityDate: '2027-01-01' })
+  await db.insert(plan).values([
+    { type: 'recurring', name: 'Save monthly', accountId: '-Account_1', amount: 10_000, currency: 'RON', frequency: 'monthly', startDate: '2026-11-01' },
+    { type: 'rollover', name: 'Rollover to Fidelis', accountId: '-Account_1', startDate: '2026-11-01', maturityId: 1, targetProduct: 'Fidelis RON 2028' },
+    { type: 'recurring', name: 'Old plan', accountId: '-Account_1', amount: 10_000, currency: 'RON', frequency: 'weekly', startDate: '2020-01-01', status: 'archived' },
+  ])
 })
 
 describe('auth', () => {
@@ -97,6 +103,21 @@ describe('tools/call', () => {
     const { data } = await call('query_records', { from: '2026-11-01', to: '2026-11-30', groupBy: 'category' })
     expect(data.currency).toBe('RON')
     expect(data.groups).toEqual(expect.arrayContaining([{ key: 'Groceries', group: 'Food & Drinks', income: 0, expense: 123.45, net: -123.45, count: 1 }]))
+  })
+
+  it('list_plans returns each plan with its progress and leaves out archived plans', async () => {
+    const { data } = await call('list_plans')
+    expect(data.plans.map((p: { name: string }) => p.name)).toEqual(['Save monthly', 'Rollover to Fidelis'])
+    expect(data.plans[0]).toMatchObject({ type: 'recurring', account: 'BT - Curent', amount: 100, currency: 'RON', progress: { deposited: 500, tag: 'on track' } })
+    expect(data.plans[1]).toMatchObject({ type: 'rollover', targetProduct: 'Fidelis RON 2028', progress: { maturityDate: '2027-01-01' } })
+    expect((await call('list_plans', { includeArchived: true })).data.plans).toHaveLength(3)
+  })
+
+  it('list_maturities returns the payout at maturity', async () => {
+    const { data } = await call('list_maturities')
+    expect(data.maturities).toEqual([expect.objectContaining({
+      name: 'BT deposit', account: 'BT - Curent', principal: 1000, ratePct: 5, maturityDate: '2027-01-01', payout: 1050,
+    })])
   })
 
   it('returns a tool error for invalid arguments', async () => {

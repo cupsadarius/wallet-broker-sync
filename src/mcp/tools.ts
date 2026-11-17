@@ -9,6 +9,8 @@ import { valuateHoldings } from '@/src/dashboards/compute/valuation'
 import { computePerformance } from '@/src/dashboards/compute/performance'
 import { computeNetWorth } from '@/src/dashboards/compute/networth'
 import { aggregateSpending } from '@/src/dashboards/compute/spending'
+import { accrued, payout } from '@/src/dashboards/compute/maturities'
+import { loadMaturities, loadPlans } from '@/src/dashboards/portfolio'
 
 export type McpTool = {
   name: string
@@ -302,6 +304,49 @@ export const TOOLS: McpTool[] = [
         ? direct.map(r => ({ date: r.date, rate: r.rate / 1_000_000 }))
         : query(args.quote, args.base).map(r => ({ date: r.date, rate: Math.round(1e12 / r.rate) / 1e6 }))
       return { base: args.base, quote: args.quote, rates }
+    },
+  }),
+
+  tool({
+    name: 'list_plans',
+    description: 'Investment plans with progress. Recurring plans: expected contributions to date vs deposits into the '
+      + 'account, periods behind, units of the target asset held, uninvested cash, and the next action. Rollover plans: '
+      + 'the linked maturity date and whether the target product was bought. Amounts are in the plan currency.',
+    input: z.object({ includeArchived: z.boolean().default(false) }),
+    async run({ includeArchived }) {
+      const { snap } = await load()
+      const views = await loadPlans(snap, await loadMaturities(), today())
+      return {
+        plans: views.filter(v => includeArchived || v.plan.status !== 'archived').map(({ plan, accountName, progress: g }) => ({
+          ...plan, account: accountName,
+          progress: {
+            ...g, ring: pct(g.ring),
+            ...(g.cash === undefined ? {} : { cash: money(g.cash), deposited: money(g.deposited ?? 0), expected: money(g.expected ?? 0) }),
+          },
+        })),
+      }
+    },
+  }),
+
+  tool({
+    name: 'list_maturities',
+    description: 'Deposits and bonds entered by hand: principal, annual rate, start and maturity dates, interest accrued '
+      + 'to today, and the payout at maturity (principal plus the last period of interest; null when the rate is not set).',
+    input: z.object({}),
+    async run() {
+      const { snap } = await load()
+      const day = today()
+      return {
+        maturities: (await loadMaturities()).map(m => {
+          const p = payout(m)
+          return {
+            id: m.id, kind: m.kind, name: m.name, account: m.accountId ? snap.byAccountId.get(m.accountId)?.name ?? null : null,
+            symbol: m.symbol, currency: m.currency, principal: money(m.principal),
+            ratePct: m.rateBps === null ? null : m.rateBps / 100, startDate: m.startDate, maturityDate: m.maturityDate,
+            accrued: money(accrued(m, day)), payout: p === null ? null : money(p), matured: m.maturityDate <= day,
+          }
+        }),
+      }
     },
   }),
 
