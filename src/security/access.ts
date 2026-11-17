@@ -8,7 +8,8 @@ export type AccessDenied = { status: 403 | 421; reason: string }
 const LOOPBACK = ['localhost', '127.0.0.1', '[::1]']
 const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS'])
 const WRITE_TYPES = new Set(['application/json', 'multipart/form-data'])
-const PUBLIC_PATH = '/api/health'
+// /mcp checks its own bearer token (WALLET_MCP_TOKEN); opencode sends no Tailscale login.
+const NO_LOGIN_PATHS = new Set(['/api/health', '/mcp'])
 
 const list = (v: string | undefined) =>
   (v ?? '').split(',').map(s => s.trim().toLowerCase()).filter(Boolean)
@@ -43,7 +44,7 @@ export function policyFromEnv(env: Record<string, string | undefined>): AccessPo
 export function checkAccess(req: AccessRequest, policy: AccessPolicy): AccessDenied | null {
   if (!policy.hosts.has(hostName(req.host))) return { status: 421, reason: 'unknown host' }
 
-  if (req.path !== PUBLIC_PATH && policy.requireUser && !policy.users.has((req.login ?? '').trim().toLowerCase())) {
+  if (!NO_LOGIN_PATHS.has(req.path) && policy.requireUser && !policy.users.has((req.login ?? '').trim().toLowerCase())) {
     return { status: 403, reason: 'not allowed' }
   }
 
