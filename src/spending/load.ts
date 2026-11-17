@@ -1,0 +1,57 @@
+import { eq } from 'drizzle-orm'
+import { z } from 'zod'
+import { db } from '@/src/storage/db'
+import { ruleProposal } from '@/src/storage/schema'
+import { ensureFreshMirror, getBaseCurrency, readConfigMap } from '@/src/dashboards/mirror'
+import { aggregateSpending } from '@/src/dashboards/compute/spending'
+import { latestFx } from '@/src/dashboards/prices'
+import { matchingRecords } from './proposals'
+import { reviewQueue, unexplainedOutflows, type ReviewState } from './review'
+
+export const REVIEW_CURSOR_KEY = 'spending.reviewCursor'
+export const REVIEW_ACCEPTED_KEY = 'spending.reviewAccepted'
+const FIRST_REVIEW_DAYS = 14
+const PAGE_MAX_AGE_MS = 5 * 60_000
+
+export async function readReviewState(now = new Date()): Promise<ReviewState> {
+  const cfg = await readConfigMap()
+  let accepted: string[] = []
+  try { accepted = z.array(z.string()).parse(JSON.parse(cfg[REVIEW_ACCEPTED_KEY] ?? '[]')) } catch { /* reset */ }
+  return {
+    cursor: cfg[REVIEW_CURSOR_KEY] ?? new Date(now.getTime() - FIRST_REVIEW_DAYS * 86_400_000).toISOString(),
+    accepted,
+  }
+}
+
+export async function loadSpending() {
+  const s = await ensureFreshMirror(PAGE_MAX_AGE_MS)
+  if (!s) return null
+  const now = new Date()
+  const base = await getBaseCurrency()
+  const today = now.toISOString().slice(0, 10)
+
+  const month = await aggregateSpending(s.records, base, {
+    accountIds: new Set(s.accounts.filter(a => a.accountType !== 7).map(a => a.id)),
+    fromDate: today.slice(0, 8) + '01',
+  })
+  const topCategories = month.byCategory.filter(c => c.expense > 0)
+    .sort((a, b) => b.expense - a.expense).slice(0, 5)
+
+  const outflows = await Promise.all(unexplainedOutflows(s.accounts, s.records, now).map(async o => {
+    let total = 0
+    for (const r of o.records) total += (r.amount / 100) * ((await latestFx(r.currencyCode || base, base, r.recordDate)) ?? 0)
+    return { ...o, total }
+  }))
+
+  const proposals = (await db.select().from(ruleProposal).where(eq(ruleProposal.status, 'open'))).map(p => {
+    const matches = matchingRecords(s.records, p.keywords)
+    return { ...p, pastMatchCount: matches.length, toChange: matches.filter(r => r.categoryId !== p.categoryId) }
+  })
+
+  return {
+    snapshot: s, base, today,
+    queue: reviewQueue(s.records, await readReviewState(now)),
+    monthExpense: month.totals.expense,
+    topCategories, outflows, proposals,
+  }
+}
