@@ -50,7 +50,7 @@ export default function UploadDropzone({ initialBroker }: { initialBroker?: Brok
       const res = await fetch('/api/retirement/upload', { method: 'POST', body: form })
       const { results } = (await res.json()) as { results: RetirementUploadResult[] }
       const kept = results.filter(r => r.status !== 'unsupported')
-      setRetirement(prev => [...prev, ...kept])
+      setRetirement(kept)
       return new Set(kept.map(r => r.file))
     } catch (err) {
       setErrorKind('other')
@@ -175,8 +175,8 @@ export default function UploadDropzone({ initialBroker }: { initialBroker?: Brok
         {retirement.length > 0 && (
           <div className="mb-2 rounded-sm border border-lead/30 px-4 py-3 text-sm">
             <ul className="space-y-1">
-              {retirement.map(r => (
-                <li key={`${r.file}:${r.status}:${r.asOf ?? ''}`} className="flex justify-between gap-3">
+              {retirement.map((r, i) => (
+                <li key={i} className="flex justify-between gap-3">
                   <span className="min-w-0 truncate">
                     {r.status === 'failed' ? r.file : `${PROVIDER_NAME[r.provider as Provider] ?? r.provider} · ${r.asOf}`}
                   </span>
