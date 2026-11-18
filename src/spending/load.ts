@@ -3,7 +3,6 @@ import { z } from 'zod'
 import { db } from '@/src/storage/db'
 import { budgetProposal, ruleProposal, weeklyNote } from '@/src/storage/schema'
 import { ensureFreshMirror, getBaseCurrency, readConfigMap } from '@/src/dashboards/mirror'
-import { aggregateSpending } from '@/src/dashboards/compute/spending'
 import { latestFx } from '@/src/dashboards/prices'
 import { matchingRecords } from './proposals'
 import { likelyTransfers, reviewQueue, unexplainedOutflows, type ReviewState } from './review'
@@ -39,12 +38,6 @@ export async function loadSpending() {
   const base = await getBaseCurrency()
   const today = now.toISOString().slice(0, 10)
 
-  const month = await aggregateSpending(s.records, base, {
-    accountIds: new Set(s.accounts.filter(a => a.accountType !== 7).map(a => a.id)),
-    fromDate: today.slice(0, 8) + '01',
-  })
-  const topCategories = month.byCategory.filter(c => c.expense > 0)
-    .sort((a, b) => b.expense - a.expense).slice(0, 5)
 
   const outflows = await Promise.all(unexplainedOutflows(s.accounts, s.records, now).map(async o => {
     let total = 0
@@ -70,7 +63,6 @@ export async function loadSpending() {
     notes: await db.select().from(weeklyNote).orderBy(desc(weeklyNote.id)).limit(NOTES_SHOWN),
     queue: reviewQueue(s.records, await readReviewState(now)),
     transfers: likelyTransfers(s.records, today, new Set(await readDismissedTransfers())),
-    monthExpense: month.totals.expense,
-    topCategories, outflows, proposals,
+    outflows, proposals,
   }
 }

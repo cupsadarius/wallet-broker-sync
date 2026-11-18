@@ -9,6 +9,8 @@ import { acceptAll, acceptRecord, approveBudgetProposal, dismissTransfer, markAs
 import type { BudgetStatus } from '@/src/dashboards/compute/budgets'
 import { cn } from '@/lib/utils'
 import { ActionForm, CategoryChip, DeleteRuleButton, TransferButton, type CategoryGroup } from './ui'
+import { CategoryBreakdown, MonthlyChart } from './charts'
+import { aggregateSpending } from '@/src/dashboards/compute/spending'
 
 const AI_MESSAGE: Record<string, string> = {
   unavailable: 'AI proposals are not available yet.',
@@ -30,17 +32,26 @@ const shortDay = (iso: string) => fmtDay(iso).replace(` ${new Date().getUTCFullY
 const money = (r: MirrorRecord) =>
   `${r.recordType === 1 ? '−' : '+'}${(r.amount / 100).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 
-export default async function SpendingPage({ searchParams }: { searchParams: Promise<{ ai?: string; budgetAi?: string; note?: string }> }) {
+const PERIODS = [{ months: 1, label: 'This month' }, { months: 6, label: '6 months' }, { months: 12, label: '12 months' }, { months: 24, label: '24 months' }]
+
+export default async function SpendingPage({ searchParams }: { searchParams: Promise<{ ai?: string; budgetAi?: string; note?: string; months?: string }> }) {
   const d = await loadSpending()
   if (!d) redirect('/setup')
-  const { ai, budgetAi, note } = await searchParams
+  const { ai, budgetAi, note, months: monthsParam } = await searchParams
   const s = d.snapshot
+  const months = PERIODS.find(p => String(p.months) === monthsParam)?.months ?? 12
+  const now = new Date()
+  const period = await aggregateSpending(s.records, d.base, {
+    accountIds: new Set(s.accounts.filter(a => a.accountType !== 7).map(a => a.id)),
+    accountNameById: new Map(s.accounts.map(a => [a.id, a.name])),
+    fromDate: new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - months + 1, 1)).toISOString().slice(0, 10),
+  })
+  const perMonth = (n: number) => n / Math.max(1, period.monthsCovered)
   const categoryName = (id?: string) => (id && s.byCategoryId.get(id)?.name) || 'Uncategorized'
   const groups: CategoryGroup[] = Object.entries(Object.groupBy(
     s.categories.filter(c => c.envelopeId !== 20001).sort((a, b) => a.name.localeCompare(b.name)),
     c => c.groupName,
   )).sort(([a], [b]) => a.localeCompare(b)).map(([group, cs]) => ({ group, options: (cs ?? []).map(c => ({ id: c.id, name: c.name })) }))
-  const maxCategory = d.topCategories[0]?.expense ?? 1
   const accountName = (id: string) => s.byAccountId.get(id)?.name ?? 'Unknown account'
   const openAccounts = s.accounts.filter(a => !a.archived).sort((a, b) => a.name.localeCompare(b.name)).map(a => ({ id: a.id, name: a.name }))
 
@@ -48,7 +59,14 @@ export default async function SpendingPage({ searchParams }: { searchParams: Pro
     <main className="mx-auto max-w-xl px-4 lg:max-w-6xl lg:px-8">
       <div className="mt-1 mb-2 flex items-baseline justify-between">
         <h1 className="text-2xl font-semibold">Spending</h1>
-        <Link href="/dashboard/spending" className="text-[13px] text-primary">Charts ›</Link>
+        <nav className="flex gap-1 text-xs">
+          {PERIODS.map(p => (
+            <Link key={p.months} href={`/spending?months=${p.months}`} scroll={false}
+              className={cn('rounded-md px-2 py-1 text-muted-foreground', p.months === months && 'bg-secondary font-semibold text-foreground')}>
+              {p.label}
+            </Link>
+          ))}
+        </nav>
       </div>
 
       {d.outflows.map(o => (
@@ -66,6 +84,16 @@ export default async function SpendingPage({ searchParams }: { searchParams: Pro
           <b>{c.name}</b> is at {fmtAmount(c.spent, d.base)} this month, against {fmtAmount(c.average, d.base)} in an average month.
         </div>
       ))}
+
+      <section className="mt-3 rounded-[14px] border bg-card px-3.5 py-3 lg:px-5 lg:py-4">
+        <div className="grid grid-cols-2 gap-3 text-xs text-muted-foreground sm:grid-cols-4">
+          <div>Income<b className="block text-base text-up tabular-nums">{fmtAmount(period.totals.income, d.base)}</b></div>
+          <div>Spent<b className="block text-base text-down tabular-nums">{fmtAmount(period.totals.expense, d.base)}</b></div>
+          <div>Net<b className={cn('block text-base tabular-nums', period.totals.net >= 0 ? 'text-up' : 'text-down')}>{period.totals.net >= 0 ? '+' : '−'}{fmtAmount(Math.abs(period.totals.net), d.base)}</b></div>
+          <div>Spent per month<b className="block text-base text-foreground tabular-nums">{fmtAmount(perMonth(period.totals.expense), d.base)}</b></div>
+        </div>
+        {period.monthly.length > 1 && <div className="mt-3 h-48 lg:h-64"><MonthlyChart monthly={period.monthly} base={d.base} /></div>}
+      </section>
 
       <div className="lg:grid lg:grid-cols-2 lg:items-start lg:gap-10">
       <div>
@@ -106,6 +134,9 @@ export default async function SpendingPage({ searchParams }: { searchParams: Pro
         </form>
       )}
 
+      <Section id="categories" title={`Where it goes · ${PERIODS.find(p => p.months === months)!.label.toLowerCase()}`} />
+      <CategoryBreakdown byCategory={period.byCategory} records={period.records} base={d.base} />
+
       <Section id="note" title="Weekly note" />
       {note && NOTE_MESSAGE[note] && <p className="mb-2 text-sm text-warn">{NOTE_MESSAGE[note]}</p>}
       {d.notes.length === 0 && <p className="text-sm text-muted-foreground">The first note comes on Monday morning.</p>}
@@ -133,15 +164,6 @@ export default async function SpendingPage({ searchParams }: { searchParams: Pro
         <button className="rounded-[10px] border border-primary/40 px-3 py-1.5 text-[13px] font-bold text-primary">Write now</button>
       </form>
 
-      <Section title={`This month · ${fmtAmount(d.monthExpense, d.base)}`} />
-      {d.topCategories.length === 0 && <p className="text-sm text-muted-foreground">No spending this month yet.</p>}
-      {d.topCategories.map(c => (
-        <div key={c.key} className="my-1.5 flex items-center gap-2 text-[13px]">
-          <span className="w-28 shrink-0 truncate">{c.name}</span>
-          <span className="h-2 rounded bg-primary" style={{ width: `${Math.max(2, (c.expense / maxCategory) * 100) * 0.55}%` }} />
-          <span className="ml-auto shrink-0 tabular-nums">{Math.round(c.expense).toLocaleString('en-US')}</span>
-        </div>
-      ))}
 
       </div>
       <div>

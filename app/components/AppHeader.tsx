@@ -21,7 +21,6 @@ const SETTINGS = [
 
 function isActive(pathname: string, href: string): boolean {
   if (href === '/') return pathname === '/'
-  if (href === '/spending') return pathname.startsWith('/spending') || pathname.startsWith('/dashboard')
   return pathname.startsWith(href)
 }
 
