@@ -92,6 +92,13 @@
       "when": 1795738800000,
       "tag": "0012_signal_contract",
       "breakpoints": true
+    },
+    {
+      "idx": 13,
+      "version": "6",
+      "when": 1795825200000,
+      "tag": "0013_retirement_projection",
+      "breakpoints": true
     }
   ]
 }

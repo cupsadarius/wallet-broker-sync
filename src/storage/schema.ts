@@ -203,6 +203,7 @@ export const retirementAccount = sqliteTable('retirement_account', {
   contract: text('contract').notNull(),
   currency: text('currency').notNull(),
   releaseDate: text('release_date'),
+  yearlyContribution: integer('yearly_contribution'),   // ×100, account currency; null = from the last 12 months
   createdAt: text('created_at').notNull(),
 })
 

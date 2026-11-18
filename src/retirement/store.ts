@@ -6,6 +6,7 @@ import type { Statement } from './types'
 
 export const BIRTH_DATE_KEY = 'retirement.birthDate'
 export const VPR_KEY = 'retirement.vpr'
+export const RETURN_KEY = 'retirement.assumedReturn'   // percent a year
 const RELEASE_AGE = 65
 
 export const accountIdOf = (st: Statement) => (st.kind === 'pilon1' ? 'cnpp' : `${st.provider}:${st.contract}`)
@@ -64,4 +65,12 @@ export async function setReleaseDate(accountId: string, date: string | null): Pr
 
 export async function setVpr(cents: number): Promise<void> {
   await writeConfig(VPR_KEY, String(cents))
+}
+
+export async function setYearlyContribution(accountId: string, cents: number | null): Promise<void> {
+  await db.update(retirementAccount).set({ yearlyContribution: cents }).where(eq(retirementAccount.id, accountId))
+}
+
+export async function setAssumedReturn(percent: number): Promise<void> {
+  await writeConfig(RETURN_KEY, String(percent))
 }

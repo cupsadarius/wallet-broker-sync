@@ -234,7 +234,8 @@ export const TOOLS: McpTool[] = [
     description: 'Retirement accounts from uploaded statements: Pilon 2 and Pilon 3 pension funds and unit-linked policies, '
       + 'each with value, amount paid in, gain, fees, yearly return (with its basis) and release date; totals locked until '
       + 'retirement and already released, in the base currency; and Pilon 1 (state pension): contribution period, points '
-      + 'and a rough monthly pension. includeHistory adds every stored statement and contribution.',
+      + 'and a rough monthly pension. projection and projectedAtUnlock assume assumedReturn a year and each yearlyContribution, '
+      + 'before inflation. includeHistory adds every stored statement and contribution.',
     input: z.object({ includeHistory: z.boolean().default(false) }),
     async run(args) {
       const s = await loadRetirement(today())
@@ -245,6 +246,10 @@ export const TOOLS: McpTool[] = [
       const name = (id: string) => s.accounts.find(a => a.id === id)
       return {
         currency: s.base, locked: units(s.locked), available: units(s.available),
+        projection: s.projection.timeline.final && {
+          assumedReturn: pct(s.projection.rate), by: s.projection.timeline.final.month,
+          value: units(s.projection.timeline.final.value), paidIn: units(s.projection.timeline.final.paidIn),
+        },
         unconverted: s.unconverted.map(id => `${PROVIDER_NAME[name(id)!.provider]} ${name(id)!.product}`),
         accounts: s.accounts.map(a => {
           const own = contributions.filter(c => c.accountId === a.id).sort((x, y) => x.date.localeCompare(y.date))
@@ -255,6 +260,8 @@ export const TOOLS: McpTool[] = [
             gainPct: pct(a.gainPct), fees: units(a.fees),
             yearlyReturn: a.yearly ? { rate: pct(a.yearly.rate), basis: a.yearly.basis, since: a.yearly.since } : null,
             releaseDate: a.releaseDate, locked: a.locked,
+            yearlyContribution: units(s.projection.contributions.get(a.id)?.yearly ?? null),
+            projectedAtUnlock: (r => r && { date: r.date, value: units(r.value), paidIn: units(r.paidIn) })(s.projection.timeline.atRelease.get(a.id)),
             ...(args.includeHistory ? {
               history: {
                 statements: statements.filter(x => x.accountId === a.id).sort((x, y) => x.asOf.localeCompare(y.asOf))

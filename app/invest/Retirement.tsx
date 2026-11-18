@@ -1,14 +1,20 @@
 import Link from 'next/link'
-import { loadRetirement } from '@/src/retirement/load'
-import type { AccountView, Pilon1View, RetirementSummary } from '@/src/retirement/compute'
+import { loadRetirement, type Retirement as RetirementData } from '@/src/retirement/load'
+import type { TimelinePoint } from '@/src/retirement/chart'
+import RetirementChart from './RetirementChart'
+import ProjectionBars from './ProjectionBars'
+import type { AccountView, Pilon1View } from '@/src/retirement/compute'
 import { PROVIDER_NAME } from '@/src/retirement/types'
 import { fmtAmount, fmtDay } from '@/src/dashboards/compute/today'
 import { cn } from '@/lib/utils'
-import { saveReleaseDate, saveVpr } from './retirement/actions'
+import { saveContribution, saveReleaseDate, saveReturn, saveVpr } from './retirement/actions'
 
 const SHARE_COLORS = ['bg-primary', 'bg-violet-300', 'bg-up', 'bg-warn', 'bg-sky-300']
 const pct = (x: number, digits = 1) => `${x >= 0 ? '+' : ''}${(x * 100).toFixed(digits)}%`
 const money = (cents: number, ccy: string) => fmtAmount(cents / 100, ccy)
+const history = (points: TimelinePoint[]) => points.filter(p => p.value !== null)
+const future = (points: TimelinePoint[]) => points.filter(p => p.projected !== null)
+const monthLabel = (date: string) => new Date(`${date.slice(0, 7)}-01T00:00:00Z`).toLocaleDateString('en-GB', { month: 'short', year: 'numeric', timeZone: 'UTC' })
 const title = (a: AccountView) =>
   `${a.kind === 'pilon2' ? 'Pilon 2' : a.kind === 'pilon3' ? 'Pilon 3' : PROVIDER_NAME[a.provider]} · ${a.kind === 'unit-linked' ? a.product : PROVIDER_NAME[a.provider]}`
 
@@ -38,6 +44,19 @@ export default async function Retirement() {
             <span className={s.locked >= s.paidInLocked ? 'text-up' : 'text-down'}>{money(s.locked - s.paidInLocked, s.base)}</span>
             {s.available > 0 && <> · Released {money(s.available, s.base)}</>}
           </div>
+          {s.projection.timeline.points.length > 1 && (
+            <div className="mt-4 grid gap-6 lg:grid-cols-2">
+              <div>
+                <div className="text-xs text-muted-foreground">Value against money paid in</div>
+                <div className="mt-1 h-44 lg:h-60"><RetirementChart points={history(s.projection.timeline.points)} base={s.base} /></div>
+              </div>
+              <div>
+                <div className="text-xs text-muted-foreground">Projected to unlock</div>
+                <div className="mt-1 h-48 lg:h-64"><ProjectionBars points={future(s.projection.timeline.points)} base={s.base} /></div>
+                <ProjectionLine s={s} />
+              </div>
+            </div>
+          )}
           {s.locked > 0 && (
             <>
               <div className="my-2 flex h-2 overflow-hidden rounded bg-border">
@@ -57,7 +76,7 @@ export default async function Retirement() {
 
       <div className="lg:hidden">
         {s.accounts.length > 0 && <Section title="Accounts" />}
-        {s.accounts.map(a => <AccountCard key={a.id} a={a} base={s.base} today={today} />)}
+        {s.accounts.map(a => <AccountCard key={a.id} a={a} s={s} today={today} />)}
         {s.pilon1 && <Section title="State pension · Pilon 1" />}
         {s.pilon1 && <Pilon1Card p={s.pilon1} />}
       </div>
@@ -84,7 +103,8 @@ function ReleaseForm({ a, today }: { a: AccountView; today: string }) {
   )
 }
 
-function AccountCard({ a, base, today }: { a: AccountView; base: string; today: string }) {
+function AccountCard({ a, s, today }: { a: AccountView; s: RetirementData; today: string }) {
+  const base = s.base
   return (
     <div className="my-2 rounded-[14px] border bg-card px-3.5 py-3">
       <div className="flex items-baseline justify-between gap-2">
@@ -116,7 +136,9 @@ function AccountCard({ a, base, today }: { a: AccountView; base: string; today: 
         {a.fees !== null && <div>Fees so far<b className="block text-[13px] text-warn">{money(a.fees, a.currency)}</b></div>}
       </div>
       <ReleaseForm a={a} today={today} />
-      <History a={a} />
+      <ContributionForm a={a} s={s} />
+      <AtUnlock a={a} s={s} />
+      <History a={a} points={s.projection.byAccount.get(a.id) ?? []} base={base} />
     </div>
   )
 }
@@ -145,6 +167,56 @@ function Pilon1Card({ p }: { p: Pilon1View }) {
   )
 }
 
+const SMALL_INPUT = 'rounded-md border bg-background px-1.5 py-1 text-right text-foreground tabular-nums'
+const SAVE = 'rounded-md border border-primary/40 px-2 py-1 font-semibold text-primary'
+
+function ProjectionLine({ s }: { s: RetirementData }) {
+  const f = s.projection.timeline.final
+  return (
+    <form action={saveReturn} className="mt-2 flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
+      {f && f.month > new Date().toISOString().slice(0, 7) && (
+        <span>
+          By {monthLabel(f.month)} ≈ <b className="text-foreground">{money(f.value, s.base)}</b>, of which {money(f.paidIn, s.base)} paid in,
+        </span>
+      )}
+      <label className="flex items-center gap-1.5">
+        if every account earns
+        <input name="rate" type="number" inputMode="decimal" step="0.1" min="-10" max="30" defaultValue={+(s.projection.rate * 100).toFixed(2)} className={cn(SMALL_INPUT, 'w-14')} />
+        % a year, before inflation.
+      </label>
+      <button className={SAVE}>Save</button>
+    </form>
+  )
+}
+
+function ContributionForm({ a, s }: { a: AccountView; s: RetirementData }) {
+  const c = s.projection.contributions.get(a.id)
+  if (!c || !a.locked) return null
+  return (
+    <form action={saveContribution} className="mt-2 flex flex-wrap lg:mt-0 items-center gap-2 self-start text-xs">
+      <input type="hidden" name="accountId" value={a.id} />
+      <label className="flex items-center gap-1.5 text-muted-foreground">
+        Pays in
+        <input name="amount" type="number" inputMode="decimal" min="0" step="1" defaultValue={c.isDefault ? '' : c.yearly / 100}
+          placeholder={String(Math.round(c.yearly / 100))} className={cn(SMALL_INPUT, 'w-24')} />
+        {a.currency} a year
+      </label>
+      <button className={SAVE}>Save</button>
+      {c.isDefault && <span className="text-muted-foreground">from the last 12 months</span>}
+    </form>
+  )
+}
+
+function AtUnlock({ a, s }: { a: AccountView; s: RetirementData }) {
+  const r = s.projection.timeline.atRelease.get(a.id)
+  if (!r) return null
+  return (
+    <p className="mt-2 text-xs text-muted-foreground lg:mt-0">
+      At unlock in {monthLabel(r.date)} ≈ <b className="text-foreground">{money(r.value, a.currency)}</b>, of which {money(r.paidIn, a.currency)} paid in.
+    </p>
+  )
+}
+
 function VprForm({ p }: { p: Pilon1View }) {
   return (
     <form action={saveVpr} className="mt-2 flex items-center gap-2 self-start text-xs lg:mt-0">
@@ -163,7 +235,7 @@ const SUMMARY = 'flex cursor-pointer list-none justify-between gap-2 [&::-webkit
 
 const contributionCount = (a: AccountView) => a.contributionsByYear.reduce((n, y) => n + y.items.length, 0)
 
-function History({ a }: { a: AccountView }) {
+function History({ a, points, base }: { a: AccountView; points: TimelinePoint[]; base: string }) {
   const count = contributionCount(a)
   return (
     <details className="group/h mt-2.5 border-t pt-2 text-xs">
@@ -171,15 +243,16 @@ function History({ a }: { a: AccountView }) {
         <span>History · {count > 0 ? `${count} contributions` : `${a.statements.length} ${a.statements.length === 1 ? 'statement' : 'statements'}`}</span>
         <span className="transition-transform group-open/h:rotate-90">›</span>
       </summary>
-      <HistoryBody a={a} />
+      <HistoryBody a={a} points={points} base={base} />
     </details>
   )
 }
 
-function HistoryBody({ a }: { a: AccountView }) {
+function HistoryBody({ a, points, base }: { a: AccountView; points: TimelinePoint[]; base: string }) {
   const m = (cents: number) => money(cents, a.currency)
   return (
     <>
+      {history(points).length > 1 && <div className="mt-2 mb-3 h-40 lg:h-52"><RetirementChart points={history(points)} base={base} /></div>}
       {contributionCount(a) > 0 && (
         <div className="mt-1.5">
           {a.contributionsByYear.map(y => (
@@ -249,7 +322,7 @@ const unlockLabel = (a: AccountView) =>
   !a.locked ? 'Released' : a.releaseDate ? new Date(`${a.releaseDate}T00:00:00Z`).toLocaleDateString('en-GB', { month: 'short', year: 'numeric', timeZone: 'UTC' }) : 'Not set'
 
 /** Desktop: one row per account; a row opens to its history and its unlock date. */
-function AccountsTable({ s, today }: { s: RetirementSummary; today: string }) {
+function AccountsTable({ s, today }: { s: RetirementData; today: string }) {
   const base = (cents: number | null) => (cents === null ? '–' : money(cents, s.base))
   const paidIn = s.accounts.reduce((n, a) => n + (a.paidInBase ?? 0), 0)
   const value = s.locked + s.available
@@ -283,9 +356,13 @@ function AccountsTable({ s, today }: { s: RetirementSummary; today: string }) {
                   {a.yearly && ` · return ${a.yearly.basis === 'contributions' ? 'from every contribution' : `since ${fmtDay(a.yearly.since)}`}`}
                   {a.yearly && a.yearly.months < 24 && ` (${a.yearly.months} months only)`}
                 </div>
-                <HistoryBody a={a} />
+                <HistoryBody a={a} points={s.projection.byAccount.get(a.id) ?? []} base={s.base} />
               </div>
-              <ReleaseForm a={a} today={today} />
+              <div className="flex flex-col gap-3">
+                <ReleaseForm a={a} today={today} />
+                <ContributionForm a={a} s={s} />
+                <AtUnlock a={a} s={s} />
+              </div>
             </div>
           </details>
         )

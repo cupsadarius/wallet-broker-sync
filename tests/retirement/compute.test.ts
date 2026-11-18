@@ -6,7 +6,7 @@ type Stmt = SummaryInput['statements'][number]
 
 const account = (p: Partial<Account> & { id: string }): Account => ({
   kind: 'pilon2', provider: 'bt-pensia-noastra', product: 'Pensia Noastră', contract: 'ABC/1', currency: 'RON',
-  releaseDate: '2050-01-01', createdAt: '2026-01-01T00:00:00Z', ...p,
+  releaseDate: '2050-01-01', yearlyContribution: null, createdAt: '2026-01-01T00:00:00Z', ...p,
 })
 let n = 0
 const stmt = (p: Partial<Stmt> & { accountId: string; asOf: string }): Stmt => ({

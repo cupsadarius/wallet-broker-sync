@@ -9,7 +9,7 @@ describe('0012 Signal Iduna contract key', () => {
     const sqlite = new Database(':memory:')
     migrate(drizzle(sqlite), { migrationsFolder: 'src/storage/migrations' })
     sqlite.exec(`
-      INSERT INTO retirement_account VALUES
+      INSERT INTO retirement_account (id, kind, provider, product, contract, currency, release_date, created_at) VALUES
         ('signal-iduna:1000001/4', 'unit-linked', 'signal-iduna', '101 Invest', '1000001/4', 'EUR', NULL, 'x'),
         ('bt-pensia-noastra:ABC/1', 'pilon2', 'bt-pensia-noastra', 'Pensia Noastră', 'ABC/1', 'RON', NULL, 'x');
       INSERT INTO retirement_statement (account_id, as_of, value, paid_in, fees, file_hash, uploaded_at)
