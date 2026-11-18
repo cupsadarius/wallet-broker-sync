@@ -2,7 +2,7 @@ import { desc, eq } from 'drizzle-orm'
 import { z } from 'zod'
 import { db } from '@/src/storage/db'
 import { budgetProposal, ruleProposal, weeklyNote } from '@/src/storage/schema'
-import { ensureFreshMirror, getBaseCurrency, readConfigMap } from '@/src/dashboards/mirror'
+import { ensureFreshMirror, getBaseCurrency, readConfigMap, type MirrorSnapshot } from '@/src/dashboards/mirror'
 import { latestFx } from '@/src/dashboards/prices'
 import { isUncategorized, matchingRecords } from './proposals'
 import { likelyTransfers, reviewQueue, unexplainedOutflows, type ReviewState } from './review'
@@ -22,6 +22,22 @@ export async function readDismissedTransfers(): Promise<string[]> {
 const FIRST_REVIEW_DAYS = 14
 const PAGE_MAX_AGE_MS = 5 * 60_000
 const NOTES_SHOWN = 5
+
+/** Money that left for a bank whose sync is stale, with its total in `base`. */
+export async function outflowTotals(s: MirrorSnapshot, base: string, now: Date) {
+  return Promise.all(unexplainedOutflows(s.accounts, s.records, now).map(async o => {
+    let total = 0
+    for (const r of o.records) total += (r.amount / 100) * ((await latestFx(r.currencyCode || base, base, r.recordDate)) ?? 0)
+    return { ...o, total }
+  }))
+}
+
+/** Ids of spending records from `from` on that have no category. */
+export function uncategorizedIds(s: MirrorSnapshot, from: string): Set<string> {
+  return new Set(s.records
+    .filter(r => r.recordDate >= from && !r.isTradeFallback && !isTransfer(r) && isUncategorized(r, s.byCategoryId))
+    .map(r => r.id))
+}
 
 export async function readReviewState(now = new Date()): Promise<ReviewState> {
   const cfg = await readConfigMap()
@@ -46,11 +62,7 @@ export async function loadSpending(months = 12) {
     accountNameById: new Map(s.accounts.map(a => [a.id, a.name])),
     fromDate: `${monthList[0]}-01`,
   })
-  const outflows = await Promise.all(unexplainedOutflows(s.accounts, s.records, now).map(async o => {
-    let total = 0
-    for (const r of o.records) total += (r.amount / 100) * ((await latestFx(r.currencyCode || base, base, r.recordDate)) ?? 0)
-    return { ...o, total }
-  }))
+  const outflows = await outflowTotals(s, base, now)
 
   const proposals = (await db.select().from(ruleProposal).where(eq(ruleProposal.status, 'open'))).map(p => {
     const matches = matchingRecords(s.records, p.keywords)
@@ -58,9 +70,7 @@ export async function loadSpending(months = 12) {
   })
 
   const insights = await loadInsights(s, 6, now)
-  const uncategorized = new Set(s.records
-    .filter(r => r.recordDate >= `${monthList[0]}-01` && !r.isTradeFallback && !isTransfer(r) && isUncategorized(r, s.byCategoryId))
-    .map(r => r.id))
+  const uncategorized = uncategorizedIds(s, `${monthList[0]}-01`)
   const budgets = insights.budgets.map(v => v.status)
   const byBudget = new Map(budgets.map(b => [b.id, b]))
   const budgetProposals = (await db.select().from(budgetProposal).where(eq(budgetProposal.status, 'open')))

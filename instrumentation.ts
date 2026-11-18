@@ -26,7 +26,7 @@ export async function register(): Promise<void> {
   const { applyEnvConnection } = await import('./src/storage/credentials')
   await applyEnvConnection()
   const { syncMirror, getMirrorIntervalMs } = await import('./src/dashboards/mirror')
-  const { loadTasks, loadMaturities } = await import('./src/dashboards/portfolio')
+  const { loadUploadTasks } = await import('./src/dashboards/portfolio')
   const { notifyNewTasks } = await import('./src/push/tasks')
   const { ensurePricesForHoldings } = await import('./src/dashboards/prices')
   const { maybeWriteWeeklyNote } = await import('./src/insights/jobs')
@@ -40,7 +40,7 @@ export async function register(): Promise<void> {
     busy = true
     try {
       const snapshot = await syncMirror()
-      if (snapshot) await notifyNewTasks(await loadTasks(snapshot, await loadMaturities()))
+      if (snapshot) await notifyNewTasks(await loadUploadTasks(snapshot))
       // The AI run can take minutes, so it must not hold up the next mirror sync.
       if (snapshot && !noteBusy) {
         noteBusy = true

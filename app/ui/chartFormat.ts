@@ -19,7 +19,7 @@ const at = (d: string) => new Date(`${d.length === 7 ? `${d}-01` : d}T00:00:00Z`
 export function dateTick(d: string, spanYears: number): string {
   return spanYears > 3
     ? String(at(d).getUTCFullYear())
-    : at(d).toLocaleDateString('en-GB', { month: 'short', ...(at(d).getUTCMonth() === 0 && { year: 'numeric' }), timeZone: 'UTC' })
+    : at(d).toLocaleDateString('en-US', { month: 'short', ...(at(d).getUTCMonth() === 0 && { year: 'numeric' }), timeZone: 'UTC' })
 }
 export const dateLong = (d: string) =>
   at(d).toLocaleDateString('en-GB', { ...(d.length > 7 && { day: 'numeric' }), month: 'short', year: 'numeric', timeZone: 'UTC' })

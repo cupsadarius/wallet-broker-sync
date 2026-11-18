@@ -26,7 +26,8 @@ export type NetWorthResult = {
   latest: NetWorthPoint | null
 }
 
-function monthEndSamples(start: string, end: Date): string[] {
+/** Each month end from the month of `start`, then `end` itself. */
+export function monthEndSamples(start: string, end: Date): string[] {
   const startDate = new Date(start + 'T00:00:00Z')
   const samples: string[] = []
   for (

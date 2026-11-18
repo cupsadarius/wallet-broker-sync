@@ -15,10 +15,17 @@ import { buildPositions } from './compute/positions'
 import { comingUp, type Maturity } from './compute/maturities'
 import { incomeKind, type IncomeKind } from './compute/income'
 import {
-  accountBalances, bankTasks, dataAge, maturityTasks, uploadTasks, type Task,
+  accountBalances, BROKER_LABEL, bankGroups, bankTasks, dataAge, idleCashTasks, maturityTasks, nextUnlock, spendingTasks, staleTasks,
+  uploadTasks, type AgeEntry, type Task,
 } from './compute/today'
+import { monthEndSamples } from './compute/networth'
+import { budgetTasks, shiftMonth } from './compute/budgets'
+import { ruleProposal } from '@/src/storage/schema'
+import { categorySpikes } from '@/src/insights/cards'
+import { outflowTotals, uncategorizedIds } from '@/src/spending/load'
+import { PROVIDER_NAME } from '@/src/retirement/types'
+import { eq } from 'drizzle-orm'
 import { planProgress, planTasks, type Plan, type PlanProgress } from './compute/plans'
-import { budgetTasks } from './compute/budgets'
 import { loadInsights } from '@/src/insights/load'
 import { idleBrokerCash } from '@/src/insights/cards'
 
@@ -81,16 +88,52 @@ export async function loadPlans(s: MirrorSnapshot, maturities: Maturity[], today
   return views.sort((a, b) => Number(a.plan.status === 'archived') - Number(b.plan.status === 'archived') || a.plan.id - b.plan.id)
 }
 
-export async function loadTasks(s: MirrorSnapshot, maturities: Maturity[], today = isoDay(new Date())): Promise<Task[]> {
-  const brokers = (await db.select().from(brokerAccountMap))
-    .map(r => ({ broker: r.broker as BrokerId, accountId: r.accountId }))
+/** Cash above the idle limit that sat at a broker for weeks, per broker account. */
+async function idleCash(s: MirrorSnapshot, base: string, today: string) {
+  const brokers = (await db.select().from(brokerAccountMap)).flatMap(m => {
+    const a = s.byAccountId.get(m.accountId)
+    return a ? [{ accountId: a.id, name: a.name, broker: m.broker as BrokerId, currency: a.currencyCode }] : []
+  })
+  const rates = new Map<string, number | null>()
+  for (const b of brokers) rates.set(b.currency, await latestFx(b.currency, base, today))
+  return idleBrokerCash(brokers, s.records, s.transactions, c => rates.get(c) ?? null, today)
+}
+
+async function brokerAccounts() {
+  return (await db.select().from(brokerAccountMap)).map(r => ({ broker: r.broker as BrokerId, accountId: r.accountId }))
+}
+
+/** "Upload statement" tasks only: the ones the background sync pushes. */
+export async function loadUploadTasks(s: MirrorSnapshot): Promise<Task[]> {
+  return uploadTasks({ brokers: await brokerAccounts(), records: s.records, transactions: s.transactions, lastImport: await lastImports() })
+}
+
+export async function loadTasks(s: MirrorSnapshot, maturities: Maturity[], age: AgeEntry[], now = new Date()): Promise<Task[]> {
+  const today = isoDay(now)
+  const base = await getBaseCurrency()
+  const brokers = await brokerAccounts()
+  const insights = await loadInsights(s, 6, now)
+  const uploads = await loadUploadTasks(s)
+  const banks = bankTasks(s.accounts, s.records)
+  // An upload or reconnect task already covers its source; Wallet itself refreshes on every page load.
+  const covered = new Set(['Wallet', ...brokers.filter(b => uploads.some(t => t.id.startsWith(`upload:${b.broker}:`))).map(b => BROKER_LABEL[b.broker]),
+    ...bankGroups(s.accounts, s.records).filter(g => !g.active).map(g => g.provider)])
   return [
-    ...uploadTasks({ brokers, records: s.records, transactions: s.transactions, lastImport: await lastImports() }),
+    ...uploads,
     ...planTasks(await loadPlans(s, maturities, today)),
     ...maturityTasks(maturities, today),
-    ...bankTasks(s.accounts, s.records),
-    ...budgetTasks((await loadInsights(s, 0)).budgets.map(v => v.status)),
+    ...banks,
+    ...budgetTasks(insights.budgets.map(v => v.status)),
     ...retirementTasks(await loadRetirement(today)),
+    ...idleCashTasks(await idleCash(s, base, today)),
+    ...spendingTasks({
+      base,
+      uncategorized: uncategorizedIds(s, `${shiftMonth(today.slice(0, 7), -11)}-01`).size,
+      proposals: (await db.select().from(ruleProposal).where(eq(ruleProposal.status, 'open'))).length,
+      outflows: await outflowTotals(s, base, now),
+      spikes: categorySpikes(s.records, insights.spend, insights.today),
+    }),
+    ...staleTasks(age, covered, now),
   ]
 }
 
@@ -106,6 +149,12 @@ async function portfolioAt(s: MirrorSnapshot, base: string, asOf: string, maturi
   return buildPositions(byBroker, maturities, asOf, rates)
 }
 
+/** Usable net worth on `asOf`: broker holdings, deposits and bonds, cash, and retirement money already released. */
+async function netWorthAt(s: MirrorSnapshot, base: string, asOf: string, maturities: Maturity[], released: number) {
+  const [inv, cash] = await Promise.all([portfolioAt(s, base, asOf, maturities), cashAt(s, base, asOf)])
+  return { invested: inv.investedBase, cash: cash.totalBase, total: inv.investedBase + cash.totalBase + released }
+}
+
 async function cashAt(s: MirrorSnapshot, base: string, asOf: string) {
   const cashAccounts = s.accounts.filter(a => a.accountType !== 7)
   const balances = accountBalances(cashAccounts, s.records, asOf)
@@ -117,7 +166,10 @@ async function cashAt(s: MirrorSnapshot, base: string, asOf: string) {
   return { totalBase: accounts.reduce((sum, a) => sum + a.base, 0), accounts }
 }
 
-export async function loadToday() {
+/** Months a Today chart range covers; null = all history. */
+export const RANGES = { '6m': 6, '1y': 12, '3y': 36, all: null } as const
+
+export async function loadToday(range: keyof typeof RANGES = '1y') {
   const s = await ensureFreshMirror(PAGE_MAX_AGE_MS)
   if (!s) return null
   const now = new Date()
@@ -126,33 +178,43 @@ export async function loadToday() {
   const [base, maturities, lastSync, retirement] = await Promise.all([
     getBaseCurrency(), loadMaturities(), getLastMirrorSync(), loadRetirement(today),
   ])
-
-  const [inv, invThen, cash, cashThen] = await Promise.all([
-    portfolioAt(s, base, today, maturities),
-    portfolioAt(s, base, monthAgo, maturities),
-    cashAt(s, base, today),
-    cashAt(s, base, monthAgo),
-  ])
-  // Released retirement money is available; it counts on both dates so the 30-day change does not jump.
+  // Released retirement money is usable; it counts on every date so the change does not jump.
   const released = retirement.available / 100
-  const netWorth = inv.investedBase + cash.totalBase + released
-  const netWorthThen = invThen.investedBase + cashThen.totalBase + released
+  const months = RANGES[range]
+  const first = months === null
+    ? [...s.records.map(r => r.recordDate), ...s.transactions.map(t => t.date)].sort()[0] ?? today
+    : `${shiftMonth(today.slice(0, 7), -months)}-01`
+  const [current, then, series] = await Promise.all([
+    netWorthAt(s, base, today, maturities, released),
+    netWorthAt(s, base, monthAgo, maturities, released),
+    Promise.all(monthEndSamples(first, now).map(async date => ({ date, value: (await netWorthAt(s, base, date, maturities, released)).total }))),
+  ])
   const pricesAsOf = db.all<{ d: string | null }>(sql`SELECT MAX(date) AS d FROM price_history`)[0]?.d ?? null
-
+  const age = dataAge({
+    accounts: s.accounts, records: s.records, lastImport: await lastImports(),
+    pricesAsOf, mirrorAsOf: lastSync?.toISOString() ?? null, now,
+  })
+  const toBase = new Map(retirement.accounts.map(a => [a.id, a.valueBase !== null && a.value ? a.valueBase / a.value : null]))
+  const projected = new Map([...retirement.projection.timeline.atRelease].flatMap(([id, r]) => {
+    const fx = toBase.get(id)
+    return fx == null ? [] : [[id, { date: r.date, value: r.value * fx / 100 }] as const]
+  }))
   return {
     base,
-    netWorth,
+    netWorth: current.total,
+    invested: current.invested,
+    cash: current.cash,
+    change30d: current.total - then.total,
+    change30dPct: then.total > 0 ? ((current.total - then.total) / then.total) * 100 : null,
+    series,
     retirementLocked: retirement.locked / 100,
-    change30dPct: netWorthThen > 0 ? ((netWorth - netWorthThen) / netWorthThen) * 100 : null,
-    invested: { value: inv.investedBase, gain: inv.investedBase - inv.costBase, cost: inv.costBase },
-    cash: { total: cash.totalBase, top: cash.accounts[0] ?? null },
-    tasks: await loadTasks(s, maturities, today),
+    nextUnlock: nextUnlock(retirement.accounts.map(a => ({
+      id: a.id, locked: a.locked, releaseDate: a.releaseDate,
+      name: a.kind === 'pilon2' ? 'Pilon 2' : a.kind === 'pilon3' ? 'Pilon 3' : `${PROVIDER_NAME[a.provider]} policy`,
+    })), projected, today),
+    tasks: await loadTasks(s, maturities, age, now),
     plans: (await loadPlans(s, maturities, today)).filter(v => v.plan.status === 'active'),
     events: comingUp(maturities, today),
-    age: dataAge({
-      accounts: s.accounts, records: s.records, lastImport: await lastImports(),
-      pricesAsOf, mirrorAsOf: lastSync?.toISOString() ?? null, now,
-    }),
   }
 }
 
@@ -162,8 +224,7 @@ export async function loadNetWorthSplit() {
   if (!s) return null
   const today = isoDay(new Date())
   const [base, maturities, retirement] = await Promise.all([getBaseCurrency(), loadMaturities(), loadRetirement(today)])
-  const [inv, cash] = await Promise.all([portfolioAt(s, base, today, maturities), cashAt(s, base, today)])
-  const available = inv.investedBase + cash.totalBase + retirement.available / 100
+  const available = (await netWorthAt(s, base, today, maturities, retirement.available / 100)).total
   const locked = retirement.locked / 100
   return { base, available, locked, total: available + locked }
 }
@@ -224,14 +285,8 @@ export async function loadInvestCards() {
   if (!s) return null
   const today = isoDay(new Date())
   const base = await getBaseCurrency()
-  const brokers = (await db.select().from(brokerAccountMap)).flatMap(m => {
-    const a = s.byAccountId.get(m.accountId)
-    return a ? [{ accountId: a.id, name: a.name, broker: m.broker as BrokerId, currency: a.currencyCode }] : []
-  })
-  const rates = new Map<string, number | null>()
-  for (const b of brokers) rates.set(b.currency, await latestFx(b.currency, base, today))
   return {
-    idle: idleBrokerCash(brokers, s.records, s.transactions, c => rates.get(c) ?? null, today),
+    idle: await idleCash(s, base, today),
     gaps: planTasks(await loadPlans(s, await loadMaturities(), today)),
   }
 }

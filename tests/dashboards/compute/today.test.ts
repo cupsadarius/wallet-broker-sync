@@ -1,5 +1,6 @@
 import { describe, it, expect } from 'vitest'
-import { accountBalances, uploadTasks, bankTasks, maturityTasks, dataAge } from '@/src/dashboards/compute/today'
+import { accountBalances, uploadTasks, bankTasks, maturityTasks, dataAge, nextUnlock, staleTasks } from '@/src/dashboards/compute/today'
+import { monthEndSamples } from '@/src/dashboards/compute/networth'
 import type { MirrorAccount, MirrorRecord } from '@/src/dashboards/mirror'
 import type { Maturity } from '@/src/dashboards/compute/maturities'
 
@@ -128,5 +129,42 @@ describe('dataAge', () => {
       ['Tradeville', null, true],
       ['Prices', '2026-05-11', true],
     ])
+  })
+})
+
+describe('monthEndSamples', () => {
+  it('samples each month end from the start month and ends on the end day', () => {
+    expect(monthEndSamples('2026-01-15', new Date('2026-03-10'))).toEqual(['2026-01-31', '2026-02-28', '2026-03-10'])
+  })
+})
+
+describe('nextUnlock', () => {
+  const accounts = [
+    { id: 'p3', name: 'Pilon 3', releaseDate: '2041-01-10', locked: true },
+    { id: 'p2', name: 'Pilon 2', releaseDate: '2051-03-03', locked: true },
+    { id: 'old', name: 'Old policy', releaseDate: '2020-01-01', locked: false },
+    { id: 'none', name: 'No date', releaseDate: null, locked: true },
+  ]
+  const projected = new Map([['p3', { date: '2041-01-10', value: 3_330_000 }], ['p2', { date: '2051-03-03', value: 9_000_000 }]])
+  it('is the earliest future unlock with its projected value', () => {
+    expect(nextUnlock(accounts, projected, '2026-11-18')).toEqual({ name: 'Pilon 3', date: '2041-01-10', value: 3_330_000 })
+  })
+  it('is null when no unlock date is in the future', () => {
+    expect(nextUnlock(accounts, projected, '2060-01-01')).toBeNull()
+  })
+})
+
+describe('staleTasks', () => {
+  const now = new Date('2026-11-18T10:00:00Z')
+  const age = [
+    { label: 'XTB', asOf: '2026-10-15T00:00:00Z', stale: true },
+    { label: 'IBKR', asOf: '2026-11-10T00:00:00Z', stale: false },
+    { label: 'BT', asOf: '2026-11-01', stale: true },
+    { label: 'Prices', asOf: null, stale: true },
+  ]
+  it('asks for a statement when a broker is old, and names other old sources', () => {
+    const tasks = staleTasks(age, new Set(['BT']), now)
+    expect(tasks.map(t => t.title)).toEqual(['XTB statement is 34 days old', 'No Prices data yet'])
+    expect(tasks[0]).toMatchObject({ href: '/upload?broker=xtb', action: 'Upload' })
   })
 })

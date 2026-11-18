@@ -4,7 +4,7 @@ import type { Maturity } from './maturities'
 
 export type Task = {
   id: string                 // stable: a push goes out once per id
-  kind: 'upload' | 'bank' | 'maturity' | 'plan' | 'budget' | 'retirement'
+  kind: 'upload' | 'bank' | 'maturity' | 'plan' | 'budget' | 'retirement' | 'cash' | 'spending' | 'data'
   title: string
   detail: string
   href?: string
@@ -173,5 +173,60 @@ export function dataAge(input: {
       label: BROKER_LABEL[b], asOf: input.lastImport[b] ?? null, stale: age(input.lastImport[b] ?? null, STALE_MS.broker),
     })),
     { label: 'Prices', asOf: input.pricesAsOf, stale: age(input.pricesAsOf, STALE_MS.prices) },
+  ]
+}
+
+type Unlockable = { id: string; name: string; releaseDate: string | null; locked: boolean }
+
+/** The earliest unlock after `today` of a locked account, with its projected value (null when not projected). */
+export function nextUnlock(accounts: Unlockable[], projected: Map<string, { date: string; value: number }>, today: string) {
+  const next = accounts
+    .filter((a): a is Unlockable & { releaseDate: string } => a.locked && a.releaseDate !== null && a.releaseDate > today)
+    .sort((x, y) => x.releaseDate.localeCompare(y.releaseDate))[0]
+  return next ? { name: next.name, date: next.releaseDate, value: projected.get(next.id)?.value ?? null } : null
+}
+
+/** A task for each old data source not in `skip`; an old broker asks for its statement. */
+export function staleTasks(age: AgeEntry[], skip: Set<string>, now: Date): Task[] {
+  const brokerOf = new Map(Object.entries(BROKER_LABEL).map(([id, label]) => [label, id]))
+  return age.filter(a => a.stale && !skip.has(a.label)).map(a => {
+    const broker = brokerOf.get(a.label)
+    const old = a.asOf && `${Math.round((now.getTime() - Date.parse(a.asOf.length === 10 ? `${a.asOf}T00:00:00Z` : a.asOf)) / DAY_MS)} days old`
+    return broker
+      ? { id: `stale:${a.label}`, kind: 'data', title: old ? `${a.label} statement is ${old}` : `No ${a.label} statement yet`,
+          detail: 'Positions and plans use the last statement you uploaded.', href: `/upload?broker=${broker}`, action: 'Upload' }
+      : { id: `stale:${a.label}`, kind: 'data', title: old ? `${a.label} data is ${old}` : `No ${a.label} data yet`,
+          detail: a.label === 'Prices' ? 'Values use the last prices on record.' : 'Check the sync in the Wallet app.' }
+  })
+}
+
+export function idleCashTasks(idle: { accountId: string; name: string; currency: string; cash: number; since: string }[]): Task[] {
+  return idle.map(c => ({
+    id: `cash:${c.accountId}:${c.since}`, kind: 'cash', title: `${fmtAmount(c.cash, c.currency)} idle at ${c.name}`,
+    detail: `Since ${fmtDay(c.since)}. Invest it or move it.`, href: '/invest?tab=plans', action: 'Open',
+  }))
+}
+
+export function spendingTasks(input: {
+  base: string; uncategorized: number; proposals: number
+  outflows: { provider: string; total: number; since: string }[]
+  spikes: { key: string; name: string; spent: number; average: number }[]
+}): Task[] {
+  const { base, uncategorized: n, proposals: p } = input
+  return [
+    ...(n > 0 ? [{
+      id: 'spending:uncategorized', kind: 'spending' as const, title: `${n} ${n === 1 ? 'record has' : 'records have'} no category`,
+      detail: p > 0 ? `${p} new ${p === 1 ? 'rule is' : 'rules are'} ready to review.` : 'Give them a category in the review list.',
+      href: '/spending?review=rules', action: 'Review',
+    }] : []),
+    ...input.outflows.map(o => ({
+      id: `outflow:${o.provider}`, kind: 'spending' as const, title: `${fmtAmount(o.total, base)} went to ${o.provider}`,
+      detail: `Since ${fmtDay(o.since)}. The ${o.provider} sync is stale, so Wallet cannot see how it was spent.`, href: '/spending', action: 'Open',
+    })),
+    ...input.spikes.map(c => ({
+      id: `spike:${c.key}`, kind: 'spending' as const, title: `${c.name} is high this month`,
+      detail: `${fmtAmount(c.spent, base)} so far, against ${fmtAmount(c.average, base)} in an average month.`,
+      href: `/spending?${new URLSearchParams({ category: c.key })}`, action: 'Open',
+    })),
   ]
 }
