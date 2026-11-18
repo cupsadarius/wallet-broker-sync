@@ -401,12 +401,12 @@ function RulesTab({ d }: { d: Data }) {
             {p.matches.length > 0 && (
               <div className="max-h-56 overflow-y-auto rounded-lg border px-2.5">
                 {p.matches.map(r => (
-                  <label key={r.id} className="flex items-center gap-2 border-b py-1.5 text-[13px] last:border-none">
+                  <label key={r.id} className="grid grid-cols-[auto_minmax(0,1fr)_3.5rem_5.5rem] items-center gap-2 border-b py-1.5 text-[13px] tabular-nums last:border-none sm:grid-cols-[auto_minmax(0,1fr)_8rem_3.5rem_5.5rem]">
                     <input type="checkbox" name="recordId" value={r.id} defaultChecked className="size-4 shrink-0 accent-primary" />
-                    <span className="min-w-0 flex-1 truncate">{payeeLabel(r)}</span>
-                    <span className="hidden shrink-0 truncate text-xs text-muted-foreground sm:inline">{categoryName(r.categoryId)}</span>
-                    <span className="shrink-0 text-xs text-muted-foreground">{shortDay(r.recordDate)}</span>
-                    <span className="shrink-0 tabular-nums">{money(r)}</span>
+                    <span className="truncate">{payeeLabel(r)}</span>
+                    <span className="hidden truncate text-xs text-muted-foreground sm:block">{categoryName(r.categoryId)}</span>
+                    <span className="text-xs text-muted-foreground">{shortDay(r.recordDate)}</span>
+                    <span className="text-right">{money(r)}</span>
                   </label>
                 ))}
               </div>
@@ -425,10 +425,10 @@ function RulesTab({ d }: { d: Data }) {
       {rules.length === 0 && <p className="text-sm text-muted-foreground">No rules in Wallet yet.</p>}
       <ul>
         {rules.map(r => (
-          <li key={r.id} className="flex items-center gap-2.5 border-b py-2.5 text-sm last:border-none">
-            <span className="min-w-0 flex-1 truncate" title={r.keywords.join(', ')}>{r.name || r.keywords[0]}</span>
+          <li key={r.id} className="grid grid-cols-[minmax(0,1fr)_auto_9rem_auto] items-center gap-2.5 border-b py-2.5 text-sm last:border-none">
+            <span className="truncate" title={r.keywords.join(', ')}>{r.name || r.keywords[0]}</span>
             <span className="text-muted-foreground">→</span>
-            <b className="shrink-0">{categoryName(r.categoryId)}</b>
+            <b className="truncate" title={categoryName(r.categoryId)}>{categoryName(r.categoryId)}</b>
             <DeleteRuleButton id={r.id} label={r.name || r.keywords[0]} />
           </li>
         ))}
