@@ -98,7 +98,7 @@ export default async function TodayPage() {
           No maturities on record. <Link href="/invest/maturities" className="text-primary">Add one</Link>
         </p>
       ) : (
-        <div className="ml-[7px] border-l-2 border-[#2f3440] pl-4">
+        <div className="ml-[7px] border-l-2 border-line-2 pl-4">
           {t.events.map(({ maturity: m, payout, done }) => (
             <div key={m.id} className="relative my-3.5">
               <span className={cn('absolute -left-[22px] top-[5px] size-2.5 rounded-full', done ? 'bg-up' : 'bg-primary')} />

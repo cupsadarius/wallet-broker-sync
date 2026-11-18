@@ -12,8 +12,8 @@ import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, Tabl
 import { catalog } from '@/src/ask/catalog'
 import { cn } from '@/lib/utils'
 
-const PALETTE = ['#8ab4f8', '#93C47D', '#FFD966', '#E69138', '#B4A7D6', '#76A5AF', '#E06666', '#D5A6BD']
-const AXIS = { fill: '#a3a3a3', fontSize: 11 }
+const PALETTE = ['var(--c-accent)', 'var(--c-good)', 'var(--c-warn)', 'var(--c-bad)', 'var(--c-accent-soft)', 'var(--c-fg-2)', 'var(--c-neutral)', 'var(--c-accent-ink)']
+const AXIS = { fill: 'var(--c-muted)', fontSize: 11 }
 const GAP = { none: 'gap-0', sm: 'gap-2', md: 'gap-3', lg: 'gap-5' }
 const compact = (v: unknown) => Number(v).toLocaleString('en-US', { maximumFractionDigits: 1, notation: 'compact' })
 const full = (unit?: string | null) => (v: unknown) =>
@@ -37,10 +37,10 @@ function ChartBox({ title, children }: { title?: string | null; children: ReactN
 
 function xyParts(p: XY) {
   return [
-    <CartesianGrid key="g" stroke="rgba(255,255,255,0.06)" vertical={false} />,
+    <CartesianGrid key="g" stroke="var(--c-line)" vertical={false} />,
     <XAxis key="x" dataKey={p.xKey} tick={AXIS} minTickGap={24} />,
     <YAxis key="y" tick={AXIS} tickFormatter={compact} width={40} />,
-    <Tooltip key="t" formatter={full(p.unit)} contentStyle={{ background: '#12151b', border: '1px solid #2a2f3a', fontSize: 12 }} />,
+    <Tooltip key="t" formatter={full(p.unit)} contentStyle={{ background: 'var(--c-surface)', border: '1px solid var(--c-line)', fontSize: 12 }} />,
     p.series.length > 1 && <Legend key="l" wrapperStyle={{ fontSize: 11 }} />,
   ]
 }
@@ -121,7 +121,7 @@ const AnswerSpec = createRenderer(catalog, {
         <Pie data={p.data} dataKey="value" nameKey="name" innerRadius="55%" outerRadius="85%" stroke="none" isAnimationActive={false}>
           {p.data.map((_, i) => <Cell key={i} fill={PALETTE[i % PALETTE.length]} />)}
         </Pie>
-        <Tooltip formatter={full(p.unit)} contentStyle={{ background: '#12151b', border: '1px solid #2a2f3a', fontSize: 12 }} />
+        <Tooltip formatter={full(p.unit)} contentStyle={{ background: 'var(--c-surface)', border: '1px solid var(--c-line)', fontSize: 12 }} />
         <Legend wrapperStyle={{ fontSize: 11 }} />
       </PieChart>
     </ChartBox>

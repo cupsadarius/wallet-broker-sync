@@ -3,6 +3,7 @@ import { db } from '@/src/storage/db'
 import { config, brokerAccountMap, assetAlias, recordFallback, manualLink } from '@/src/storage/schema'
 import { getBaseCurrency, getMirrorIntervalMs } from '@/src/dashboards/mirror'
 import SettingsView from './SettingsView'
+import { readThemePref } from '@/src/theme/store'
 
 export default async function SettingsPage() {
   // Connection
@@ -43,6 +44,7 @@ export default async function SettingsPage() {
       fallbacks={fallbacks}
       links={links}
       dashboard={{ baseCurrency, mirrorIntervalMs }}
+      themePref={await readThemePref()}
     />
   )
 }

@@ -2,6 +2,8 @@ import type { Metadata, Viewport } from "next";
 import { Inter, Manrope, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import AppHeader from "./components/AppHeader";
+import ThemeSync from "./theme/ThemeSync";
+import { readThemePref } from "@/src/theme/store";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -31,21 +33,30 @@ export const metadata: Metadata = {
 export const dynamic = "force-dynamic";
 
 export const viewport: Viewport = {
-  themeColor: "#0f1115",
   viewportFit: "cover",
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const pref = await readThemePref();
   return (
     <html
       lang="en"
-      className={`dark ${inter.variable} ${manrope.variable} ${geistMono.variable} h-full antialiased`}
+      data-theme="wallet-dark"
+      data-theme-pref={pref}
+      suppressHydrationWarning
+      className={`${inter.variable} ${manrope.variable} ${geistMono.variable} h-full antialiased`}
     >
+      <head>
+        {/* Blocking on purpose: sets data-theme before first paint. */}
+        <script src="/theme-boot.js" />
+        <meta name="theme-color" content="#0f1115" />
+      </head>
       <body className="min-h-full flex flex-col">
+        <ThemeSync pref={pref} />
         <AppHeader />
         <div className="min-w-0 flex-1 pb-[calc(76px+env(safe-area-inset-bottom))] lg:pb-10 lg:pl-56 lg:pt-6">{children}</div>
       </body>

@@ -2,7 +2,7 @@ import type { PlanTag } from '@/src/dashboards/compute/plans'
 import { cn } from '@/lib/utils'
 
 const STROKE: Record<PlanTag, string> = {
-  behind: 'var(--color-warn)', 'on track': 'var(--color-up)', done: 'var(--color-up)', paused: '#3c4049', archived: '#3c4049',
+  behind: 'var(--color-warn)', 'on track': 'var(--color-up)', done: 'var(--color-up)', paused: 'var(--c-neutral)', archived: 'var(--c-neutral)',
 }
 const C = 2 * Math.PI * 15
 

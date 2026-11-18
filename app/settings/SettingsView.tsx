@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import BackupRestore from '@/app/components/BackupRestore'
 import NotificationsCard from './NotificationsCard'
+import Appearance from './Appearance'
 import {
   Table,
   TableBody,
@@ -66,6 +67,7 @@ type Props = {
   fallbacks: Fallback[]
   links: ManualLink[]
   dashboard: DashboardSettings
+  themePref: string
 }
 
 const BROKERS = ['ibkr', 'xtb', 'tradeville'] as const
@@ -547,7 +549,7 @@ function ManualLinksSection({ links }: { links: ManualLink[] }) {
 
 // ---------- Main SettingsView ----------
 
-export default function SettingsView({ connection, mappings, aliases, fallbacks, links, dashboard }: Props) {
+export default function SettingsView({ connection, mappings, aliases, fallbacks, links, dashboard, themePref }: Props) {
   return (
     <main className="container mx-auto max-w-3xl py-4 px-4 md:py-20 md:px-6">
       <div className="mb-14">
@@ -562,6 +564,7 @@ export default function SettingsView({ connection, mappings, aliases, fallbacks,
       </div>
 
       <div className="space-y-6">
+        <Appearance pref={themePref} />
         <ConnectionSection connection={connection} />
         <NotificationsCard />
         <MappingsSection mappings={mappings} />

@@ -32,14 +32,14 @@ export default function ProjectionBars({ points, base }: { points: TimelinePoint
       <div className="min-h-0 flex-1">
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={data} margin={{ top: 16, right: 4, bottom: 0, left: 0 }}>
-            <CartesianGrid stroke="rgba(255,255,255,0.06)" vertical={false} />
-            <XAxis dataKey="year" tick={{ fill: '#a3a3a3', fontSize: 11 }} />
-            <YAxis tick={{ fill: '#a3a3a3', fontSize: 11 }} width={44} tickFormatter={v => compact(Number(v))} />
-            <Bar dataKey="paidIn" stackId="v" fill="#9aa0a6" fillOpacity={0.45} isAnimationActive={false} />
-            <Bar dataKey="gain" stackId="v" fill="#8ab4f8" radius={[3, 3, 0, 0]} isAnimationActive={false}>
-              <LabelList dataKey="value" position="top" fill="#d4d4d4" fontSize={11} formatter={(v: unknown) => compact(Number(v))} />
+            <CartesianGrid stroke="var(--c-line)" vertical={false} />
+            <XAxis dataKey="year" tick={{ fill: 'var(--c-muted)', fontSize: 11 }} />
+            <YAxis tick={{ fill: 'var(--c-muted)', fontSize: 11 }} width={44} tickFormatter={v => compact(Number(v))} />
+            <Bar dataKey="paidIn" stackId="v" fill="var(--c-neutral)" fillOpacity={0.45} isAnimationActive={false} />
+            <Bar dataKey="gain" stackId="v" fill="var(--c-accent)" radius={[3, 3, 0, 0]} isAnimationActive={false}>
+              <LabelList dataKey="value" position="top" fill="var(--c-fg-2)" fontSize={11} formatter={(v: unknown) => compact(Number(v))} />
             </Bar>
-            <Tooltip cursor={{ fill: 'rgba(255,255,255,0.04)' }} content={({ active, payload }) => {
+            <Tooltip cursor={{ fill: 'var(--c-fill-2)' }} content={({ active, payload }) => {
               const p = active && payload?.[0]?.payload as (typeof data)[number] | undefined
               if (!p) return null
               return (

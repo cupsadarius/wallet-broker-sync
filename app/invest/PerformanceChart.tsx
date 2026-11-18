@@ -33,19 +33,19 @@ export default function PerformanceChart({
       <AreaChart data={series} margin={{ top: 10, right: 8, bottom: 4, left: 0 }}>
         <defs>
           <linearGradient id="perfGrad" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="5%" stopColor="#8ab4f8" stopOpacity={0.35} />
-            <stop offset="95%" stopColor="#8ab4f8" stopOpacity={0} />
+            <stop offset="5%" stopColor="var(--c-accent)" stopOpacity={0.35} />
+            <stop offset="95%" stopColor="var(--c-accent)" stopOpacity={0} />
           </linearGradient>
         </defs>
-        <CartesianGrid stroke="rgba(255,255,255,0.06)" />
+        <CartesianGrid stroke="var(--c-line)" />
         <XAxis
           dataKey="date"
-          tick={{ fill: '#a3a3a3', fontSize: 11 }}
+          tick={{ fill: 'var(--c-muted)', fontSize: 11 }}
           tickFormatter={d => d.slice(0, 7)}
           minTickGap={40}
         />
         <YAxis
-          tick={{ fill: '#a3a3a3', fontSize: 11 }}
+          tick={{ fill: 'var(--c-muted)', fontSize: 11 }}
           tickFormatter={v => Number(v).toLocaleString(undefined, { maximumFractionDigits: 0, notation: 'compact' })}
           width={44}
         />
@@ -53,7 +53,7 @@ export default function PerformanceChart({
         <Area
           type="monotone"
           dataKey="valueBase"
-          stroke="#8ab4f8"
+          stroke="var(--c-accent)"
           strokeWidth={1.5}
           fill="url(#perfGrad)"
           isAnimationActive={false}
@@ -61,7 +61,7 @@ export default function PerformanceChart({
         <Area
           type="stepAfter"
           dataKey="putInBase"
-          stroke="#9aa0a6"
+          stroke="var(--c-muted)"
           strokeDasharray="4 3"
           strokeWidth={1.5}
           fill="none"

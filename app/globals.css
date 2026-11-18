@@ -1,5 +1,6 @@
 @import "tailwindcss";
 @import "tw-animate-css";
+@import "./themes.css";
 
 /* Vendored from node_modules/shadcn/dist/tailwind.css (shadcn 4.5.0).
    shadcn is a code-generator, not a library — its CSS is not exported via
@@ -55,7 +56,7 @@
   &::-webkit-scrollbar { display: none; }
 }
 
-@custom-variant dark (&:is(.dark *));
+@custom-variant dark (&:is([data-scheme="dark"] *));
 
 @theme inline {
   --color-background: var(--background);
@@ -93,20 +94,30 @@
   --color-card-foreground: var(--card-foreground);
   --color-card: var(--card);
 
-  /* Mercury named tokens — exposed so design utilities like `bg-mercury-blue`
-     resolve, but most components keep using the semantic tokens above. */
-  --color-mercury-blue: #5266eb;
-  --color-ghost-blue: #cdddff;
-  --color-deep-space: #171721;
-  --color-midnight-slate: #1e1e2a;
-  --color-graphite: #272735;
-  --color-lead: #70707d;
-  --color-starlight: #ededf3;
-  --color-silver: #c3c3cc;
+  /* Theme tokens (app/themes.css) as utilities: bg-chrome, text-fg-2, border-line-2, bg-fill, … */
+  --color-chrome: var(--c-chrome);
+  --color-fg-2: var(--c-fg-2);
+  --color-line-2: var(--c-line-2);
+  --color-neutral: var(--c-neutral);
+  --color-accent-soft: var(--c-accent-soft);
+  --color-accent-ink: var(--c-accent-ink);
+  --color-fill: var(--c-fill);
+  --color-good-fill: var(--c-good-fill);
+  --color-warn-tint: var(--c-warn-tint);
+  --color-warn-line: var(--c-warn-line);
+  --color-up: var(--c-good);
+  --color-down: var(--c-bad);
+  --color-warn: var(--c-warn);
+  /* Older named tokens, kept for the upload and setup screens. */
+  --color-mercury-blue: var(--c-accent);
+  --color-ghost-blue: var(--c-accent-soft);
+  --color-deep-space: var(--c-surface);
+  --color-midnight-slate: var(--c-surface);
+  --color-graphite: var(--c-surface-2);
+  --color-lead: var(--c-neutral);
+  --color-starlight: var(--c-fg);
+  --color-silver: var(--c-fg-2);
   --color-pure-white: #ffffff;
-  --color-up: #5dd39e;
-  --color-down: #f28b82;
-  --color-warn: #fdd663;
 
   --radius-sm: 6px;
   --radius-md: 8px;
@@ -117,79 +128,43 @@
   --radius-4xl: 40px;
 }
 
-/* Phone-first dark theme. */
+/* shadcn variables follow the theme tokens. */
 :root {
-  --background: #0f1115;
-  --foreground: #e8eaed;
-  --card: #171a21;
-  --card-foreground: #e8eaed;
-  --popover: #171a21;
-  --popover-foreground: #e8eaed;
-  --primary: #8ab4f8;
-  --primary-foreground: #0f1115;
-  --secondary: #262b35;
-  --secondary-foreground: #e8eaed;
-  --muted: #171a21;
-  --muted-foreground: #9aa0a6;
-  --accent: #262b35;
-  --accent-foreground: #e8eaed;
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: #23262d;
-  --input: rgb(112 112 125 / 0.4);
-  --ring: #8ab4f8;
-  --chart-1: #8ab4f8;
-  --chart-2: #5dd39e;
-  --chart-3: #cdddff;
-  --chart-4: #70707d;
-  --chart-5: #ededf3;
+  --background: var(--c-bg);
+  --foreground: var(--c-fg);
+  --card: var(--c-surface);
+  --card-foreground: var(--c-fg);
+  --popover: var(--c-surface);
+  --popover-foreground: var(--c-fg);
+  --primary: var(--c-accent);
+  --primary-foreground: var(--c-on-accent);
+  --secondary: var(--c-surface-2);
+  --secondary-foreground: var(--c-fg);
+  --muted: var(--c-surface);
+  --muted-foreground: var(--c-muted);
+  --accent: var(--c-surface-2);
+  --accent-foreground: var(--c-fg);
+  --destructive: var(--c-bad);
+  --border: var(--c-line);
+  --input: var(--c-line-2);
+  --ring: var(--c-accent);
+  --chart-1: var(--c-accent);
+  --chart-2: var(--c-good);
+  --chart-3: var(--c-accent-soft);
+  --chart-4: var(--c-neutral);
+  --chart-5: var(--c-fg-2);
   --radius: 10px;
-  --sidebar: #171a21;
-  --sidebar-foreground: #ededf3;
-  --sidebar-primary: #5266eb;
-  --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #272735;
-  --sidebar-accent-foreground: #ededf3;
-  --sidebar-border: rgb(112 112 125 / 0.28);
-  --sidebar-ring: #5266eb;
+  --sidebar: var(--c-chrome);
+  --sidebar-foreground: var(--c-fg);
+  --sidebar-primary: var(--c-accent);
+  --sidebar-primary-foreground: var(--c-on-accent);
+  --sidebar-accent: var(--c-surface-2);
+  --sidebar-accent-foreground: var(--c-fg);
+  --sidebar-border: var(--c-line);
+  --sidebar-ring: var(--c-accent);
 
   --font-sans: var(--font-inter), ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   --font-heading: var(--font-manrope), var(--font-inter), ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-}
-
-/* Keep the .dark variant in lock-step so any `dark:` modifiers in shadcn
-   components that were tuned for dark mode also engage. */
-.dark {
-  --background: #0f1115;
-  --foreground: #e8eaed;
-  --card: #171a21;
-  --card-foreground: #e8eaed;
-  --popover: #171a21;
-  --popover-foreground: #e8eaed;
-  --primary: #8ab4f8;
-  --primary-foreground: #0f1115;
-  --secondary: #262b35;
-  --secondary-foreground: #e8eaed;
-  --muted: #171a21;
-  --muted-foreground: #9aa0a6;
-  --accent: #262b35;
-  --accent-foreground: #e8eaed;
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: #23262d;
-  --input: rgb(112 112 125 / 0.4);
-  --ring: #8ab4f8;
-  --chart-1: #8ab4f8;
-  --chart-2: #5dd39e;
-  --chart-3: #cdddff;
-  --chart-4: #70707d;
-  --chart-5: #ededf3;
-  --sidebar: #171a21;
-  --sidebar-foreground: #ededf3;
-  --sidebar-primary: #5266eb;
-  --sidebar-primary-foreground: #ffffff;
-  --sidebar-accent: #272735;
-  --sidebar-accent-foreground: #ededf3;
-  --sidebar-border: rgb(112 112 125 / 0.28);
-  --sidebar-ring: #5266eb;
 }
 
 @layer base {
@@ -198,7 +173,6 @@
   }
   html {
     @apply font-sans;
-    color-scheme: dark;
     /* Slight positive tracking — the design's 'open feel'. */
     letter-spacing: 0.01em;
   }

@@ -247,7 +247,7 @@ async function Plans() {
             <PlanTagPill tag={g.tag} label={g.tag === 'behind' && g.periodsBehind ? `${g.periodsBehind} behind` : undefined} />
           </div>
           <div className="relative mt-2.5 mb-1.5 h-[7px] overflow-hidden rounded bg-border">
-            <b className={cn('absolute inset-y-0 left-0 rounded', p.status === 'active' ? 'bg-primary' : 'bg-[#3c4049]')} style={{ width: `${Math.round(g.ring * 100)}%` }} />
+            <b className={cn('absolute inset-y-0 left-0 rounded', p.status === 'active' ? 'bg-primary' : 'bg-neutral')} style={{ width: `${Math.round(g.ring * 100)}%` }} />
           </div>
           <div className="text-[13px] text-muted-foreground">{g.detail}</div>
           {(g.holding || g.action) && (

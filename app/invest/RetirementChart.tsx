@@ -3,8 +3,8 @@
 import { Area, ComposedChart, CartesianGrid, Line, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts'
 import type { TimelinePoint } from '@/src/retirement/chart'
 
-const BLUE = '#8ab4f8'
-const GREY = '#9aa0a6'
+const BLUE = 'var(--c-accent)'
+const GREY = 'var(--c-muted)'
 const label = (m: string) => new Date(`${m}-01T00:00:00Z`).toLocaleDateString('en-GB', { month: 'short', year: 'numeric', timeZone: 'UTC' })
 const units = (cents: number | null) => (cents === null ? null : cents / 100)
 
@@ -21,9 +21,9 @@ export default function RetirementChart({ points, base }: { points: TimelinePoin
             <stop offset="95%" stopColor={BLUE} stopOpacity={0} />
           </linearGradient>
         </defs>
-        <CartesianGrid stroke="rgba(255,255,255,0.06)" vertical={false} />
-        <XAxis dataKey="month" tick={{ fill: '#a3a3a3', fontSize: 11 }} tickFormatter={m => m.slice(0, 4)} minTickGap={36} />
-        <YAxis tick={{ fill: '#a3a3a3', fontSize: 11 }} width={44}
+        <CartesianGrid stroke="var(--c-line)" vertical={false} />
+        <XAxis dataKey="month" tick={{ fill: 'var(--c-muted)', fontSize: 11 }} tickFormatter={m => m.slice(0, 4)} minTickGap={36} />
+        <YAxis tick={{ fill: 'var(--c-muted)', fontSize: 11 }} width={44}
           tickFormatter={v => Number(v).toLocaleString('en-US', { notation: 'compact', maximumFractionDigits: 1 })} />
         <Area type="monotone" dataKey="value" stroke={BLUE} strokeWidth={1.5} fill="url(#retGrad)" isAnimationActive={false} connectNulls={false} />
         <Area type="monotone" dataKey="projected" stroke={BLUE} strokeWidth={1.5} strokeDasharray="5 4" fill={BLUE} fillOpacity={0.06} isAnimationActive={false} />

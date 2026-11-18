@@ -5,8 +5,8 @@ import { Bar, CartesianGrid, ComposedChart, Line, ResponsiveContainer, Tooltip, 
 import type { CategoryRecord, CategorySlice, SpendingBucket } from '@/src/dashboards/compute/spending'
 import { cn } from '@/lib/utils'
 
-const GREEN = '#81c995'
-const RED = '#f28b82'
+const GREEN = 'var(--c-good)'
+const RED = 'var(--c-bad)'
 const compact = (n: number) => n.toLocaleString('en-US', { notation: 'compact', maximumFractionDigits: 1 })
 const whole = (n: number) => Math.round(n).toLocaleString('en-US')
 const monthLabel = (ym: string, year = false) =>
@@ -17,13 +17,13 @@ export function MonthlyChart({ monthly, base }: { monthly: SpendingBucket[]; bas
   return (
     <ResponsiveContainer width="100%" height="100%">
       <ComposedChart data={monthly} margin={{ top: 8, right: 4, bottom: 0, left: 0 }} barGap={2}>
-        <CartesianGrid stroke="rgba(255,255,255,0.06)" vertical={false} />
-        <XAxis dataKey="yearMonth" tick={{ fill: '#a3a3a3', fontSize: 11 }} tickFormatter={m => monthLabel(m)} minTickGap={8} />
-        <YAxis tick={{ fill: '#a3a3a3', fontSize: 11 }} width={44} tickFormatter={v => compact(Number(v))} />
+        <CartesianGrid stroke="var(--c-line)" vertical={false} />
+        <XAxis dataKey="yearMonth" tick={{ fill: 'var(--c-muted)', fontSize: 11 }} tickFormatter={m => monthLabel(m)} minTickGap={8} />
+        <YAxis tick={{ fill: 'var(--c-muted)', fontSize: 11 }} width={44} tickFormatter={v => compact(Number(v))} />
         <Bar dataKey="income" fill={GREEN} fillOpacity={0.8} radius={[3, 3, 0, 0]} isAnimationActive={false} />
         <Bar dataKey="expense" fill={RED} fillOpacity={0.8} radius={[3, 3, 0, 0]} isAnimationActive={false} />
-        <Line dataKey="net" stroke="#e8eaed" strokeWidth={1.5} dot={{ r: 2 }} isAnimationActive={false} />
-        <Tooltip cursor={{ fill: 'rgba(255,255,255,0.04)' }} content={({ active, payload }) => {
+        <Line dataKey="net" stroke="var(--c-fg)" strokeWidth={1.5} dot={{ r: 2 }} isAnimationActive={false} />
+        <Tooltip cursor={{ fill: 'var(--c-fill-2)' }} content={({ active, payload }) => {
           const p = active && payload?.[0]?.payload as SpendingBucket | undefined
           if (!p) return null
           return (

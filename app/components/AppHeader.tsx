@@ -32,7 +32,7 @@ export default function AppHeader() {
         <Link href="/" className="py-3 text-sm font-semibold tracking-wide text-muted-foreground">Wallet</Link>
         <Menu items={SETTINGS} icon="gear" label="Settings menu" />
       </header>
-      <nav className="fixed inset-x-0 bottom-0 z-30 flex justify-around lg:hidden border-t bg-[#12151b] pt-2.5 pb-[calc(10px+env(safe-area-inset-bottom))] text-[11px] text-muted-foreground">
+      <nav className="fixed inset-x-0 bottom-0 z-30 flex justify-around lg:hidden border-t bg-chrome pt-2.5 pb-[calc(10px+env(safe-area-inset-bottom))] text-[11px] text-muted-foreground">
         {TABS.map(({ href, label, icon: Icon }) => (
           <Link
             key={href}
@@ -44,7 +44,7 @@ export default function AppHeader() {
           </Link>
         ))}
       </nav>
-      <aside className="fixed inset-y-0 left-0 z-30 hidden w-56 flex-col border-r bg-[#12151b] px-3 py-5 text-sm lg:flex">
+      <aside className="fixed inset-y-0 left-0 z-30 hidden w-56 flex-col border-r bg-chrome px-3 py-5 text-sm lg:flex">
         <Link href="/" className="mb-5 px-3 font-semibold tracking-wide text-muted-foreground">Wallet</Link>
         {TABS.map(({ href, label, icon: Icon }) => (
           <Link

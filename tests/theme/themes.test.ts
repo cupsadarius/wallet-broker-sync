@@ -61,7 +61,7 @@ const PAIRS: [string, string][] = [
 
 describe('app/themes.css', () => {
   const css = readFileSync('app/themes.css', 'utf8')
-  const matches = [...css.matchAll(/(?:^|\n):root\[data-theme="([a-z0-9-]+)"\]\s*\{([^}]*)\}/g)]
+  const matches = [...css.matchAll(/(?:^|\n)\[data-theme="([a-z0-9-]+)"\]\s*\{([^}]*)\}/g)]
   const blocks = new Map(matches.map(m => [m[1], m[2]] as const))
 
   it('has exactly one block per theme', () => {
@@ -81,7 +81,7 @@ describe('app/themes.css', () => {
     expect(low).toEqual([])
   })
   it('derives every DERIVED token once for all themes', () => {
-    const generic = /:root\[data-theme\]\s*\{([^}]*)\}/.exec(css)?.[1] ?? ''
+    const generic = /(?:^|\n)\[data-theme\]\s*\{([^}]*)\}/.exec(css)?.[1] ?? ''
     for (const d of DERIVED) expect(generic).toMatch(new RegExp(`--c-${d}\\s*:`))
   })
 })
