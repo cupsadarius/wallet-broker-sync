@@ -1,6 +1,6 @@
 import Link from 'next/link'
 import { loadRetirement } from '@/src/retirement/load'
-import type { AccountView, Pilon1View } from '@/src/retirement/compute'
+import type { AccountView, Pilon1View, RetirementSummary } from '@/src/retirement/compute'
 import { PROVIDER_NAME } from '@/src/retirement/types'
 import { fmtAmount, fmtDay } from '@/src/dashboards/compute/today'
 import { cn } from '@/lib/utils'
@@ -27,9 +27,12 @@ export default async function Retirement() {
       )}
 
       {s.accounts.length > 0 && (
-        <div className="rounded-[14px] border bg-card px-3.5 py-3">
-          <div className="text-xs text-muted-foreground">Locked until retirement</div>
-          <div className="text-2xl font-bold tabular-nums">{money(s.locked, s.base)}</div>
+        <div className="rounded-[14px] border bg-card px-3.5 py-3 lg:px-5 lg:py-4">
+          <div className="flex items-baseline justify-between gap-3 text-xs text-muted-foreground">
+            Locked until retirement
+            <Link href="/upload" className="text-[13px] font-semibold text-primary">Upload statement</Link>
+          </div>
+          <div className="text-2xl font-bold tabular-nums lg:text-3xl">{money(s.locked, s.base)}</div>
           <div className="text-xs text-muted-foreground">
             Paid in {money(s.paidInLocked, s.base)} · Gain{' '}
             <span className={s.locked >= s.paidInLocked ? 'text-up' : 'text-down'}>{money(s.locked - s.paidInLocked, s.base)}</span>
@@ -52,23 +55,36 @@ export default async function Retirement() {
         </div>
       )}
 
-      {s.accounts.length > 0 && <Section title="Accounts" />}
-      <div className="lg:grid lg:grid-cols-2 lg:items-start lg:gap-x-4">
+      <div className="lg:hidden">
+        {s.accounts.length > 0 && <Section title="Accounts" />}
         {s.accounts.map(a => <AccountCard key={a.id} a={a} base={s.base} today={today} />)}
+        {s.pilon1 && <Section title="State pension · Pilon 1" />}
+        {s.pilon1 && <Pilon1Card p={s.pilon1} />}
       </div>
 
-      {s.pilon1 && <Section title="State pension · Pilon 1" />}
-      {s.pilon1 && <div className="lg:grid lg:grid-cols-2 lg:gap-x-4"><Pilon1Card p={s.pilon1} /></div>}
-
-      <div className="my-5 text-center">
-        <Link href="/upload" className="rounded-[10px] bg-primary px-3.5 py-2 text-[13px] font-bold text-primary-foreground">Upload statement</Link>
-      </div>
+      {(s.accounts.length > 0 || s.pilon1) && <AccountsTable s={s} today={today} />}
     </>
   )
 }
 
-function AccountCard({ a, base, today }: { a: AccountView; base: string; today: string }) {
+function ReleaseForm({ a, today }: { a: AccountView; today: string }) {
   const years = a.releaseDate ? (Date.parse(a.releaseDate) - Date.parse(today)) / (365.25 * 86_400_000) : null
+  return (
+    <form action={saveReleaseDate} className="mt-2.5 flex flex-wrap items-center gap-2 self-start text-xs lg:mt-0">
+      <input type="hidden" name="accountId" value={a.id} />
+      <label className="flex items-center gap-1.5 text-muted-foreground">
+        Unlocks
+        <input type="date" name="date" defaultValue={a.releaseDate ?? ''} className="rounded-md border bg-background px-1.5 py-1 text-foreground" />
+      </label>
+      <button className="rounded-md border border-primary/40 px-2 py-1 font-semibold text-primary">Save</button>
+      <span className="text-muted-foreground">
+        {!a.locked ? 'Released' : years === null ? 'No date set' : `in ${years.toFixed(years < 2 ? 1 : 0)} years`}
+      </span>
+    </form>
+  )
+}
+
+function AccountCard({ a, base, today }: { a: AccountView; base: string; today: string }) {
   return (
     <div className="my-2 rounded-[14px] border bg-card px-3.5 py-3">
       <div className="flex items-baseline justify-between gap-2">
@@ -99,17 +115,7 @@ function AccountCard({ a, base, today }: { a: AccountView; base: string; today: 
         <div>Gain<b className={cn('block text-[13px]', a.gain >= 0 ? 'text-up' : 'text-down')}>{money(a.gain, a.currency)}</b></div>
         {a.fees !== null && <div>Fees so far<b className="block text-[13px] text-warn">{money(a.fees, a.currency)}</b></div>}
       </div>
-      <form action={saveReleaseDate} className="mt-2.5 flex flex-wrap items-center gap-2 text-xs">
-        <input type="hidden" name="accountId" value={a.id} />
-        <label className="flex items-center gap-1.5 text-muted-foreground">
-          Unlocks
-          <input type="date" name="date" defaultValue={a.releaseDate ?? ''} className="rounded-md border bg-background px-1.5 py-1 text-foreground" />
-        </label>
-        <button className="rounded-md border border-primary/40 px-2 py-1 font-semibold text-primary">Save</button>
-        <span className="text-muted-foreground">
-          {!a.locked ? 'Released' : years === null ? 'No date set' : `in ${years.toFixed(years < 2 ? 1 : 0)} years`}
-        </span>
-      </form>
+      <ReleaseForm a={a} today={today} />
       <History a={a} />
     </div>
   )
@@ -133,32 +139,48 @@ function Pilon1Card({ p }: { p: Pilon1View }) {
         Rough pension today: ≈ <b className="text-foreground">{money(p.pensionEstimate, 'RON')}/month</b> ({p.points.toFixed(2)} × {money(p.vpr, 'RON')}).
         Not counted in net worth.
       </p>
-      <form action={saveVpr} className="mt-2 flex items-center gap-2 text-xs">
-        <label className="flex items-center gap-1.5 text-muted-foreground">
-          Point value
-          <input name="vpr" type="number" inputMode="decimal" min="1" step="0.01" defaultValue={p.vpr / 100}
-            className="w-20 rounded-md border bg-background px-1.5 py-1 text-right text-foreground tabular-nums" />
-          RON
-        </label>
-        <button className="rounded-md border border-primary/40 px-2 py-1 font-semibold text-primary">Save</button>
-      </form>
+      <VprForm p={p} />
       <Pilon1History p={p} />
     </div>
   )
 }
 
+function VprForm({ p }: { p: Pilon1View }) {
+  return (
+    <form action={saveVpr} className="mt-2 flex items-center gap-2 self-start text-xs lg:mt-0">
+      <label className="flex items-center gap-1.5 text-muted-foreground">
+        Point value
+        <input name="vpr" type="number" inputMode="decimal" min="1" step="0.01" defaultValue={p.vpr / 100}
+          className="w-20 rounded-md border bg-background px-1.5 py-1 text-right text-foreground tabular-nums" />
+        RON
+      </label>
+      <button className="rounded-md border border-primary/40 px-2 py-1 font-semibold text-primary">Save</button>
+    </form>
+  )
+}
+
 const SUMMARY = 'flex cursor-pointer list-none justify-between gap-2 [&::-webkit-details-marker]:hidden'
 
+const contributionCount = (a: AccountView) => a.contributionsByYear.reduce((n, y) => n + y.items.length, 0)
+
 function History({ a }: { a: AccountView }) {
-  const count = a.contributionsByYear.reduce((n, y) => n + y.items.length, 0)
-  const m = (cents: number) => money(cents, a.currency)
+  const count = contributionCount(a)
   return (
     <details className="group/h mt-2.5 border-t pt-2 text-xs">
       <summary className={cn(SUMMARY, 'text-primary')}>
         <span>History · {count > 0 ? `${count} contributions` : `${a.statements.length} ${a.statements.length === 1 ? 'statement' : 'statements'}`}</span>
         <span className="transition-transform group-open/h:rotate-90">›</span>
       </summary>
-      {count > 0 && (
+      <HistoryBody a={a} />
+    </details>
+  )
+}
+
+function HistoryBody({ a }: { a: AccountView }) {
+  const m = (cents: number) => money(cents, a.currency)
+  return (
+    <>
+      {contributionCount(a) > 0 && (
         <div className="mt-1.5">
           {a.contributionsByYear.map(y => (
             <details key={y.year} className="group/y border-b last:border-0">
@@ -193,7 +215,7 @@ function History({ a }: { a: AccountView }) {
           ))}
         </tbody>
       </table>
-    </details>
+    </>
   )
 }
 
@@ -204,14 +226,101 @@ function Pilon1History({ p }: { p: Pilon1View }) {
         <span>Points per year · {p.pointsByYear.length} years</span>
         <span className="transition-transform group-open/h:rotate-90">›</span>
       </summary>
-      <div className="mt-1.5">
-        {[...p.pointsByYear].sort((x, y) => y.year - x.year).map(y => (
-          <div key={y.year} className="flex justify-between border-b py-1 tabular-nums last:border-0">
-            <span>{y.year}</span><b>{y.points.toFixed(2)}</b>
-          </div>
-        ))}
-      </div>
+      <PointsByYear p={p} />
     </details>
+  )
+}
+
+function PointsByYear({ p }: { p: Pilon1View }) {
+  return (
+    <div className="mt-1.5">
+      {[...p.pointsByYear].sort((x, y) => y.year - x.year).map(y => (
+        <div key={y.year} className="flex justify-between border-b py-1 tabular-nums last:border-0">
+          <span>{y.year}</span><b>{y.points.toFixed(2)}</b>
+        </div>
+      ))}
+    </div>
+  )
+}
+
+const COLS = 'grid grid-cols-[minmax(0,2.4fr)_repeat(3,minmax(0,1.2fr))_minmax(0,1fr)_minmax(0,0.9fr)_minmax(0,1fr)_minmax(0,1fr)_1rem] items-baseline gap-x-4 px-5'
+const ROW = cn(COLS, 'cursor-pointer list-none py-3 hover:bg-accent/40 [&::-webkit-details-marker]:hidden')
+const unlockLabel = (a: AccountView) =>
+  !a.locked ? 'Released' : a.releaseDate ? new Date(`${a.releaseDate}T00:00:00Z`).toLocaleDateString('en-GB', { month: 'short', year: 'numeric', timeZone: 'UTC' }) : 'Not set'
+
+/** Desktop: one row per account; a row opens to its history and its unlock date. */
+function AccountsTable({ s, today }: { s: RetirementSummary; today: string }) {
+  const base = (cents: number | null) => (cents === null ? '–' : money(cents, s.base))
+  const paidIn = s.accounts.reduce((n, a) => n + (a.paidInBase ?? 0), 0)
+  const value = s.locked + s.available
+  return (
+    <div className="mt-5 hidden overflow-hidden rounded-[14px] border bg-card text-sm lg:block">
+      <div className={cn(COLS, 'border-b py-2 text-xs text-muted-foreground [&>span]:text-right [&>span:first-child]:text-left')}>
+        <span>Account</span><span>Value</span><span>Paid in</span><span>Gain</span><span>Return</span><span>Fees</span><span>Unlocks</span><span>Statement</span><span />
+      </div>
+      {s.accounts.map(a => {
+        const gain = a.valueBase !== null && a.paidInBase !== null ? a.valueBase - a.paidInBase : null
+        return (
+          <details key={a.id} className="group/r border-b">
+            <summary className={cn(ROW, 'tabular-nums [&>span]:text-right [&>span]:whitespace-nowrap')}>
+              <b className="truncate font-semibold">{title(a)}</b>
+              <span>
+                {base(a.valueBase)}
+                {a.currency !== s.base && <span className="block text-xs text-muted-foreground">{money(a.value, a.currency)}</span>}
+              </span>
+              <span>{base(a.paidInBase)}</span>
+              <span className={gain === null ? '' : gain >= 0 ? 'text-up' : 'text-down'}>{base(gain)}</span>
+              <span className={a.gain >= 0 ? 'text-up' : 'text-down'}>{a.yearly ? `${pct(a.yearly.rate)}/yr` : `${pct(a.gainPct, 0)} total`}</span>
+              <span className="text-warn">{a.fees === null ? '–' : money(a.fees, a.currency)}</span>
+              <span className={cn(!a.releaseDate && a.locked && 'text-muted-foreground')}>{unlockLabel(a)}</span>
+              <span className={a.stale ? 'text-warn' : 'text-muted-foreground'}>{fmtDay(a.asOf)}</span>
+              <span className="text-muted-foreground transition-transform group-open/r:rotate-90">›</span>
+            </summary>
+            <div className="grid grid-cols-[minmax(0,2fr)_minmax(0,1fr)] gap-8 border-t bg-background/40 px-5 py-4 text-xs">
+              <div>
+                <div className="mb-1 text-muted-foreground">
+                  {contributionCount(a) > 0 ? `${contributionCount(a)} contributions by year` : `${a.statements.length} ${a.statements.length === 1 ? 'statement' : 'statements'}`}
+                  {a.yearly && ` · return ${a.yearly.basis === 'contributions' ? 'from every contribution' : `since ${fmtDay(a.yearly.since)}`}`}
+                  {a.yearly && a.yearly.months < 24 && ` (${a.yearly.months} months only)`}
+                </div>
+                <HistoryBody a={a} />
+              </div>
+              <ReleaseForm a={a} today={today} />
+            </div>
+          </details>
+        )
+      })}
+      {s.accounts.length > 0 && (
+        <div className={cn(COLS, 'border-b py-3 font-semibold tabular-nums [&>span]:text-right')}>
+          <span className="!text-left">Total</span>
+          <span>{base(value)}</span>
+          <span>{base(paidIn)}</span>
+          <span className={value >= paidIn ? 'text-up' : 'text-down'}>{base(value - paidIn)}</span>
+          <span /><span /><span /><span /><span />
+        </div>
+      )}
+      {s.pilon1 && (
+        <details className="group/r">
+          <summary className={cn(SUMMARY, 'items-baseline px-5 py-3 hover:bg-accent/40')}>
+            <span>
+              <b className="font-semibold">State pension</b>
+              <span className="ml-3 text-muted-foreground tabular-nums">
+                {s.pilon1.points.toFixed(2)} points, +{s.pilon1.pointsThisYear.toFixed(2)} this year, {s.pilon1.period.years} y {s.pilon1.period.months} m contributed.
+                Rough pension today ≈ <b className="text-foreground">{money(s.pilon1.pensionEstimate, 'RON')}/month</b>, not counted in net worth.
+              </span>
+            </span>
+            <span className="flex gap-4">
+              <span className={s.pilon1.stale ? 'text-warn' : 'text-muted-foreground'}>{fmtDay(s.pilon1.asOf)}</span>
+              <span className="text-muted-foreground transition-transform group-open/r:rotate-90">›</span>
+            </span>
+          </summary>
+          <div className="grid grid-cols-[minmax(0,2fr)_minmax(0,1fr)] gap-8 border-t bg-background/40 px-5 py-4 text-xs">
+            <div><div className="mb-1 text-muted-foreground">Points per year</div><PointsByYear p={s.pilon1} /></div>
+            <VprForm p={s.pilon1} />
+          </div>
+        </details>
+      )}
+    </div>
   )
 }
 
