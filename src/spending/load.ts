@@ -4,11 +4,11 @@ import { db } from '@/src/storage/db'
 import { budgetProposal, ruleProposal, weeklyNote } from '@/src/storage/schema'
 import { ensureFreshMirror, getBaseCurrency, readConfigMap } from '@/src/dashboards/mirror'
 import { latestFx } from '@/src/dashboards/prices'
-import { matchingRecords } from './proposals'
+import { isUncategorized, matchingRecords } from './proposals'
 import { likelyTransfers, reviewQueue, unexplainedOutflows, type ReviewState } from './review'
 import { loadInsights } from '@/src/insights/load'
 import { categorySpikes } from '@/src/insights/cards'
-import { aggregateSpending, budgetsByCategory, categoryDetails } from '@/src/dashboards/compute/spending'
+import { aggregateSpending, budgetsByCategory, categoryDetails, isTransfer } from '@/src/dashboards/compute/spending'
 import { shiftMonth } from '@/src/dashboards/compute/budgets'
 
 export const REVIEW_CURSOR_KEY = 'spending.reviewCursor'
@@ -58,6 +58,9 @@ export async function loadSpending(months = 12) {
   })
 
   const insights = await loadInsights(s, 6, now)
+  const uncategorized = new Set(s.records
+    .filter(r => r.recordDate >= `${monthList[0]}-01` && !r.isTradeFallback && !isTransfer(r) && isUncategorized(r, s.byCategoryId))
+    .map(r => r.id))
   const budgets = insights.budgets.map(v => v.status)
   const byBudget = new Map(budgets.map(b => [b.id, b]))
   const budgetProposals = (await db.select().from(budgetProposal).where(eq(budgetProposal.status, 'open')))
@@ -74,5 +77,8 @@ export async function loadSpending(months = 12) {
     period, months: monthList,
     categories: categoryDetails(period, monthList, s.rules, proposals),
     budgetsByCategory: budgetsByCategory(budgets, period.byCategory),
+    budgetHistory: new Map(insights.budgets.map(v => [v.status.id, v.history(months)])),
+    uncategorized,
+    sortable: new Set(proposals.flatMap(p => p.matches.filter(r => uncategorized.has(r.id)).map(r => r.id))).size,
   }
 }
