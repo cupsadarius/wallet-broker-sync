@@ -353,10 +353,30 @@ function helpers(d: Data) {
 }
 
 function RulesTab({ d }: { d: Data }) {
-  const { groups, categoryName } = helpers(d)
+  const { groups, categoryName, accountName } = helpers(d)
   const rules = d.snapshot.rules
+  const loose = d.snapshot.records.filter(r => d.uncategorized.has(r.id)).sort((a, b) => b.recordDate.localeCompare(a.recordDate))
   return (
     <>
+      {loose.length > 0 && (
+        <>
+          <h3 className="font-semibold">No category · {loose.length}</h3>
+          <ul className="mb-3">
+            {loose.map(r => (
+              <li key={r.id} className="flex items-center gap-2.5 border-b py-2.5 last:border-none">
+                <div className="min-w-0 flex-1">
+                  <div className="truncate text-sm font-semibold">{payeeLabel(r) || '(no note)'}</div>
+                  <div className="truncate text-xs text-muted-foreground">{shortDay(r.recordDate)} · {accountName(r.accountId)}</div>
+                  <CategoryChip recordId={r.id} categoryId={r.categoryId} label={categoryName(r.categoryId)} unknown groups={groups} />
+                </div>
+                <div className="shrink-0 text-right text-sm font-semibold tabular-nums">
+                  {money(r)} <span className="text-xs font-normal text-muted-foreground">{r.currencyCode}</span>
+                </div>
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
       <h3 className="font-semibold">Proposed rules{d.proposals.length > 0 && ` · ${d.proposals.length}`}</h3>
       {d.proposals.length === 0 && <p className="text-sm text-muted-foreground">No proposed rules.</p>}
       {d.proposals.map(p => (
