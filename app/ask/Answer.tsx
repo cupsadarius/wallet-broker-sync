@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import type { AskMessage } from '@/src/ask/store'
 import type { JobEvent } from '@/src/ask/jobs'
@@ -15,6 +15,7 @@ export default function Answer({ message }: { message: AskMessage }) {
   const router = useRouter()
   const [live, setLive] = useState<Live>({ phase: 'research', text: '', tools: { own: [], web: [] } })
   const running = message.status === 'running'
+  const end = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
     if (!running) return
@@ -32,13 +33,13 @@ export default function Answer({ message }: { message: AskMessage }) {
     return () => es.close()
   }, [running, message.id, router])
 
-  useEffect(() => { if (running) window.scrollTo({ top: document.body.scrollHeight }) }, [running, live.text])
+  useEffect(() => { if (running) end.current?.scrollIntoView({ block: 'end' }) }, [running, live.text])
 
   if (running) {
     // The spec streams as JSONL after the text; it shows once stored and checked.
     const text = live.text.split('```spec')[0].trim()
     return (
-      <div className="flex flex-col gap-2">
+      <div ref={end} className="flex flex-col gap-2">
         {text ? <p className="whitespace-pre-wrap text-sm leading-relaxed">{text}</p> : (
           <p className="animate-pulse text-sm text-muted-foreground">
             {live.phase === 'research' ? 'Checking if the web can help…' : 'Reading your data…'}
