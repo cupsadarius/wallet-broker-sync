@@ -39,16 +39,39 @@ export default function UploadDropzone({ initialBroker }: { initialBroker?: Brok
   const [error, setError] = useState<string | null>(null)
   const [errorKind, setErrorKind] = useState<'not_configured' | 'too_large' | 'other' | null>(null)
   const [retirement, setRetirement] = useState<RetirementUploadResult[]>([])
-  const [checked, setChecked] = useState<Set<string>>(new Set())
 
-  function addFiles(picked: File[]) {
+  // Pension and policy PDFs save on drop; only the rest go to the broker preview.
+  async function saveRetirement(pdfs: File[]): Promise<Set<string>> {
+    if (pdfs.length === 0) return new Set()
+    setIsLoading(true)
+    try {
+      const form = new FormData()
+      for (const f of pdfs) form.append('file', f)
+      const res = await fetch('/api/retirement/upload', { method: 'POST', body: form })
+      const { results } = (await res.json()) as { results: RetirementUploadResult[] }
+      const kept = results.filter(r => r.status !== 'unsupported')
+      setRetirement(prev => [...prev, ...kept])
+      return new Set(kept.map(r => r.file))
+    } catch (err) {
+      setErrorKind('other')
+      setError(err instanceof Error ? err.message : 'Network error')
+      return new Set()
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  async function addFiles(picked: File[]) {
     if (picked.length === 0) return
     setError(null)
     setErrorKind(null)
+    const handled = await saveRetirement(picked.filter(f => f.name.toLowerCase().endsWith('.pdf')))
+    const rest = picked.filter(f => !handled.has(f.name))
+    if (rest.length === 0) return
     setFiles((prev) => {
       const seen = new Set(prev.map(fileKey))
       const merged = [...prev]
-      for (const f of picked) {
+      for (const f of rest) {
         const k = fileKey(f)
         if (!seen.has(k)) {
           merged.push(f)
@@ -99,28 +122,8 @@ export default function UploadDropzone({ initialBroker }: { initialBroker?: Brok
     setErrorKind(null)
 
     try {
-      // Pension and policy PDFs save at once; whatever is left goes through the broker preview.
-      const pdfs = files.filter(f => f.name.toLowerCase().endsWith('.pdf') && !checked.has(fileKey(f)))
-      let remaining = files
-      if (pdfs.length > 0) {
-        const form = new FormData()
-        for (const f of pdfs) form.append('file', f)
-        const res = await fetch('/api/retirement/upload', { method: 'POST', body: form })
-        const { results } = (await res.json()) as { results: RetirementUploadResult[] }
-        const handled = new Set(results.filter(r => r.status !== 'unsupported').map(r => r.file))
-        // Remember only PDFs that are not retirement statements, so a handled file re-added later is read again.
-        setChecked(prev => new Set([...prev, ...pdfs.filter(f => !handled.has(f.name)).map(fileKey)]))
-        if (handled.size > 0) {
-          remaining = files.filter(f => !handled.has(f.name))
-          setRetirement(prev => [...prev, ...results.filter(r => handled.has(r.file))])
-          setFiles(remaining)
-          return
-        }
-      }
-      if (remaining.length === 0) return
-
       const form = new FormData()
-      for (const f of remaining) form.append('file', f)
+      for (const f of files) form.append('file', f)
       form.append('broker', broker)
 
       const res = await fetch('/api/sync?dryRun=true', {
@@ -148,7 +151,7 @@ export default function UploadDropzone({ initialBroker }: { initialBroker?: Brok
         return
       }
 
-      useWizard.getState().set({ files: remaining, broker, dryRun: data })
+      useWizard.getState().set({ files, broker, dryRun: data })
       router.push('/preview')
     } catch (err) {
       setErrorKind('other')
@@ -173,7 +176,7 @@ export default function UploadDropzone({ initialBroker }: { initialBroker?: Brok
           <div className="mb-2 rounded-sm border border-lead/30 px-4 py-3 text-sm">
             <ul className="space-y-1">
               {retirement.map(r => (
-                <li key={r.file} className="flex justify-between gap-3">
+                <li key={`${r.file}:${r.status}:${r.asOf ?? ''}`} className="flex justify-between gap-3">
                   <span className="min-w-0 truncate">
                     {r.status === 'failed' ? r.file : `${PROVIDER_NAME[r.provider as Provider] ?? r.provider} · ${r.asOf}`}
                   </span>
@@ -223,7 +226,7 @@ export default function UploadDropzone({ initialBroker }: { initialBroker?: Brok
               </svg>
             </span>
             <p className="font-heading text-lg font-light tracking-wide text-foreground">
-              {isDragging ? 'Release to upload' : 'Drop a file, or click to browse'}
+              {isLoading ? 'Reading statements…' : isDragging ? 'Release to upload' : 'Drop a file, or click to browse'}
             </p>
             <p className="text-xs uppercase tracking-[0.18em] text-muted-foreground">
               CSV · XLSX · HTML · PDF — up to 10 MB

@@ -19,6 +19,7 @@ export default async function UploadPage({ searchParams }: { searchParams: Promi
         <p className="mt-4 max-w-xl text-[15px] leading-relaxed text-muted-foreground md:text-[17px]">
           Drop your CSV (IBKR), XLSX (XTB), or PDF / HTML (Tradeville) export. We&apos;ll parse it locally
           and show you a diff before anything gets written to Wallet.
+          Pension and policy PDFs (BT, Allianz, Signal Iduna, CNPP) save to Retirement as soon as you drop them.
         </p>
       </div>
       <UploadDropzone initialBroker={initialBroker} />
