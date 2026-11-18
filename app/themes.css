@@ -1,0 +1,98 @@
+/* Theme color sets (see src/theme/themes.ts). Base tokens per theme; derived tokens from them. */
+:root[data-theme] {
+  --c-chrome: color-mix(in srgb, var(--c-bg) 55%, var(--c-surface));
+  --c-line-2: color-mix(in srgb, var(--c-line) 78%, var(--c-fg));
+  --c-neutral: color-mix(in srgb, var(--c-muted) 60%, var(--c-surface));
+  --c-accent-soft: color-mix(in srgb, var(--c-accent) 42%, var(--c-surface));
+  --c-fill: color-mix(in srgb, var(--c-accent) 16%, transparent);
+  --c-fill-2: color-mix(in srgb, var(--c-accent) 7%, transparent);
+  --c-good-fill: color-mix(in srgb, var(--c-good) 13%, transparent);
+  --c-warn-tint: color-mix(in srgb, var(--c-warn) 9%, transparent);
+  --c-warn-line: color-mix(in srgb, var(--c-warn) 30%, transparent);
+}
+:root[data-theme="wallet-dark"] {
+  color-scheme: dark;
+  --c-bg: #0f1115; --c-surface: #171a21; --c-surface-2: #262b35; --c-line: #23262d;
+  --c-fg: #e8eaed; --c-fg-2: #c3c3cc; --c-muted: #9aa0a6;
+  --c-good: #5dd39e; --c-warn: #fdd663; --c-bad: #f28b82;
+  --c-accent: #8ab4f8; --c-accent-ink: #b3cdfb; --c-on-accent: #0f1115;
+  --c-chrome: #12151b; --c-line-2: #3a404c; --c-neutral: #5f6672; --c-accent-soft: #cdddff;
+}
+:root[data-theme="wallet-light"] {
+  color-scheme: light;
+  --c-bg: #f2f4f7; --c-surface: #ffffff; --c-surface-2: #e8edf5; --c-line: #e1e5eb;
+  --c-fg: #15181e; --c-fg-2: #353b46; --c-muted: #5b626e;
+  --c-good: #0b7a54; --c-warn: #8a6400; --c-bad: #b52f43;
+  --c-accent: #2f62d6; --c-accent-ink: #1f4aa8; --c-on-accent: #ffffff;
+  --c-chrome: #f8f9fb; --c-line-2: #c5ccd6; --c-neutral: #a9b0bb; --c-accent-soft: #a9c1f2;
+}
+:root[data-theme="catppuccin-mocha"] {
+  color-scheme: dark;
+  --c-bg: #11111b; --c-surface: #1e1e2e; --c-surface-2: #313244; --c-line: #45475a;
+  --c-fg: #cdd6f4; --c-fg-2: #bac2de; --c-muted: #a0a6bf;
+  --c-good: #a6e3a1; --c-warn: #f9e2af; --c-bad: #f38ba8;
+  --c-accent: #cba6f7; --c-accent-ink: #dcc6fa; --c-on-accent: #11111b;
+}
+:root[data-theme="catppuccin-latte"] {
+  color-scheme: light;
+  --c-bg: #dce0e8; --c-surface: #eff1f5; --c-surface-2: #e6e9ef; --c-line: #ccd0da;
+  --c-fg: #4c4f69; --c-fg-2: #5c5f77; --c-muted: #5f6278;
+  --c-good: #2b6e1c; --c-warn: #8a5208; --c-bad: #b80d32;
+  --c-accent: #7a2ee0; --c-accent-ink: #5e17c0; --c-on-accent: #ffffff;
+}
+:root[data-theme="rose-pine-moon"] {
+  color-scheme: dark;
+  --c-bg: #232136; --c-surface: #2a273f; --c-surface-2: #393552; --c-line: #44415a;
+  --c-fg: #e0def4; --c-fg-2: #cbc8e3; --c-muted: #a6a2c0;
+  --c-good: #9ccfd8; --c-warn: #f6c177; --c-bad: #f08aa6;
+  --c-accent: #c4a7e7; --c-accent-ink: #dccaf2; --c-on-accent: #232136;
+}
+:root[data-theme="rose-pine-dawn"] {
+  color-scheme: light;
+  --c-bg: #f2e9e1; --c-surface: #fffaf3; --c-surface-2: #faf4ed; --c-line: #dfdad9;
+  --c-fg: #575279; --c-fg-2: #4c4769; --c-muted: #66627e;
+  --c-good: #286983; --c-warn: #9a5b0e; --c-bad: #9e4862;
+  --c-accent: #6f5a94; --c-accent-ink: #5a4680; --c-on-accent: #ffffff;
+}
+:root[data-theme="gruvbox-dark"] {
+  color-scheme: dark;
+  --c-bg: #1d2021; --c-surface: #282828; --c-surface-2: #3c3836; --c-line: #504945;
+  --c-fg: #ebdbb2; --c-fg-2: #d5c4a1; --c-muted: #bdae93;
+  --c-good: #b8bb26; --c-warn: #fabd2f; --c-bad: #ff8070;
+  --c-accent: #dc94a8; --c-accent-ink: #e8b2c0; --c-on-accent: #1d2021;
+}
+:root[data-theme="gruvbox-light"] {
+  color-scheme: light;
+  --c-bg: #f2e5bc; --c-surface: #fbf1c7; --c-surface-2: #f2e5bc; --c-line: #d5c4a1;
+  --c-fg: #3c3836; --c-fg-2: #504945; --c-muted: #665c54;
+  --c-good: #5f5b0b; --c-warn: #8a560f; --c-bad: #9d0006;
+  --c-accent: #8f3f71; --c-accent-ink: #6f2d57; --c-on-accent: #fbf1c7;
+}
+:root[data-theme="cyberdream"] {
+  color-scheme: dark;
+  --c-bg: #16181a; --c-surface: #1e2124; --c-surface-2: #2a2e33; --c-line: #3c4048;
+  --c-fg: #ffffff; --c-fg-2: #d6dae0; --c-muted: #9aa2b1;
+  --c-good: #5eff6c; --c-warn: #f1ff5e; --c-bad: #ff6e5e;
+  --c-accent: #c77aff; --c-accent-ink: #dcb0ff; --c-on-accent: #16181a;
+}
+:root[data-theme="cyberdream-light"] {
+  color-scheme: light;
+  --c-bg: #eaeaea; --c-surface: #ffffff; --c-surface-2: #f3f3f3; --c-line: #dcdcdc;
+  --c-fg: #16181a; --c-fg-2: #3c4048; --c-muted: #5c6370;
+  --c-good: #007a0a; --c-warn: #7f6600; --c-bad: #d11500;
+  --c-accent: #9010f0; --c-accent-ink: #7400cc; --c-on-accent: #ffffff;
+}
+:root[data-theme="optura"] {
+  color-scheme: dark;
+  --c-bg: #1a1616; --c-surface: #241f1f; --c-surface-2: #2f2929; --c-line: #3d3535;
+  --c-fg: #f0eee4; --c-fg-2: #d6d0c2; --c-muted: #a39b8e;
+  --c-good: #61c2ab; --c-warn: #e6c876; --c-bad: #e07576;
+  --c-accent: #d0ae50; --c-accent-ink: #e6c876; --c-on-accent: #1a1616;
+}
+:root[data-theme="optura-light"] {
+  color-scheme: light;
+  --c-bg: #e6e3d6; --c-surface: #f8f6ee; --c-surface-2: #f0eee4; --c-line: #dcd8ca;
+  --c-fg: #1a1616; --c-fg-2: #3a3434; --c-muted: #665f55;
+  --c-good: #22695a; --c-warn: #7a5c10; --c-bad: #a33b3b;
+  --c-accent: #420d41; --c-accent-ink: #6b5010; --c-on-accent: #f0eee4;
+}
