@@ -8,7 +8,7 @@ import type { MirrorRecord } from '@/src/dashboards/mirror'
 import { acceptAll, acceptRecord, approveBudgetProposal, dismissTransfer, markAsTransfer, approveProposal, rejectBudgetProposal, rejectProposal } from './actions'
 import type { BudgetStatus } from '@/src/dashboards/compute/budgets'
 import { cn } from '@/lib/utils'
-import { ActionForm, CategoryChip, TransferButton, type CategoryGroup } from './ui'
+import { ActionForm, CategoryChip, DeleteRuleButton, TransferButton, type CategoryGroup } from './ui'
 
 const AI_MESSAGE: Record<string, string> = {
   unavailable: 'AI proposals are not available yet.',
@@ -222,6 +222,7 @@ export default async function SpendingPage({ searchParams }: { searchParams: Pro
             <span className="min-w-0 flex-1 truncate" title={r.keywords.join(', ')}>{r.name || r.keywords[0]}</span>
             <span className="text-muted-foreground">→</span>
             <b className="shrink-0">{categoryName(r.categoryId)}</b>
+            <DeleteRuleButton id={r.id} label={r.name || r.keywords[0]} />
           </div>
         ))}
       </div>
@@ -230,19 +231,31 @@ export default async function SpendingPage({ searchParams }: { searchParams: Pro
       {ai && AI_MESSAGE[ai] && <p className="mb-2 text-sm text-warn">{AI_MESSAGE[ai]}</p>}
       {d.proposals.map(p => (
         <div key={p.id} className="my-2 rounded-[14px] border bg-card px-3.5 py-3">
-          <div className="font-semibold">{p.name} <span className="text-muted-foreground">→</span> {categoryName(p.categoryId)}</div>
+          <div className="font-semibold">{p.name}</div>
           <div className="mt-0.5 truncate text-xs text-muted-foreground">Keywords: {p.keywords.join(', ')}</div>
           <div className="mt-0.5 text-xs text-muted-foreground">
-            Matches {p.pastMatchCount} past record{p.pastMatchCount === 1 ? '' : 's'}; {p.toChange.length} get the new category.
+            Matches {p.matches.length} past record{p.matches.length === 1 ? '' : 's'}; the ticked ones get the category.
           </div>
           <ActionForm action={approveProposal} className="mt-2">
             <input type="hidden" name="id" value={p.id} />
-            {p.toChange.length > 0 && (
+            <label className="mb-2 flex items-center gap-2 text-[13px] text-muted-foreground">
+              Category
+              <select name="categoryId" defaultValue={p.categoryId}
+                className="min-w-0 flex-1 rounded-lg border bg-background px-2 py-1.5 text-sm text-foreground">
+                {groups.map(g => (
+                  <optgroup key={g.group} label={g.group}>
+                    {g.options.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                  </optgroup>
+                ))}
+              </select>
+            </label>
+            {p.matches.length > 0 && (
               <div className="max-h-56 overflow-y-auto rounded-lg border px-2.5">
-                {p.toChange.map(r => (
+                {p.matches.map(r => (
                   <label key={r.id} className="flex items-center gap-2 border-b py-1.5 text-[13px] last:border-none">
                     <input type="checkbox" name="recordId" value={r.id} defaultChecked className="size-4 shrink-0 accent-primary" />
                     <span className="min-w-0 flex-1 truncate">{payeeLabel(r)}</span>
+                    <span className="hidden shrink-0 truncate text-xs text-muted-foreground sm:inline">{categoryName(r.categoryId)}</span>
                     <span className="shrink-0 text-xs text-muted-foreground">{shortDay(r.recordDate)}</span>
                     <span className="shrink-0 tabular-nums">{money(r)}</span>
                   </label>

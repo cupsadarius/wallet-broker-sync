@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { magicRuleDoc, markTransfer, patchDocs, writeRule, type Doc } from '@/src/spending/write'
+import { deleteRule, magicRuleDoc, markTransfer, patchDocs, writeRule, type Doc } from '@/src/spending/write'
 import type { BulkDocResult } from '@/src/sync/couch'
 
 const NOW = '2026-11-17T10:00:00.000Z'
@@ -156,5 +156,22 @@ describe('markTransfer', () => {
     const out = await markTransfer(couch, topUp, sent, TRANSFER, NOW)
     expect(out.failed).toEqual([])
     expect(couch.docs.get('Record_sent')).toMatchObject({ ...linked, note: 'edited in the app', transferAccountId: '-Account_joint' })
+  })
+})
+
+describe('deleteRule', () => {
+  const rule: Doc = { _id: '-MagicRule_1', _rev: '3-a', reservedModelType: 'MagicRule', name: 'Shop', keywords: ['Shop'] }
+
+  it('writes a tombstone with the stored revision', async () => {
+    const couch = fakeCouch([rule])
+    await deleteRule(couch, rule)
+    expect(couch.bulkCalls).toEqual([[{ _id: '-MagicRule_1', _rev: '3-a', _deleted: true }]])
+    expect(couch.docs.get('-MagicRule_1')).toMatchObject({ _deleted: true })
+  })
+
+  it('throws when Wallet changed the rule since it was read', async () => {
+    const couch = fakeCouch([rule])
+    couch.bump('-MagicRule_1', { name: 'Shop 2' })
+    await expect(deleteRule(couch, rule)).rejects.toThrow(/changed in Wallet/)
   })
 })

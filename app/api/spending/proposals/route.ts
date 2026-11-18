@@ -11,7 +11,9 @@ const back = (ai?: 'unavailable' | 'invalid' | 'none') =>
 export async function POST() {
   const s = await readMirror()
   if (!s) return back('unavailable')
-  const ctx = { records: s.records, rules: s.rules, byCategoryId: s.byCategoryId }
+  const rejected = (await db.select({ keywords: ruleProposal.keywords }).from(ruleProposal)
+    .where(eq(ruleProposal.status, 'rejected'))).map(r => r.keywords)
+  const ctx = { records: s.records, rules: s.rules, rejected, byCategoryId: s.byCategoryId }
   const candidates = selectCandidates(s.records, { ...ctx, today: new Date().toISOString().slice(0, 10) })
   if (candidates.length === 0) return back('none')
 

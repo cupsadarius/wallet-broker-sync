@@ -66,9 +66,18 @@ describe('selectCandidates', () => {
       rec({ id: '8', note: 'Buy 2 SNP @ 1.2 RON', isTradeFallback: true }),
       rec({ id: '9', payee: 'FPF Pensia Mea, RO77BRDE450SV22586914500', categoryId: UNKNOWN }),
     ]
-    const out = selectCandidates(records, { byCategoryId, rules, today })
+    const out = selectCandidates(records, { byCategoryId, rules, rejected: [], today })
     expect(out.map(c => [c.label, c.count])).toEqual([['LEROY MERLIN CLUJ', 2], ['Sbx Piatasfatului', 1]])
     expect(out[1].categoryName).toBe('Restaurant, fast-food')
+  })
+
+  it('leaves out payees of a rejected proposal', () => {
+    const records = [
+      rec({ id: '1', note: pos('LEROY MERLIN CLUJ', '14'), categoryId: UNKNOWN }),
+      rec({ id: '2', payee: 'Sbx Piatasfatului', categoryId: UNKNOWN }),
+    ]
+    const out = selectCandidates(records, { byCategoryId, rules, rejected: [['leroy merlin']], today })
+    expect(out.map(c => c.label)).toEqual(['Sbx Piatasfatului'])
   })
 })
 
@@ -92,7 +101,7 @@ describe('parseProposals', () => {
     rec({ id: '3', payee: 'FPF Pensia Mea, RO77BRDE450SV22586914500', categoryId: PENSION }),
     rec({ id: '4', payee: 'Leroy', transfer: true }),
   ]
-  const ctx = { records, rules, byCategoryId }
+  const ctx = { records, rules, rejected: [] as string[][], byCategoryId }
   const reply = (proposals: unknown[]) => 'Here you go:\n```json\n' + JSON.stringify({ proposals }) + '\n```'
 
   it('keeps valid proposals and counts past matches locally', () => {
@@ -115,6 +124,13 @@ describe('parseProposals', () => {
       { name: 'Leroy', keywords: ['leroy merlin'], categoryId: FOOD },
     ]), ctx)
     expect(out.map(p => p.name)).toEqual(['Leroy'])
+  })
+
+  it('drops a proposal that matches the payee of a rejected proposal, whatever its name or keywords', () => {
+    const out = parseProposals(reply([
+      { name: 'Hardware store', keywords: ['LEROY'], categoryId: FOOD },
+    ]), { ...ctx, rejected: [['Leroy Merlin Cluj']] })
+    expect(out).toEqual([])
   })
 
   it('throws when the reply has no JSON', () => {

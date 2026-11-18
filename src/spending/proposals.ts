@@ -56,14 +56,17 @@ export function isUncategorized(r: MirrorRecord, byCategoryId: Map<string, Mirro
 
 const examples = (records: MirrorRecord[]) => [...new Set(records.map(payeeLabel))].slice(0, MAX_EXAMPLES)
 
+/** Keywords of the proposals the user rejected; their payees are never proposed again. */
+const isRejected = (rejected: string[][], r: MirrorRecord) => rejected.some(k => ruleMatches(k, r))
+
 export function selectCandidates(
   records: MirrorRecord[],
-  ctx: { byCategoryId: Map<string, MirrorCategory>; rules: MirrorRule[]; today: string },
+  ctx: { byCategoryId: Map<string, MirrorCategory>; rules: MirrorRule[]; rejected: string[][]; today: string },
 ): Candidate[] {
   const since = (days: number) => new Date(Date.parse(ctx.today) - days * DAY_MS).toISOString().slice(0, 10)
   const groups = new Map<string, MirrorRecord[]>()
   for (const r of [...records].sort((a, b) => b.recordDate.localeCompare(a.recordDate))) {
-    if (!isSpend(r) || ctx.rules.some(rule => ruleMatches(rule.keywords, r))) continue
+    if (!isSpend(r) || ctx.rules.some(rule => ruleMatches(rule.keywords, r)) || isRejected(ctx.rejected, r)) continue
     const uncategorized = isUncategorized(r, ctx.byCategoryId) && r.recordDate >= since(UNCATEGORIZED_DAYS)
     const recategorized = !!r.originalCategoryId && r.originalCategoryId !== r.categoryId
       && r.recordDate >= since(RECATEGORIZED_DAYS)
@@ -129,7 +132,7 @@ export function replyProposals(text: string): unknown[] {
 /** Parses the model reply; drops what Wallet would reject or what clashes with existing rules. */
 export function parseProposals(
   text: string,
-  ctx: { records: MirrorRecord[]; rules: MirrorRule[]; byCategoryId: Map<string, MirrorCategory> },
+  ctx: { records: MirrorRecord[]; rules: MirrorRule[]; rejected: string[][]; byCategoryId: Map<string, MirrorCategory> },
 ): Proposal[] {
   const out = new Map<string, Proposal>()
   for (const item of replyProposals(text)) {
@@ -137,7 +140,7 @@ export function parseProposals(
     if (!p.success || !ctx.byCategoryId.has(p.data.categoryId)) continue
     if (contradicts(p.data, ctx.rules, ctx.records)) continue
     const matches = matchingRecords(ctx.records, p.data.keywords)
-    if (matches.length === 0) continue
+    if (matches.length === 0 || matches.some(r => isRejected(ctx.rejected, r))) continue
     out.set(ruleId(p.data.name, p.data.keywords), {
       ...p.data, pastMatchCount: matches.length, matchedExamples: examples(matches),
     })

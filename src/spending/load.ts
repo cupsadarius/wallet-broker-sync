@@ -54,7 +54,7 @@ export async function loadSpending() {
 
   const proposals = (await db.select().from(ruleProposal).where(eq(ruleProposal.status, 'open'))).map(p => {
     const matches = matchingRecords(s.records, p.keywords)
-    return { ...p, pastMatchCount: matches.length, toChange: matches.filter(r => r.categoryId !== p.categoryId) }
+    return { ...p, matches }
   })
 
   const insights = await loadInsights(s, 6, now)

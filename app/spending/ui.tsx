@@ -1,10 +1,10 @@
 'use client'
 
 import { useActionState } from 'react'
-import { ArrowLeftRight } from 'lucide-react'
+import { ArrowLeftRight, Trash2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Dialog, DialogContent, DialogDescription, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
-import { changeCategory, markAsTransfer, type ActionState } from './actions'
+import { changeCategory, markAsTransfer, removeRule, type ActionState } from './actions'
 
 export type CategoryGroup = { group: string; options: { id: string; name: string }[] }
 
@@ -95,6 +95,27 @@ export function TransferButton({ recordId, summary, incoming, candidates, accoun
             </select>
             <button className="shrink-0 rounded-[10px] border border-primary/40 px-3 py-1.5 text-xs font-bold text-primary">Mark</button>
           </div>
+        </ActionForm>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
+/** Deleting reaches every Wallet device, so it asks first. */
+export function DeleteRuleButton({ id, label }: { id: string; label: string }) {
+  return (
+    <Dialog>
+      <DialogTrigger aria-label={`Delete rule ${label}`} className="grid size-7 shrink-0 place-items-center rounded-md text-muted-foreground hover:bg-accent hover:text-down">
+        <Trash2 className="size-4" />
+      </DialogTrigger>
+      <DialogContent className="sm:max-w-sm">
+        <DialogTitle>Delete rule</DialogTitle>
+        <DialogDescription>
+          Wallet stops applying &ldquo;{label}&rdquo; to new records. Past records keep their category.
+        </DialogDescription>
+        <ActionForm action={removeRule}>
+          <input type="hidden" name="id" value={id} />
+          <button className="rounded-[10px] bg-down px-3 py-1.5 text-[13px] font-bold text-white">Delete rule</button>
         </ActionForm>
       </DialogContent>
     </Dialog>

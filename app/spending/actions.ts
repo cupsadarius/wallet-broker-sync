@@ -7,10 +7,10 @@ import { db } from '@/src/storage/db'
 import { budgetProposal, ruleProposal } from '@/src/storage/schema'
 import { loadCouchCreds } from '@/src/storage/credentials'
 import { buildCouchContext, readMirror, writeConfig } from '@/src/dashboards/mirror'
-import { cacheDocs, cachedDocs } from '@/src/sync/couch-cache'
+import { cacheDocs, cachedDocs, uncacheDocs } from '@/src/sync/couch-cache'
 import { formatError } from '@/src/sync/format-error'
 import { matchingRecords } from '@/src/spending/proposals'
-import { magicRuleDoc, markTransfer, patchDocs, writeRule } from '@/src/spending/write'
+import { deleteRule, magicRuleDoc, markTransfer, patchDocs, writeRule } from '@/src/spending/write'
 import { findTransferCounterparts, reviewable } from '@/src/spending/review'
 import { readDismissedTransfers, readReviewState, REVIEW_ACCEPTED_KEY, REVIEW_CURSOR_KEY, TRANSFERS_DISMISSED_KEY } from '@/src/spending/load'
 import { limitChanges } from '@/src/dashboards/compute/budgets'
@@ -102,18 +102,20 @@ export async function approveProposal(_: ActionState, form: FormData): Promise<A
   try {
     const id = z.string().min(1).parse(form.get('id'))
     const ticked = new Set(form.getAll('recordId').map(String))
-    const [p] = await db.select().from(ruleProposal).where(eq(ruleProposal.id, id))
-    if (!p || p.status !== 'open') return { error: 'This proposal is gone' }
+    const [proposed] = await db.select().from(ruleProposal).where(eq(ruleProposal.id, id))
+    if (!proposed || proposed.status !== 'open') return { error: 'This proposal is gone' }
+    const p = { ...proposed, categoryId: z.string().min(1).parse(form.get('categoryId') ?? proposed.categoryId) }
     const [{ client, scope, snapshot }, creds] = await Promise.all([walletContext(), loadCouchCreds()])
     if (!creds) throw new Error('Wallet is not connected')
     if (!snapshot.byCategoryId.has(p.categoryId)) return { error: 'The category no longer exists' }
 
     const now = new Date().toISOString()
     await cacheDocs(scope, [await writeRule(client, magicRuleDoc(p, creds.login, now))])
-    const ids = matchingRecords(snapshot.records, p.keywords).map(r => r.id).filter(rid => ticked.has(rid))
+    const ids = matchingRecords(snapshot.records, p.keywords)
+      .filter(r => ticked.has(r.id) && r.categoryId !== p.categoryId).map(r => r.id)
     const { written, failed } = await patchDocs(client, await cachedDocs(scope, ids), { categoryId: p.categoryId }, now)
     await cacheDocs(scope, written)
-    await db.update(ruleProposal).set({ status: 'approved' }).where(eq(ruleProposal.id, id))
+    await db.update(ruleProposal).set({ status: 'approved', categoryId: p.categoryId }).where(eq(ruleProposal.id, id))
     refresh()
     return failed.length ? { error: `Rule saved. ${failed.length} record(s) changed in Wallet at the same time; set them by hand.` } : null
   } catch (e) {
@@ -145,6 +147,22 @@ export async function approveBudgetProposal(_: ActionState, form: FormData): Pro
     await cacheDocs(scope, written)
     if (failed.length) return { error: 'Wallet changed this budget at the same time. Try again.' }
     await db.update(budgetProposal).set({ status: 'approved' }).where(eq(budgetProposal.id, id))
+    refresh()
+    return null
+  } catch (e) {
+    return { error: formatError(e).message }
+  }
+}
+
+/** Deletes a rule in Wallet; past records keep their category. */
+export async function removeRule(_: ActionState, form: FormData): Promise<ActionState> {
+  try {
+    const id = z.string().min(1).parse(form.get('id'))
+    const { client, scope } = await walletContext()
+    const [rule] = await cachedDocs(scope, [id])
+    if (!rule || rule['reservedModelType'] !== 'MagicRule') return { error: 'This rule is gone' }
+    await deleteRule(client, rule)
+    await uncacheDocs(scope, [id])
     refresh()
     return null
   } catch (e) {

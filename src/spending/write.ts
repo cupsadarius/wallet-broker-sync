@@ -82,3 +82,12 @@ export async function writeRule(client: DocWriter, rule: Doc): Promise<Doc> {
   if (!stored) throw new Error(`Wallet did not save the rule: ${r?.status === 'error' ? r.reason : 'unknown error'}`)
   return stored as Doc
 }
+
+/** Deletes the rule in Wallet with a CouchDB tombstone; a rule changed since it was read is left alone. */
+export async function deleteRule(client: DocWriter, rule: Doc): Promise<void> {
+  const [r] = await client.bulkDocs([{ _id: rule._id, _rev: rule._rev, _deleted: true }])
+  if (r?.status === 'inserted') return
+  throw new Error(r?.status === 'conflict'
+    ? 'The rule changed in Wallet since this page loaded. Reload and try again.'
+    : `Wallet did not delete the rule: ${r?.status === 'error' ? r.reason : 'unknown error'}`)
+}

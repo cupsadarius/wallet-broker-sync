@@ -131,3 +131,7 @@ export async function cacheDocs(scope: string, docs: Array<Record<string, unknow
       .onConflictDoUpdate({ target: [couchDocCache.scope, couchDocCache.docId], set: { modelType, json } })
   }
 }
+
+export async function uncacheDocs(scope: string, ids: string[]): Promise<void> {
+  if (ids.length) await db.delete(couchDocCache).where(and(eq(couchDocCache.scope, scope), inArray(couchDocCache.docId, ids)))
+}
