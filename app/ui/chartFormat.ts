@@ -15,11 +15,13 @@ export const big = (n: number) =>
 export const whole = (n: number) => Math.round(n).toLocaleString('en-US')
 
 const at = (d: string) => new Date(`${d.length === 7 ? `${d}-01` : d}T00:00:00Z`)
-/** Axis label for a YYYY-MM or YYYY-MM-DD date: the year on long spans, else the month. */
+/** Axis label for a YYYY-MM or YYYY-MM-DD date: the year on long spans, "Mar ’25" on middle spans, else the month. */
 export function dateTick(d: string, spanYears: number): string {
-  return spanYears > 3
-    ? String(at(d).getUTCFullYear())
-    : at(d).toLocaleDateString('en-US', { month: 'short', ...(at(d).getUTCMonth() === 0 && { year: 'numeric' }), timeZone: 'UTC' })
+  const month = at(d).toLocaleDateString('en-US', { month: 'short', timeZone: 'UTC' })
+  const year = at(d).getUTCFullYear()
+  if (spanYears > 4) return String(year)
+  if (spanYears > 1.5) return `${month} ’${String(year).slice(2)}`
+  return at(d).getUTCMonth() === 0 ? `${month} ${year}` : month
 }
 export const dateLong = (d: string) =>
   at(d).toLocaleDateString('en-GB', { ...(d.length > 7 && { day: 'numeric' }), month: 'short', year: 'numeric', timeZone: 'UTC' })

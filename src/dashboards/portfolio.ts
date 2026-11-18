@@ -218,17 +218,6 @@ export async function loadToday(range: keyof typeof RANGES = '1y') {
   }
 }
 
-/** Today's net worth split into money you can use and retirement money still locked, in the base currency. */
-export async function loadNetWorthSplit() {
-  const s = await ensureFreshMirror(PAGE_MAX_AGE_MS)
-  if (!s) return null
-  const today = isoDay(new Date())
-  const [base, maturities, retirement] = await Promise.all([getBaseCurrency(), loadMaturities(), loadRetirement(today)])
-  const available = (await netWorthAt(s, base, today, maturities, retirement.available / 100)).total
-  const locked = retirement.locked / 100
-  return { base, available, locked, total: available + locked }
-}
-
 export async function loadPositions() {
   const s = await ensureFreshMirror(PAGE_MAX_AGE_MS)
   if (!s) return null
@@ -259,9 +248,9 @@ export async function loadPerformance() {
   const [total, ...perBroker] = await Promise.all([perf(brokerIds), ...brokers.map(a => perf(new Set([a.id])))])
 
   // Money put in = net trade cash (buys minus sells) up to each sample.
-  const series = total.series.map(p => ({
-    ...p,
-    putInBase: -total.cashFlows.filter(f => f.date <= p.date).reduce((sum, f) => sum + f.amountBase, 0),
+  const withPutIn = (p: Awaited<ReturnType<typeof perf>>) => p.series.map(pt => ({
+    ...pt,
+    putInBase: -p.cashFlows.filter(f => f.date <= pt.date).reduce((sum, f) => sum + f.amountBase, 0),
   }))
   const yearAgo = isoDay(new Date(Date.now() - 365 * DAY_MS))
   const incomeTotals = (['dividend', 'coupon', 'interest'] as const).map(kind => ({
@@ -273,21 +262,9 @@ export async function loadPerformance() {
   return {
     base,
     total,
-    series,
-    brokers: brokers.map((a, i) => ({ name: a.name, perf: perBroker[i] })),
+    series: withPutIn(total),
+    brokers: brokers.map((a, i) => ({ name: a.name, perf: perBroker[i], series: withPutIn(perBroker[i]) })),
     incomeTotals,
-  }
-}
-
-/** Invest insight cards: broker cash that sits idle, and plans behind their deposits. */
-export async function loadInvestCards() {
-  const s = await ensureFreshMirror(PAGE_MAX_AGE_MS)
-  if (!s) return null
-  const today = isoDay(new Date())
-  const base = await getBaseCurrency()
-  return {
-    idle: await idleCash(s, base, today),
-    gaps: planTasks(await loadPlans(s, await loadMaturities(), today)),
   }
 }
 
