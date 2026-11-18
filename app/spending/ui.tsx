@@ -1,42 +1,94 @@
 'use client'
 
-import { useActionState } from 'react'
-import { ArrowLeftRight, Trash2 } from 'lucide-react'
+import { startTransition, useActionState, useState } from 'react'
+import { Popover } from '@base-ui/react/popover'
+import { ArrowLeftRight, Check, ChevronDown, ChevronLeft, ChevronRight, Search, Trash2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { envelopeGroupName } from '@/src/dashboards/envelopes'
 import { Dialog, DialogContent, DialogDescription, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { changeCategory, markAsTransfer, removeRule, type ActionState } from './actions'
 
 export type CategoryGroup = { group: string; options: { id: string; name: string }[] }
 
-/** The category chip is a native select: picking a category writes it to Wallet at once. */
-export function CategoryChip({ recordId, categoryId, label, unknown, groups }: {
-  recordId: string; categoryId?: string; label: string; unknown: boolean; groups: CategoryGroup[]
+const INCOME = envelopeGroupName(10000)
+const HIDDEN = new Set([envelopeGroupName(13000), envelopeGroupName(20000)])
+type CategoryItem = { id: string; name: string; group: string }
+const matches = (c: CategoryItem, q: string) => `${c.name} ${c.group}`.toLowerCase().includes(q.trim().toLowerCase())
+
+/** The category chip opens groups, then their categories, with search across all; a pick writes to Wallet at once. */
+export function CategoryChip({ recordId, categoryId, label, unknown, income, groups }: {
+  recordId: string; categoryId?: string; label: string; unknown: boolean; income: boolean; groups: CategoryGroup[]
 }) {
   const [state, action, pending] = useActionState(changeCategory, null)
+  const [open, setOpen] = useState(false)
+  const [query, setQuery] = useState('')
+  const shown = groups.filter(g => !HIDDEN.has(g.group) && (g.group === INCOME) === income)
+  const [group, setGroup] = useState<string | null>(null)
+  const current = group ?? (shown.length === 1 ? shown[0].group : null)
+  const hits = query.trim() ? shown.flatMap(g => g.options.map(o => ({ ...o, group: g.group }))).filter(c => matches(c, query)) : null
+  const onOpenChange = (next: boolean) => { setOpen(next); setQuery(''); setGroup(null) }
+  const pick = (id: string) => {
+    onOpenChange(false)
+    if (id === categoryId) return
+    const form = new FormData()
+    form.set('recordId', recordId)
+    form.set('categoryId', id)
+    startTransition(() => action(form))
+  }
+  const row = 'flex min-h-10 w-full items-center gap-2 rounded-lg px-2.5 text-left text-sm outline-none hover:bg-accent focus-visible:bg-accent'
+  const option = (c: { id: string; name: string; group?: string }) => (
+    <button key={c.id} type="button" onClick={() => pick(c.id)} className={row}>
+      <span className="min-w-0 flex-1 truncate">{c.name}{c.group && <span className="text-muted-foreground"> · {c.group}</span>}</span>
+      {c.id === categoryId && !unknown && <Check aria-hidden className="size-4 shrink-0 text-primary" />}
+    </button>
+  )
   return (
-    <form action={action} key={categoryId} className="mt-1">
-      <input type="hidden" name="recordId" value={recordId} />
-      <select
-        name="categoryId"
-        aria-label={`Category: ${label}`}
-        defaultValue={categoryId ?? ''}
-        disabled={pending}
-        onChange={e => e.currentTarget.form?.requestSubmit()}
-        className={cn(
-          'field-sizing-content max-w-full appearance-none truncate rounded-[10px] border px-2 py-0.5 text-xs',
+    <div className="mt-1">
+      <Popover.Root open={open} onOpenChange={onOpenChange}>
+        <Popover.Trigger aria-label={`Category: ${label}`} disabled={pending} className={cn(
+          'inline-flex max-w-full items-center gap-1 truncate rounded-[10px] border px-2 py-0.5 text-xs',
           unknown ? 'border-warn/40 bg-warn/10 text-warn' : 'border-primary/40 bg-primary/10 text-primary',
           pending && 'opacity-60',
-        )}
-      >
-        {!categoryId && <option value="">{label}</option>}
-        {groups.map(g => (
-          <optgroup key={g.group} label={g.group}>
-            {g.options.map(o => <option key={o.id} value={o.id}>{o.name}</option>)}
-          </optgroup>
-        ))}
-      </select>
+        )}>
+          {label}<ChevronDown aria-hidden className="size-3 shrink-0" />
+        </Popover.Trigger>
+        <Popover.Portal>
+          <Popover.Positioner sideOffset={4} align="start" className="z-60 outline-none">
+            <Popover.Popup aria-label="Pick a category" className="flex max-h-[min(26rem,var(--available-height))] w-72 max-w-[calc(100vw-2rem)] flex-col overflow-hidden rounded-xl border bg-popover text-popover-foreground shadow-lg outline-none">
+              <div className="flex items-center gap-2 border-b px-3">
+                <Search aria-hidden className="size-4 shrink-0 text-muted-foreground" />
+                <input autoFocus value={query} onChange={e => setQuery(e.target.value)} placeholder="Search categories"
+                  aria-label="Search categories"
+                  onKeyDown={e => { if (e.key === 'Enter' && hits?.[0]) { e.preventDefault(); pick(hits[0].id) } }}
+                  className="h-10 min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground" />
+              </div>
+              <div className="overflow-y-auto overscroll-contain p-1">
+                {hits ? (
+                  hits.length ? hits.map(option) : <p className="px-2.5 py-3 text-sm text-muted-foreground">No category matches.</p>
+                ) : current ? (
+                  <>
+                    {shown.length > 1 && (
+                      <button type="button" onClick={() => setGroup(null)} className={cn(row, 'text-muted-foreground')}>
+                        <ChevronLeft aria-hidden className="size-4 shrink-0" />All groups
+                      </button>
+                    )}
+                    <p className="px-2.5 pt-1 pb-1.5 text-xs font-semibold text-muted-foreground">{current}</p>
+                    {shown.find(g => g.group === current)?.options.map(option)}
+                  </>
+                ) : shown.map(g => (
+                  <button key={g.group} type="button" onClick={() => setGroup(g.group)} className={row}>
+                    <span className="min-w-0 flex-1 truncate">{g.group}</span>
+                    <span className="text-xs text-muted-foreground">{g.options.length}</span>
+                    <ChevronRight aria-hidden className="size-4 shrink-0 text-muted-foreground" />
+                  </button>
+                ))}
+              </div>
+            </Popover.Popup>
+          </Popover.Positioner>
+        </Popover.Portal>
+      </Popover.Root>
       {state?.error && <p role="alert" className="mt-1 text-xs text-down">{state.error}</p>}
-    </form>
+    </div>
   )
 }
 

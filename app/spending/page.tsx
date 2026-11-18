@@ -367,7 +367,7 @@ function RulesTab({ d }: { d: Data }) {
                 <div className="min-w-0 flex-1">
                   <div className="truncate text-sm font-semibold">{payeeLabel(r) || '(no note)'}</div>
                   <div className="truncate text-xs text-muted-foreground">{shortDay(r.recordDate)} · {accountName(r.accountId)}</div>
-                  <CategoryChip recordId={r.id} categoryId={r.categoryId} label={categoryName(r.categoryId)} unknown groups={groups} />
+                  <CategoryChip recordId={r.id} categoryId={r.categoryId} label={categoryName(r.categoryId)} unknown income={r.recordType === 0} groups={groups} />
                 </div>
                 <div className="shrink-0 text-right text-sm font-semibold tabular-nums">
                   {money(r)} <span className="text-xs font-normal text-muted-foreground">{r.currencyCode}</span>
@@ -451,7 +451,7 @@ function RecordsTab({ d }: { d: Data }) {
               <div className="truncate text-sm font-semibold">{payeeLabel(r) || '(no note)'}</div>
               <div className="truncate text-xs text-muted-foreground">{shortDay(r.recordDate)} · {accountName(r.accountId)}</div>
               <div className="flex items-start gap-1.5">
-                <CategoryChip recordId={r.id} categoryId={r.categoryId} label={categoryName(r.categoryId)}
+                <CategoryChip recordId={r.id} categoryId={r.categoryId} label={categoryName(r.categoryId)} income={r.recordType === 0}
                   unknown={isUncategorized(r, s.byCategoryId)} groups={groups} />
                 <TransferButton
                   recordId={r.id} incoming={r.recordType === 0}
