@@ -27,16 +27,16 @@ export default function Appearance({ pref: saved }: { pref: string }) {
 
       <div className="flex flex-col gap-2.5">
         <div className="text-sm font-semibold">Mode</div>
-        <div role="radiogroup" aria-label="Mode" className="flex w-fit gap-1 rounded-[10px] border bg-card p-[3px] text-sm">
+        <div role="radiogroup" aria-label="Mode" className="flex w-fit gap-1 rounded-[0.625rem] border bg-card p-[0.1875rem] text-sm">
           {MODES.map(m => (
             <button key={m.id} type="button" role="radio" aria-checked={mode === m.id}
               onClick={() => pick(toPref(family.id, m.id as Mode))}
-              className={cn('min-h-9 rounded-[7px] px-4 text-muted-foreground', mode === m.id && 'bg-secondary font-semibold text-foreground')}>
+              className={cn('min-h-9 rounded-[0.4375rem] px-4 text-muted-foreground', mode === m.id && 'bg-secondary font-semibold text-foreground')}>
               {m.label}
             </button>
           ))}
         </div>
-        <p className="text-[13px] text-muted-foreground">
+        <p className="text-[0.8125rem] text-muted-foreground">
           {mode === 'system' ? 'Auto follows your device.' : `Always ${mode}.`}
         </p>
       </div>
@@ -49,7 +49,7 @@ export default function Appearance({ pref: saved }: { pref: string }) {
             return (
               <button key={f.id} type="button" role="radio" aria-checked={on} onClick={() => pick(toPref(f.id, mode))}
                 className={cn('rounded-xl border-2 bg-card p-2 text-left', on ? 'border-primary' : 'border-border')}>
-                <span aria-hidden className="grid h-20 grid-cols-2 overflow-hidden rounded-[9px] border">
+                <span aria-hidden className="grid h-20 grid-cols-2 overflow-hidden rounded-[0.5625rem] border">
                   {[f.light, f.dark].map(id => (
                     <span key={id} data-theme={id} className="flex flex-col justify-end gap-2 bg-[var(--c-bg)] p-3">
                       <span className="h-3.5 rounded bg-[var(--c-surface)]" />

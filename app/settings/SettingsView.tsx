@@ -574,7 +574,7 @@ export default function SettingsView({ connection, mappings, aliases, fallbacks,
   return (
     <Page>
       <PageHeader title="Settings" />
-      <ListDetail open={fromParam} backHref="/settings" backLabel="Settings" listWidth="lg:grid-cols-[300px_minmax(0,1fr)]"
+      <ListDetail open={fromParam} backHref="/settings" backLabel="Settings" listWidth="lg:grid-cols-[18.75rem_minmax(0,1fr)]"
         list={
           <nav aria-label="Settings sections" className="flex flex-col gap-6">
             <ul className="flex flex-col gap-1">
@@ -583,7 +583,7 @@ export default function SettingsView({ connection, mappings, aliases, fallbacks,
                   <Link href={`/settings?section=${s.id}`} scroll={false} aria-current={s.id === id ? 'true' : undefined}
                     className={cn('flex min-h-12 flex-col justify-center rounded-xl px-4 py-2.5 hover:bg-accent', s.id === id && 'lg:bg-secondary')}>
                     <span className="font-medium">{s.label}</span>
-                    <span className="text-[13px] text-muted-foreground">{s.hint}</span>
+                    <span className="text-[0.8125rem] text-muted-foreground">{s.hint}</span>
                   </Link>
                 </li>
               ))}
@@ -597,7 +597,7 @@ export default function SettingsView({ connection, mappings, aliases, fallbacks,
             </ul>
             <section aria-labelledby="data-age" className="flex flex-col gap-2 px-4 lg:hidden">
               <h2 id="data-age" className="text-sm font-semibold">Data sources</h2>
-              <ul className="flex flex-col gap-1.5 text-[13px]">
+              <ul className="flex flex-col gap-1.5 text-[0.8125rem]">
                 {ages.map(a => (
                   <li key={a.label} className="flex justify-between gap-3">
                     <span>{a.label}</span>

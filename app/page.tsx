@@ -77,7 +77,7 @@ function TodayHero({ t, range }: { t: Today; range: Range }) {
           <dd className="text-right">{whole(t.cash)}</dd>
         </dl>
         {t.retirementLocked > 0 && (
-          <Link href="/invest?tab=retirement" className="text-[13px] text-muted-foreground hover:text-foreground">
+          <Link href="/invest?tab=retirement" className="text-[0.8125rem] text-muted-foreground hover:text-foreground">
             + {whole(t.retirementLocked)} locked in retirement ›
           </Link>
         )}
@@ -96,10 +96,10 @@ function NeedsYou({ t }: { t: Today }) {
           <li key={task.id} className="flex items-center gap-3 rounded-xl border border-l-[3px] border-l-warn bg-card px-4 py-3">
             <div className="min-w-0 flex-1">
               <div className="font-semibold">{task.title}</div>
-              <div className="mt-0.5 text-[13px] text-muted-foreground">{task.detail}</div>
+              <div className="mt-0.5 text-[0.8125rem] text-muted-foreground">{task.detail}</div>
             </div>
             {task.href && (
-              <Link href={task.href} className="flex min-h-9 shrink-0 items-center rounded-lg bg-primary px-3 text-[13px] font-semibold text-primary-foreground">
+              <Link href={task.href} className="flex min-h-9 shrink-0 items-center rounded-lg bg-primary px-3 text-[0.8125rem] font-semibold text-primary-foreground">
                 {task.action ?? 'Open'}
               </Link>
             )}
@@ -126,7 +126,7 @@ function ComingUp({ t }: { t: Today }) {
     <section aria-labelledby="coming-up" className="flex flex-col gap-2">
       <div className="flex items-baseline justify-between">
         <h2 id="coming-up" className="text-lg font-semibold">Coming up</h2>
-        <Link href="/invest/maturities" className="text-[13px] text-primary">Deposits and bonds</Link>
+        <Link href="/invest/maturities" className="text-[0.8125rem] text-primary">Deposits and bonds</Link>
       </div>
       {rows.length === 0 && (
         <p className="text-sm text-muted-foreground">No maturities on record. <Link href="/invest/maturities" className="text-primary">Add one</Link></p>
@@ -134,7 +134,7 @@ function ComingUp({ t }: { t: Today }) {
       <ul>
         {rows.map(r => (
           <li key={r.key} className={cn('grid grid-cols-[5rem_minmax(0,1fr)_auto] items-baseline gap-3 border-b py-3 last:border-0', r.done && 'text-muted-foreground')}>
-            <span className="text-[13px] text-muted-foreground">{r.date}</span>
+            <span className="text-[0.8125rem] text-muted-foreground">{r.date}</span>
             <span className="truncate">{r.what}</span>
             <span className="text-right">{r.amount}</span>
           </li>
@@ -150,7 +150,7 @@ function Plans({ t }: { t: Today }) {
     <section aria-labelledby="plans" className="flex flex-col gap-2">
       <div className="flex items-baseline justify-between">
         <h2 id="plans" className="text-lg font-semibold">Plans {behind > 0 && <span className="text-warn">{behind} behind</span>}</h2>
-        <Link href="/invest?tab=plans" className="text-[13px] text-primary">All plans</Link>
+        <Link href="/invest?tab=plans" className="text-[0.8125rem] text-primary">All plans</Link>
       </div>
       {t.plans.length === 0 && <p className="text-sm text-muted-foreground">No active plans.</p>}
       {t.plans.map(({ plan: p, accountName, progress: g }) => (

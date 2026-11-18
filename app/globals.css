@@ -185,3 +185,7 @@
     letter-spacing: 0.01em;
   }
 }
+
+/* Wide monitors: grow the root size; every rem-based size follows, and popovers stay anchored. */
+@media (min-width: 1800px) { html { font-size: 120%; } }
+@media (min-width: 2400px) { html { font-size: 145%; } }

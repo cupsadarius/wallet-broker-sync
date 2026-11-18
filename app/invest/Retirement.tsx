@@ -45,7 +45,7 @@ export default async function Retirement({ view = 'line', account }: { view?: st
   const percent = +(s.projection.rate * 100).toFixed(2)
   return (
     <div className="flex flex-col gap-6">
-      <div className={cn('flex items-center justify-end gap-3 text-[13px] text-muted-foreground', fromParam && 'max-lg:hidden')}>
+      <div className={cn('flex items-center justify-end gap-3 text-[0.8125rem] text-muted-foreground', fromParam && 'max-lg:hidden')}>
         Projection: {percent}% a year, current contributions
         <ReturnEdit percent={percent} />
       </div>
@@ -101,16 +101,16 @@ function AccountList({ items, s, selected, view }: { items: Item[]; s: Retiremen
               {a && <>
                 <b className="truncate">{name(a)}</b>
                 <b className="text-right">{a.valueBase === null ? `${m(a.value)} ${a.currency}` : m(a.valueBase)}</b>
-                <span className="truncate text-[13px] text-muted-foreground">
+                <span className="truncate text-[0.8125rem] text-muted-foreground">
                   {PROVIDER_NAME[a.provider]}{a.currency !== s.base && `, ${a.currency}`}, {!a.locked ? 'released' : a.releaseDate ? `unlocks ${a.releaseDate.slice(0, 4)}` : 'no unlock date'}
                 </span>
-                <span className={cn('text-right text-[13px]', a.gain >= 0 ? 'text-muted-foreground' : 'text-down')}>{returnLabel(a)}</span>
+                <span className={cn('text-right text-[0.8125rem]', a.gain >= 0 ? 'text-muted-foreground' : 'text-down')}>{returnLabel(a)}</span>
               </>}
               {p && <>
                 <b>Pilon 1</b>
                 <b className="text-right">{p.points.toFixed(1)} points</b>
-                <span className="text-[13px] text-muted-foreground">State pension</span>
-                <span className="text-right text-[13px] text-muted-foreground">≈ {m(p.pensionEstimate)} a month</span>
+                <span className="text-[0.8125rem] text-muted-foreground">State pension</span>
+                <span className="text-right text-[0.8125rem] text-muted-foreground">≈ {m(p.pensionEstimate)} a month</span>
               </>}
             </Link>
           </li>
@@ -134,14 +134,14 @@ function AccountDetail({ a, s, percent }: { a: AccountView; s: RetirementData; p
       <header className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h2 className="text-xl font-semibold">{name(a)}</h2>
-          <p className="text-[13px] text-muted-foreground">
+          <p className="text-[0.8125rem] text-muted-foreground">
             {PROVIDER_NAME[a.provider]}{a.kind === 'unit-linked' && `, ${a.product}`}. Last statement{' '}
             <span className={cn(a.stale && 'text-warn')}>{fmtDay(a.asOf)}{a.stale && ', old'}</span>.
           </p>
         </div>
         {atUnlock && (
           <div className="sm:text-right">
-            <div className="text-[13px] text-muted-foreground">At unlock, {fmtDay(atUnlock.date)}</div>
+            <div className="text-[0.8125rem] text-muted-foreground">At unlock, {fmtDay(atUnlock.date)}</div>
             <div className="text-2xl font-bold">≈ {big(atUnlock.value / 100)}{a.currency !== s.base && ` ${a.currency}`}</div>
           </div>
         )}
@@ -154,11 +154,11 @@ function AccountDetail({ a, s, percent }: { a: AccountView; s: RetirementData; p
           ['Gain', signed(a.gain), a.gain >= 0 ? 'text-up' : 'text-down'],
           ['Return', returnLabel(a), ''],
         ].map(([label, value, tone]) => (
-          <div key={label}><dt className="text-[13px] text-muted-foreground">{label}</dt><dd className={cn('text-lg font-semibold', tone)}>{value}</dd></div>
+          <div key={label}><dt className="text-[0.8125rem] text-muted-foreground">{label}</dt><dd className={cn('text-lg font-semibold', tone)}>{value}</dd></div>
         ))}
       </dl>
       {a.currency !== s.base && (
-        <p className="-mt-3 text-[13px] text-muted-foreground">{a.valueBase === null ? 'No exchange rate today.' : `≈ ${m(a.valueBase)} ${s.base} at today's rate. The chart is in ${s.base}.`}</p>
+        <p className="-mt-3 text-[0.8125rem] text-muted-foreground">{a.valueBase === null ? 'No exchange rate today.' : `≈ ${m(a.valueBase)} ${s.base} at today's rate. The chart is in ${s.base}.`}</p>
       )}
       <TimeChart points={toPoints(points)} today={new Date().toISOString().slice(0, 7)} unit={s.base} height={200} label={`${name(a)} value and projection`} />
       {payments > 0 && (
@@ -167,7 +167,7 @@ function AccountDetail({ a, s, percent }: { a: AccountView; s: RetirementData; p
           <Bars data={[...a.contributionsByYear].reverse().map(y => ({ label: String(y.year), value: y.gross / 100 }))} unit={a.currency} height={150} label="Paid in each year" valueName="Paid in" />
           <details>
             <summary className={SUMMARY}>Show all {payments} payments</summary>
-            <ul className="text-[13px]">
+            <ul className="text-[0.8125rem]">
               {a.contributionsByYear.flatMap(y => y.items).map((p, i) => (
                 <li key={i} className="flex justify-between border-b py-1.5 last:border-0">
                   <span className="text-muted-foreground">{fmtDay(p.date)}</span>
@@ -178,7 +178,7 @@ function AccountDetail({ a, s, percent }: { a: AccountView; s: RetirementData; p
           </details>
         </section>
       )}
-      <div className="flex flex-col gap-3 border-t pt-4 text-[13px] text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-col gap-3 border-t pt-4 text-[0.8125rem] text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
         {a.locked && c ? (
           <>
             <p>
@@ -192,7 +192,7 @@ function AccountDetail({ a, s, percent }: { a: AccountView; s: RetirementData; p
       </div>
       <details>
         <summary className={SUMMARY}>{a.statements.length} {a.statements.length === 1 ? 'statement' : 'statements'}</summary>
-        <table className="w-full text-right text-[13px]">
+        <table className="w-full text-right text-[0.8125rem]">
           <thead className="text-muted-foreground">
             <tr><th className="py-1 text-left font-normal">Date</th><th className="font-normal">Value</th><th className="font-normal">Paid in</th><th className="font-normal">Gain</th></tr>
           </thead>
@@ -218,12 +218,12 @@ function Pilon1Detail({ p }: { p: Pilon1View }) {
       <header className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h2 className="text-xl font-semibold">Pilon 1</h2>
-          <p className="text-[13px] text-muted-foreground">
+          <p className="text-[0.8125rem] text-muted-foreground">
             State pension, CNPP. Last statement <span className={cn(p.stale && 'text-warn')}>{fmtDay(p.asOf)}{p.stale && ', old'}</span>.
           </p>
         </div>
         <div className="sm:text-right">
-          <div className="text-[13px] text-muted-foreground">Rough pension today</div>
+          <div className="text-[0.8125rem] text-muted-foreground">Rough pension today</div>
           <div className="text-2xl font-bold">≈ {m(p.pensionEstimate)} <span className="text-base font-medium text-muted-foreground">RON a month</span></div>
         </div>
       </header>
@@ -234,12 +234,12 @@ function Pilon1Detail({ p }: { p: Pilon1View }) {
           ['Contributed', `${p.period.years} y ${p.period.months} m`],
           ['Point value', `${(p.vpr / 100).toFixed(2)} RON`],
         ].map(([label, value]) => (
-          <div key={label}><dt className="text-[13px] text-muted-foreground">{label}</dt><dd className="text-lg font-semibold">{value}</dd></div>
+          <div key={label}><dt className="text-[0.8125rem] text-muted-foreground">{label}</dt><dd className="text-lg font-semibold">{value}</dd></div>
         ))}
       </dl>
       <Bars data={[...p.pointsByYear].sort((x, y) => x.year - y.year).map(y => ({ label: String(y.year), value: y.points }))}
         unit="points" height={150} label="Points each year" valueName="Points" />
-      <div className="flex flex-col gap-3 border-t pt-4 text-[13px] text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-col gap-3 border-t pt-4 text-[0.8125rem] text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
         <p>The estimate is {p.points.toFixed(2)} points times {(p.vpr / 100).toFixed(2)} RON. It is not in net worth.</p>
         <Pilon1Edit vpr={p.vpr} />
       </div>

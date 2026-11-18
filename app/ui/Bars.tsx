@@ -18,9 +18,9 @@ export default function Bars({ data, unit, limit, height = 200, label, valueName
       <ResponsiveContainer width="100%" height="100%">
         <BarChart data={data} margin={{ top: 8, right: 4, bottom: 0, left: 0 }} barCategoryGap="18%">
           <CartesianGrid stroke="var(--c-line)" vertical={false} />
-          <XAxis dataKey="label" tick={{ fill: 'var(--c-muted)', fontSize: 11 }} axisLine={false} tickLine={false} minTickGap={4} />
+          <XAxis dataKey="label" tick={{ fill: 'var(--c-muted)', fontSize: '0.6875rem' }} axisLine={false} tickLine={false} minTickGap={4} />
           {hasBack && <XAxis dataKey="label" xAxisId="back" hide />}
-          <YAxis tick={{ fill: 'var(--c-muted)', fontSize: 11 }} width={40} tickFormatter={v => short(Number(v))} axisLine={false} tickLine={false} />
+          <YAxis tick={{ fill: 'var(--c-muted)', fontSize: '0.6875rem' }} width="auto" tickFormatter={v => short(Number(v))} axisLine={false} tickLine={false} />
           {hasBack && <Bar dataKey="back" xAxisId="back" fill="var(--c-line-2)" radius={[3, 3, 0, 0]} isAnimationActive={false} />}
           <Bar dataKey="value" radius={[3, 3, 0, 0]} isAnimationActive={false} {...(hasBack && { barSize: 12 })}>
             {data.map((d, i) => <Cell key={i} fill={fill(d)} />)}

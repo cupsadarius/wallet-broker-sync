@@ -15,7 +15,7 @@ export default function SyncStatus({ syncedAgo }: { syncedAgo: string }) {
       <summary className="cursor-pointer list-none rounded-lg px-3 py-1.5 text-xs text-muted-foreground hover:bg-accent [&::-webkit-details-marker]:hidden">
         Synced {syncedAgo}
       </summary>
-      <div className="absolute bottom-full left-0 z-40 mb-1 w-64 rounded-xl border bg-popover p-3 text-[13px] shadow-lg">
+      <div className="absolute bottom-full left-0 z-40 mb-1 w-64 rounded-xl border bg-popover p-3 text-[0.8125rem] shadow-lg">
         <div className="mb-2 font-semibold">Data sources</div>
         {!ages && <p className="text-muted-foreground">Loading…</p>}
         {ages?.length === 0 && <p className="text-muted-foreground">Connect Wallet in Settings to see your data.</p>}

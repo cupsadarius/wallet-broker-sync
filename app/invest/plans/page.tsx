@@ -27,12 +27,12 @@ export default async function PlanFormPage({ searchParams }: { searchParams: Pro
       <h1 className="mt-1 text-2xl font-semibold">{row ? 'Edit plan' : 'New plan'}</h1>
 
       {!row && (
-        <nav className="my-3 flex rounded-xl border bg-card p-[3px]">
+        <nav className="my-3 flex rounded-xl border bg-card p-[0.1875rem]">
           {(['recurring', 'rollover'] as const).map(t => (
             <Link
               key={t}
               href={`/invest/plans?type=${t}`}
-              className={cn('flex-1 rounded-[9px] py-1.5 text-center text-[13px] text-muted-foreground', t === type && 'bg-secondary font-semibold text-foreground')}
+              className={cn('flex-1 rounded-[0.5625rem] py-1.5 text-center text-[0.8125rem] text-muted-foreground', t === type && 'bg-secondary font-semibold text-foreground')}
             >
               {t === 'recurring' ? 'Recurring' : 'Rollover'}
             </Link>

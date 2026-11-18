@@ -57,7 +57,7 @@ const monthLong = (ym: string) => new Date(`${ym}-01T00:00:00Z`).toLocaleDateStr
 const money = (r: MirrorRecord) =>
   `${r.recordType === 1 ? '−' : '+'}${(r.amount / 100).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 const inMode = (mode: Mode) => (r: CategoryRecord) => mode === 'expense' ? r.amountBase < 0 : r.amountBase > 0
-const BUTTON = 'min-h-9 rounded-lg px-3 text-[13px] font-semibold'
+const BUTTON = 'min-h-9 rounded-lg px-3 text-[0.8125rem] font-semibold'
 const PRIMARY = cn(BUTTON, 'bg-primary text-primary-foreground')
 const SECONDARY = cn(BUTTON, 'border border-line-2 text-foreground')
 
@@ -83,7 +83,7 @@ export default async function SpendingPage({ searchParams }: { searchParams: Pro
       ) : (
         <>
           <div className={cn(fromParam && 'max-lg:hidden')}><SpendingHero d={d} label={label} /></div>
-          <ListDetail open={fromParam} backHref={link(q, { category: undefined })} backLabel="Spending" listWidth="lg:grid-cols-[420px_minmax(0,1fr)]"
+          <ListDetail open={fromParam} backHref={link(q, { category: undefined })} backLabel="Spending" listWidth="lg:grid-cols-[26.25rem_minmax(0,1fr)]"
             list={<CategoryList rows={rows} d={d} q={q} mode={mode} selected={selected?.id} />}
             detail={selected && <CategoryDetail c={selected} d={d} q={q} mode={mode} label={label} total={rows.reduce((n, r) => n + r[mode], 0)} />} />
         </>
@@ -157,7 +157,7 @@ function SpendingHero({ d, label }: { d: Data; label: string }) {
 function WeeklyNote({ d }: { d: Data }) {
   const [latest, ...earlier] = d.notes
   return (
-    <details className="mt-1.5 text-[13px] font-normal text-muted-foreground">
+    <details className="mt-1.5 text-[0.8125rem] font-normal text-muted-foreground">
       <summary className="line-clamp-1 cursor-pointer list-none [&::-webkit-details-marker]:hidden">
         {latest ? <>Week of {shortDay(latest.week)}: {latest.text.split('\n')[0]}</> : 'The first weekly note comes on Monday morning.'}
       </summary>
@@ -207,8 +207,8 @@ function CategoryList({ rows, d, q, mode, selected }: { rows: Row[]; d: Data; q:
                 className={cn('grid grid-cols-[minmax(0,1fr)_auto] gap-x-3 gap-y-1 rounded-xl px-4 py-3 hover:bg-accent', c.key === selected && 'lg:bg-secondary')}>
                 <b className="truncate">{c.name}</b>
                 <b className="text-right">{whole(c[mode])}</b>
-                <span className="truncate text-[13px] text-muted-foreground">{c.group}{note && <>, {budgetNote(note)}</>}</span>
-                <span className="text-right text-[13px] text-muted-foreground">{whole(c[mode] / n)} a month</span>
+                <span className="truncate text-[0.8125rem] text-muted-foreground">{c.group}{note && <>, {budgetNote(note)}</>}</span>
+                <span className="text-right text-[0.8125rem] text-muted-foreground">{whole(c[mode] / n)} a month</span>
                 <span aria-hidden className="col-span-2 mt-1 h-1.5 rounded-full bg-fill">
                   <span className={cn('block h-full rounded-full', mode === 'expense' ? 'bg-primary' : 'bg-up')} style={{ width: `${Math.max(2, (c[mode] / max) * 100)}%` }} />
                 </span>
@@ -230,7 +230,7 @@ function BudgetLine({ b, d }: { b: BudgetStatus; d: Data }) {
     : b.state === 'pace' ? `On pace for ${whole(b.projected ?? 0)} this month`
     : `${whole(b.limit - spent)} left this month`
   return (
-    <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 text-[13px]">
+    <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 text-[0.8125rem]">
       <span>
         <b>{b.name}</b> budget {whole(b.limit)} {b.currency} a month{b.categoryIds === null && ', all spending'}.{' '}
         <span className={cn(b.state === 'over' ? 'text-warn' : 'text-muted-foreground')}>{now}.</span>
@@ -252,7 +252,7 @@ function CategoryDetail({ c, d, q, mode, label, total }: { c: Row; d: Data; q: Q
     <article aria-label={c.name} className="flex flex-col gap-6 rounded-2xl border bg-card p-5 tabular-nums lg:p-6">
       <header>
         <h2 className="text-xl font-semibold">{c.name}</h2>
-        <p className="text-[13px] text-muted-foreground">
+        <p className="text-[0.8125rem] text-muted-foreground">
           {c.group}. {whole(c[mode])} {d.base} in {label}, {total ? Math.round((c[mode] / total) * 100) : 0}% of what you {mode === 'expense' ? 'spent' : 'earned'}.
         </p>
       </header>
@@ -260,7 +260,7 @@ function CategoryDetail({ c, d, q, mode, label, total }: { c: Row; d: Data; q: Q
         <div className="flex flex-col gap-3">
           {covering.map(b => <BudgetLine key={b.id} b={b} d={d} />)}
           {budgetProposals.map(p => (
-            <ActionForm key={p.id} action={approveBudgetProposal} className="flex flex-wrap items-center gap-3 rounded-xl bg-secondary px-4 py-3 text-[13px]">
+            <ActionForm key={p.id} action={approveBudgetProposal} className="flex flex-wrap items-center gap-3 rounded-xl bg-secondary px-4 py-3 text-[0.8125rem]">
               <input type="hidden" name="id" value={p.id} />
               <input type="hidden" name="limit" value={p.limit / 100} />
               <span className="min-w-0 flex-1"><b>Suggested limit {whole(p.limit / 100)}</b> for {p.budget.name}, now {whole(p.currentLimit / 100)}. {p.reason}</span>
@@ -286,7 +286,7 @@ function CategoryDetail({ c, d, q, mode, label, total }: { c: Row; d: Data; q: Q
           })} />
       )}
       {mode === 'expense' && info?.proposals.map(p => (
-        <ActionForm key={p.id} action={approveProposal} className="flex flex-wrap items-center gap-3 rounded-xl border px-4 py-3 text-[13px]">
+        <ActionForm key={p.id} action={approveProposal} className="flex flex-wrap items-center gap-3 rounded-xl border px-4 py-3 text-[0.8125rem]">
           <input type="hidden" name="id" value={p.id} />
           <input type="hidden" name="categoryId" value={p.categoryId} />
           {p.matches.map(r => <input key={r.id} type="hidden" name="recordId" value={r.id} />)}
@@ -303,9 +303,9 @@ function CategoryDetail({ c, d, q, mode, label, total }: { c: Row; d: Data; q: Q
       <section aria-labelledby={`latest-${c.id}`} className="flex flex-col gap-1">
         <div className="flex items-baseline justify-between">
           <h3 id={`latest-${c.id}`} className="font-semibold">{monthLong(lastMonth)}</h3>
-          <span className="text-[13px] text-muted-foreground">{all.length} {all.length === 1 ? 'record' : 'records'} in {label}</span>
+          <span className="text-[0.8125rem] text-muted-foreground">{all.length} {all.length === 1 ? 'record' : 'records'} in {label}</span>
         </div>
-        {latest.length === 0 && <p className="text-[13px] text-muted-foreground">Nothing yet this month.</p>}
+        {latest.length === 0 && <p className="text-[0.8125rem] text-muted-foreground">Nothing yet this month.</p>}
         <Records records={latest} />
         {all.length > latest.length && (
           <details>
@@ -314,7 +314,7 @@ function CategoryDetail({ c, d, q, mode, label, total }: { c: Row; d: Data; q: Q
           </details>
         )}
       </section>
-      <footer className="flex flex-wrap items-center gap-2 border-t pt-4 text-[13px] text-muted-foreground">
+      <footer className="flex flex-wrap items-center gap-2 border-t pt-4 text-[0.8125rem] text-muted-foreground">
         {info?.rules.length ? <>Rules that sort into {c.name}: {info.rules.map(r => (
           <span key={r.id} className="rounded-md bg-fill px-2 py-0.5 text-foreground" title={r.keywords.join(', ')}>{r.name || r.keywords[0]}</span>
         ))}</> : <>No rule sorts into {c.name} yet.</>}
@@ -326,7 +326,7 @@ function CategoryDetail({ c, d, q, mode, label, total }: { c: Row; d: Data; q: Q
 
 function Records({ records }: { records: CategoryRecord[] }) {
   return (
-    <ul className="text-[13px] tabular-nums">
+    <ul className="text-[0.8125rem] tabular-nums">
       {records.map(r => (
         <li key={r.id} className="grid grid-cols-[4.5rem_minmax(0,1fr)_5.5rem] gap-3 border-b py-2 last:border-0 sm:grid-cols-[4.5rem_minmax(0,1fr)_9rem_5.5rem]">
           <span className="text-muted-foreground">{shortDay(r.date)}</span>
@@ -388,7 +388,7 @@ function RulesTab({ d }: { d: Data }) {
           </div>
           <ActionForm action={approveProposal} className="mt-2">
             <input type="hidden" name="id" value={p.id} />
-            <label className="mb-2 flex items-center gap-2 text-[13px] text-muted-foreground">
+            <label className="mb-2 flex items-center gap-2 text-[0.8125rem] text-muted-foreground">
               Category
               <select name="categoryId" defaultValue={p.categoryId} className="min-h-9 min-w-0 flex-1 rounded-lg border bg-background px-2 text-sm text-foreground">
                 {groups.map(g => (
@@ -401,7 +401,7 @@ function RulesTab({ d }: { d: Data }) {
             {p.matches.length > 0 && (
               <div className="max-h-56 overflow-y-auto rounded-lg border px-2.5">
                 {p.matches.map(r => (
-                  <label key={r.id} className="grid grid-cols-[auto_minmax(0,1fr)_3.5rem_5.5rem] items-center gap-2 border-b py-1.5 text-[13px] tabular-nums last:border-none sm:grid-cols-[auto_minmax(0,1fr)_8rem_3.5rem_5.5rem]">
+                  <label key={r.id} className="grid grid-cols-[auto_minmax(0,1fr)_3.5rem_5.5rem] items-center gap-2 border-b py-1.5 text-[0.8125rem] tabular-nums last:border-none sm:grid-cols-[auto_minmax(0,1fr)_8rem_3.5rem_5.5rem]">
                     <input type="checkbox" name="recordId" value={r.id} defaultChecked className="size-4 shrink-0 accent-primary" />
                     <span className="truncate">{payeeLabel(r)}</span>
                     <span className="hidden truncate text-xs text-muted-foreground sm:block">{categoryName(r.categoryId)}</span>
@@ -506,7 +506,7 @@ function TransfersTab({ d }: { d: Data }) {
       ))}
       <form action={dismissTransfer} className="mt-2 text-right">
         {candidates.map(c => <input key={c.id} type="hidden" name="key" value={pairKey(r.id, c.id)} />)}
-        <button className="min-h-9 text-[13px] text-muted-foreground underline">Not a transfer</button>
+        <button className="min-h-9 text-[0.8125rem] text-muted-foreground underline">Not a transfer</button>
       </form>
     </div>
   ))

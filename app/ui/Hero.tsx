@@ -11,13 +11,13 @@ export default function Hero({ label, value, unit, sub, subTone = 'good', stats,
   stats?: HeroStat[]; chart?: ReactNode; children?: ReactNode
 }) {
   return (
-    <section aria-label={label} className="grid gap-6 rounded-2xl border bg-card p-5 tabular-nums lg:grid-cols-[300px_minmax(0,1fr)] lg:gap-11 lg:p-7">
+    <section aria-label={label} className="grid gap-6 rounded-2xl border bg-card p-5 tabular-nums lg:grid-cols-[18.75rem_minmax(0,1fr)] lg:gap-11 lg:p-7">
       <div className="flex min-w-0 flex-col gap-1.5">
         <div className="text-sm text-muted-foreground">{label}</div>
-        <div className="text-4xl font-bold leading-none tracking-tight lg:text-[44px]">
+        <div className="text-4xl font-bold leading-none tracking-tight lg:text-[2.75rem]">
           {value}{unit && <span className="ml-1.5 text-base font-medium text-muted-foreground lg:text-lg">{unit}</span>}
         </div>
-        {sub && <div className={cn('text-sm font-medium lg:text-[15px]', TONE[subTone])}>{sub}</div>}
+        {sub && <div className={cn('text-sm font-medium lg:text-[0.9375rem]', TONE[subTone])}>{sub}</div>}
         {stats && stats.length > 0 && (
           <dl className="mt-4 grid grid-cols-[1fr_auto] gap-y-3 text-sm lg:mt-5">
             {stats.map(s => (

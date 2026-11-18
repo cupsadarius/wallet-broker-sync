@@ -98,7 +98,7 @@ async function Positions({ q }: { q: Q }) {
       <section aria-labelledby="positions" className="flex flex-col gap-2">
         <div className="flex items-baseline justify-between">
           <h2 id="positions" className="text-lg font-semibold">Positions <span className="text-muted-foreground">{holdings.length}</span></h2>
-          <span className="text-[13px] text-muted-foreground">Sorted by value</span>
+          <span className="text-[0.8125rem] text-muted-foreground">Sorted by value</span>
         </div>
         {holdings.length === 0 && <p className="text-sm text-muted-foreground">No holdings. <Link href="/upload" className="text-primary">Upload a statement</Link> to see them.</p>}
         {holdings.length > 0 && <PositionTable rows={holdings} total={total} showAccount={!account} />}
@@ -107,14 +107,14 @@ async function Positions({ q }: { q: Q }) {
         <section aria-labelledby="fixed" className="flex flex-col gap-2">
           <div className="flex items-baseline justify-between">
             <h2 id="fixed" className="text-lg font-semibold">Deposits and bonds</h2>
-            <Link href="/invest/maturities" className="text-[13px] text-primary">Manage</Link>
+            <Link href="/invest/maturities" className="text-[0.8125rem] text-primary">Manage</Link>
           </div>
           <ul>
             {fixed.map(p => (
               <li key={p.key} className="grid grid-cols-[minmax(0,1fr)_auto] gap-x-3 border-b py-3 last:border-0">
                 <b className="truncate">{p.name ?? p.symbol}</b>
                 <b className="text-right">{whole(p.valueBase)}</b>
-                <span className="text-[13px] text-muted-foreground">{p.kind === 'deposit' ? 'Deposit, counted as cash' : 'Bond, par and accrued interest'}</span>
+                <span className="text-[0.8125rem] text-muted-foreground">{p.kind === 'deposit' ? 'Deposit, counted as cash' : 'Bond, par and accrued interest'}</span>
               </li>
             ))}
           </ul>
@@ -129,7 +129,7 @@ function PositionTable({ rows, total, showAccount }: { rows: Position[]; total: 
   return (
     <>
       <table className="hidden w-full text-right text-sm lg:table">
-        <thead className="text-[13px] text-muted-foreground">
+        <thead className="text-[0.8125rem] text-muted-foreground">
           <tr className="border-b">
             <th className="py-2 text-left font-normal">Holding</th>
             {showAccount && <th className="text-left font-normal">Account</th>}
@@ -150,7 +150,7 @@ function PositionTable({ rows, total, showAccount }: { rows: Position[]; total: 
               <td className="pl-6">
                 <span className="flex items-center gap-2">
                   <span aria-hidden className="h-1.5 flex-1 rounded-full bg-fill"><span className="block h-full rounded-full bg-primary" style={{ width: `${(p.valueBase / total) * 100}%` }} /></span>
-                  <span className="w-10 text-[13px] text-muted-foreground">{Math.round((p.valueBase / total) * 100)}%</span>
+                  <span className="w-10 text-[0.8125rem] text-muted-foreground">{Math.round((p.valueBase / total) * 100)}%</span>
                 </span>
               </td>
             </tr>
@@ -162,8 +162,8 @@ function PositionTable({ rows, total, showAccount }: { rows: Position[]; total: 
           <li key={p.key} className="grid grid-cols-[minmax(0,1fr)_auto] gap-x-3 border-b py-3 last:border-0">
             <b className="truncate">{p.symbol} <span className="font-normal text-muted-foreground">{p.name}</span></b>
             <b className="text-right">{whole(p.valueBase)}</b>
-            <span className="truncate text-[13px] text-muted-foreground">{showAccount ? p.group : `${Math.round((p.valueBase / total) * 100)}% of portfolio`}</span>
-            <span className={cn('text-right text-[13px]', p.basis !== 'market' ? 'text-muted-foreground' : p.valueBase >= p.costBase ? 'text-up' : 'text-down')}>
+            <span className="truncate text-[0.8125rem] text-muted-foreground">{showAccount ? p.group : `${Math.round((p.valueBase / total) * 100)}% of portfolio`}</span>
+            <span className={cn('text-right text-[0.8125rem]', p.basis !== 'market' ? 'text-muted-foreground' : p.valueBase >= p.costBase ? 'text-up' : 'text-down')}>
               {p.basis === 'market' ? `${signed(p.valueBase - p.costBase)} (${pct(ret(p))})` : 'at cost'}
             </span>
           </li>
@@ -197,8 +197,8 @@ async function Performance({ q }: { q: Q }) {
               <li key={b.name} className="grid grid-cols-[minmax(0,1fr)_auto] gap-x-3 border-b py-3 last:border-0">
                 <b>{b.name}</b>
                 <b className="text-right">{pct(b.perf.mwr)} a year</b>
-                <span className="text-[13px] text-muted-foreground">Value {fmtAmount(b.perf.currentValueBase, base)}</span>
-                <span className={cn('text-right text-[13px]', b.perf.totalReturnBase >= 0 ? 'text-up' : 'text-down')}>{signed(b.perf.totalReturnBase)} {base}</span>
+                <span className="text-[0.8125rem] text-muted-foreground">Value {fmtAmount(b.perf.currentValueBase, base)}</span>
+                <span className={cn('text-right text-[0.8125rem]', b.perf.totalReturnBase >= 0 ? 'text-up' : 'text-down')}>{signed(b.perf.totalReturnBase)} {base}</span>
               </li>
             ))}
           </ul>
@@ -210,8 +210,8 @@ async function Performance({ q }: { q: Q }) {
               <li key={i.kind} className="grid grid-cols-[minmax(0,1fr)_auto] gap-x-3 border-b py-3 last:border-0">
                 <b>{LABEL[i.kind]}</b>
                 <b className="text-right">{whole(i.lastYear)}</b>
-                <span className="text-[13px] text-muted-foreground">Last 12 months</span>
-                <span className="text-right text-[13px] text-muted-foreground">{whole(i.allTime)} in total</span>
+                <span className="text-[0.8125rem] text-muted-foreground">Last 12 months</span>
+                <span className="text-right text-[0.8125rem] text-muted-foreground">{whole(i.allTime)} in total</span>
               </li>
             ))}
           </ul>
@@ -253,17 +253,17 @@ async function Plans() {
               <span className="min-w-0 font-semibold">{p.name} <span className="font-normal text-muted-foreground">· {accountName}</span></span>
               <PlanTagPill tag={g.tag} label={g.tag === 'behind' && g.periodsBehind ? `${g.periodsBehind} behind` : undefined} />
             </div>
-            <div aria-hidden className="mt-2.5 mb-1.5 h-[7px] overflow-hidden rounded-full bg-fill">
+            <div aria-hidden className="mt-2.5 mb-1.5 h-[0.4375rem] overflow-hidden rounded-full bg-fill">
               <span className={cn('block h-full rounded-full', p.status === 'active' ? 'bg-primary' : 'bg-neutral')} style={{ width: `${Math.round(g.ring * 100)}%` }} />
             </div>
-            <div className="text-[13px] text-muted-foreground">{g.detail}</div>
+            <div className="text-[0.8125rem] text-muted-foreground">{g.detail}</div>
             {(g.holding || g.action) && (
               <div className="mt-2 flex items-center justify-between gap-2">
-                <span className="min-w-0 text-[13px] text-muted-foreground">{g.holding}</span>
-                {g.action && <span className="shrink-0 rounded-lg bg-primary px-3 py-1.5 text-[13px] font-semibold text-primary-foreground">{g.action}</span>}
+                <span className="min-w-0 text-[0.8125rem] text-muted-foreground">{g.holding}</span>
+                {g.action && <span className="shrink-0 rounded-lg bg-primary px-3 py-1.5 text-[0.8125rem] font-semibold text-primary-foreground">{g.action}</span>}
               </div>
             )}
-            <div className="mt-2 flex gap-4 border-t pt-2 text-[13px]">
+            <div className="mt-2 flex gap-4 border-t pt-2 text-[0.8125rem]">
               <Link href={`/invest/plans?id=${p.id}`} className="flex min-h-9 items-center text-primary">Edit</Link>
               {p.status === 'active' && <StatusButton id={p.id} status="paused" label="Pause" />}
               {p.status !== 'active' && <StatusButton id={p.id} status="active" label="Resume" />}
@@ -280,9 +280,9 @@ async function Plans() {
               <input type="hidden" name="key" value={sg.key} />
               <div className="min-w-0">
                 <div className="font-semibold">{sg.name} {sg.status === 'paused' && <span className="text-xs font-normal text-muted-foreground">· paused</span>}</div>
-                <div className="text-[13px] text-muted-foreground">{sg.why}</div>
+                <div className="text-[0.8125rem] text-muted-foreground">{sg.why}</div>
               </div>
-              <button className="ml-auto min-h-9 shrink-0 rounded-lg border border-line-2 px-3 text-[13px] font-semibold">Add</button>
+              <button className="ml-auto min-h-9 shrink-0 rounded-lg border border-line-2 px-3 text-[0.8125rem] font-semibold">Add</button>
             </form>
           ))}
         </section>

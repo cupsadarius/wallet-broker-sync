@@ -46,7 +46,7 @@ export function CategoryChip({ recordId, categoryId, label, unknown, income, gro
     <div className="mt-1">
       <Popover.Root open={open} onOpenChange={onOpenChange}>
         <Popover.Trigger aria-label={`Category: ${label}`} disabled={pending} className={cn(
-          'inline-flex max-w-full items-center gap-1 truncate rounded-[10px] border px-2 py-0.5 text-xs',
+          'inline-flex max-w-full items-center gap-1 truncate rounded-[0.625rem] border px-2 py-0.5 text-xs',
           unknown ? 'border-warn/40 bg-warn/10 text-warn' : 'border-primary/40 bg-primary/10 text-primary',
           pending && 'opacity-60',
         )}>
@@ -113,23 +113,23 @@ export function TransferButton({ recordId, summary, incoming, candidates, accoun
 }) {
   return (
     <Dialog>
-      <DialogTrigger aria-label="Mark as transfer" className="mt-1 rounded-[10px] border border-primary/40 px-1.5 py-0.5 text-primary">
+      <DialogTrigger aria-label="Mark as transfer" className="mt-1 rounded-[0.625rem] border border-primary/40 px-1.5 py-0.5 text-primary">
         <ArrowLeftRight className="size-3.5" />
       </DialogTrigger>
       <DialogContent className="grid-cols-[minmax(0,1fr)] top-auto bottom-0 pb-[max(1rem,env(safe-area-inset-bottom))] max-h-[85dvh] translate-y-0 overflow-y-auto rounded-b-none sm:top-1/2 sm:bottom-auto sm:-translate-y-1/2 sm:rounded-b-xl">
         <DialogTitle>Mark as transfer</DialogTitle>
         <DialogDescription>{summary}</DialogDescription>
-        {candidates.length === 0 && <p className="text-[13px] text-muted-foreground">No record in your other accounts matches this amount within 4 days.</p>}
+        {candidates.length === 0 && <p className="text-[0.8125rem] text-muted-foreground">No record in your other accounts matches this amount within 4 days.</p>}
         {candidates.length > 0 && (
           <ActionForm action={markAsTransfer} className="-my-1">
             <input type="hidden" name="recordId" value={recordId} />
             {candidates.map(c => (
               <div key={c.id} className="flex items-center gap-2 border-b py-2 last:border-none">
                 <div className="min-w-0 flex-1">
-                  <div className="truncate text-[13px] font-semibold">{c.account} <span className="font-normal tabular-nums">{c.amount}</span></div>
+                  <div className="truncate text-[0.8125rem] font-semibold">{c.account} <span className="font-normal tabular-nums">{c.amount}</span></div>
                   <div className="truncate text-xs text-muted-foreground">{c.date} · {c.payee || '(no note)'}</div>
                 </div>
-                <button name="counterpartId" value={c.id} className="shrink-0 rounded-[10px] bg-primary px-2.5 py-1.5 text-xs font-bold text-primary-foreground">
+                <button name="counterpartId" value={c.id} className="shrink-0 rounded-[0.625rem] bg-primary px-2.5 py-1.5 text-xs font-bold text-primary-foreground">
                   Link as transfer
                 </button>
               </div>
@@ -138,14 +138,14 @@ export function TransferButton({ recordId, summary, incoming, candidates, accoun
         )}
         <ActionForm action={markAsTransfer} className="border-t pt-3">
           <input type="hidden" name="recordId" value={recordId} />
-          <label className="block text-[13px] text-muted-foreground">No match: transfer {incoming ? 'from' : 'to'}</label>
+          <label className="block text-[0.8125rem] text-muted-foreground">No match: transfer {incoming ? 'from' : 'to'}</label>
           <div className="mt-1.5 flex gap-2">
             <select name="accountId" required defaultValue="" aria-label={`Transfer ${incoming ? 'from' : 'to'} account`}
-              className="min-w-0 flex-1 rounded-lg border bg-background px-2 py-1.5 text-[13px]">
+              className="min-w-0 flex-1 rounded-lg border bg-background px-2 py-1.5 text-[0.8125rem]">
               <option value="" disabled>Account</option>
               {accounts.map(a => <option key={a.id} value={a.id}>{a.name}</option>)}
             </select>
-            <button className="shrink-0 rounded-[10px] border border-primary/40 px-3 py-1.5 text-xs font-bold text-primary">Mark</button>
+            <button className="shrink-0 rounded-[0.625rem] border border-primary/40 px-3 py-1.5 text-xs font-bold text-primary">Mark</button>
           </div>
         </ActionForm>
       </DialogContent>
@@ -167,7 +167,7 @@ export function DeleteRuleButton({ id, label }: { id: string; label: string }) {
         </DialogDescription>
         <ActionForm action={removeRule}>
           <input type="hidden" name="id" value={id} />
-          <button className="rounded-[10px] bg-down px-3 py-1.5 text-[13px] font-bold text-white">Delete rule</button>
+          <button className="rounded-[0.625rem] bg-down px-3 py-1.5 text-[0.8125rem] font-bold text-white">Delete rule</button>
         </ActionForm>
       </DialogContent>
     </Dialog>

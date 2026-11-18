@@ -20,8 +20,8 @@ export default function ProjectionBars({ points, base, step, height = 230 }: { p
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={data} margin={{ top: 16, right: 4, bottom: 0, left: 0 }}>
             <CartesianGrid stroke="var(--c-line)" vertical={false} />
-            <XAxis dataKey="year" tick={{ fill: 'var(--c-muted)', fontSize: 11 }} />
-            <YAxis tick={{ fill: 'var(--c-muted)', fontSize: 11 }} width={44} tickFormatter={v => short(Number(v))} />
+            <XAxis dataKey="year" tick={{ fill: 'var(--c-muted)', fontSize: '0.6875rem' }} />
+            <YAxis tick={{ fill: 'var(--c-muted)', fontSize: '0.6875rem' }} width="auto" tickFormatter={v => short(Number(v))} />
             <Bar dataKey="paidIn" stackId="v" fill="var(--c-neutral)" fillOpacity={0.45} isAnimationActive={false} />
             <Bar dataKey="gain" stackId="v" fill="var(--c-accent)" radius={[3, 3, 0, 0]} isAnimationActive={false}>
               <LabelList dataKey="value" position="top" fill="var(--c-fg-2)" fontSize={11} formatter={(v: unknown) => short(Number(v))} />

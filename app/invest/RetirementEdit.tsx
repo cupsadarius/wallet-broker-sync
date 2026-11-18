@@ -6,7 +6,7 @@ import { big } from '@/app/ui/chartFormat'
 import { projectFrom } from '@/src/retirement/chart'
 import { saveContribution, saveReleaseDate, saveReturn, saveVpr } from './retirement/actions'
 
-const INPUT = 'min-h-11 w-full rounded-lg border bg-background pl-3 pr-14 text-[15px] tabular-nums'
+const INPUT = 'min-h-11 w-full rounded-lg border bg-background pl-3 pr-14 text-[0.9375rem] tabular-nums'
 
 function Field({ label, hint, unit, children }: { label: string; hint?: string; unit?: string; children: ReactNode }) {
   return (
@@ -16,7 +16,7 @@ function Field({ label, hint, unit, children }: { label: string; hint?: string; 
         {children}
         {unit && <span className="pointer-events-none absolute inset-y-0 right-3 flex items-center text-muted-foreground">{unit}</span>}
       </span>
-      {hint && <span className="text-[13px] text-muted-foreground">{hint}</span>}
+      {hint && <span className="text-[0.8125rem] text-muted-foreground">{hint}</span>}
     </label>
   )
 }

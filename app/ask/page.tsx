@@ -16,11 +16,11 @@ export default async function AskPage({ searchParams }: { searchParams: Promise<
   const busy = chat?.messages.some(m => m.status === 'running') ?? false
   return (
     <Page>
-      <div className="lg:grid lg:h-[calc(100dvh-6.25rem)] lg:grid-cols-[300px_minmax(0,1fr)] lg:grid-rows-[minmax(0,1fr)] lg:gap-10">
+      <div className="lg:grid lg:h-[calc(100dvh-6.25rem)] lg:grid-cols-[18.75rem_minmax(0,1fr)] lg:grid-rows-[minmax(0,1fr)] lg:gap-10">
         <nav aria-label="Chats" className={cn('flex flex-col gap-3 pt-3 lg:min-h-0 lg:overflow-y-auto lg:pt-0', chat && 'max-lg:hidden')}>
           <div className="flex items-center justify-between gap-3 lg:h-11">
-            <h1 className="text-2xl font-semibold tracking-tight lg:text-[28px]">Ask</h1>
-            <Link href="/ask" className="flex min-h-9 items-center rounded-lg border border-line-2 px-3 text-[13px] font-semibold">New chat</Link>
+            <h1 className="text-2xl font-semibold tracking-tight lg:text-[1.75rem]">Ask</h1>
+            <Link href="/ask" className="flex min-h-9 items-center rounded-lg border border-line-2 px-3 text-[0.8125rem] font-semibold">New chat</Link>
           </div>
           <p className="text-sm text-muted-foreground">Questions about your money, answered from your own data.</p>
           <ul className="flex flex-col gap-1">
@@ -36,7 +36,7 @@ export default async function AskPage({ searchParams }: { searchParams: Promise<
             ))}
           </ul>
         </nav>
-        <section aria-label={chat?.title ?? 'New chat'} className="mx-auto flex w-full max-w-[760px] flex-col gap-4 lg:min-h-0">
+        <section aria-label={chat?.title ?? 'New chat'} className="mx-auto flex w-full max-w-[47.5rem] flex-col gap-4 lg:min-h-0">
           {chat ? (
             <>
               <div className="flex items-center gap-1 pt-3 lg:h-11 lg:shrink-0 lg:pt-0">

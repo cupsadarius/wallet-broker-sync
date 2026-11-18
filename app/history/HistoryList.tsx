@@ -128,7 +128,7 @@ export default function HistoryList({ runs }: { runs: SyncRun[] }) {
                   <TableCell>
                     <span className="uppercase text-xs font-semibold">{run.broker}</span>
                   </TableCell>
-                  <TableCell className="max-w-[200px] truncate text-xs text-muted-foreground">
+                  <TableCell className="max-w-[12.5rem] truncate text-xs text-muted-foreground">
                     {run.sourceFilename}
                   </TableCell>
                   <TableCell className="text-right">{run.parsedCount}</TableCell>
@@ -173,10 +173,10 @@ export default function HistoryList({ runs }: { runs: SyncRun[] }) {
                                 {detail.docs.map((doc) => (
                                   <tr key={doc.id} className="py-0.5">
                                     <td className="py-1 pr-4">{statusBadge(doc.status)}</td>
-                                    <td className="py-1 pr-4 font-mono text-muted-foreground max-w-[180px] truncate">
+                                    <td className="py-1 pr-4 font-mono text-muted-foreground max-w-[11.25rem] truncate">
                                       {doc.docId ?? '—'}
                                     </td>
-                                    <td className="py-1 pr-4 font-mono text-muted-foreground max-w-[140px] truncate">
+                                    <td className="py-1 pr-4 font-mono text-muted-foreground max-w-[8.75rem] truncate">
                                       {doc.externalId ?? '—'}
                                     </td>
                                     <td className="py-1 text-destructive">

@@ -16,14 +16,14 @@ export default function EditSheet({ title, description, label = 'Edit', triggerC
   const [open, setOpen] = useState(false)
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger className={cn('flex min-h-9 shrink-0 items-center gap-1.5 rounded-lg border border-line-2 px-3 text-[13px] text-foreground', triggerClassName)}>
+      <DialogTrigger className={cn('flex min-h-9 shrink-0 items-center gap-1.5 rounded-lg border border-line-2 px-3 text-[0.8125rem] text-foreground', triggerClassName)}>
         <Pencil aria-hidden className="size-3.5" />{label}
       </DialogTrigger>
       <DialogContent className={cn(SHEET, 'lg:max-w-md')}>
         <span aria-hidden className="mx-auto -mt-1 h-1 w-10 rounded-full bg-line-2 lg:hidden" />
         <div>
           <DialogTitle className="text-lg font-semibold">{title}</DialogTitle>
-          {description && <DialogDescription className="mt-1 text-[13px] text-muted-foreground">{description}</DialogDescription>}
+          {description && <DialogDescription className="mt-1 text-[0.8125rem] text-muted-foreground">{description}</DialogDescription>}
         </div>
         {typeof children === 'function' ? children(() => setOpen(false)) : children}
       </DialogContent>

@@ -246,7 +246,7 @@ export default function ResultView() {
                           {isIncome ? 'INCOME' : 'EXPENSE'}
                         </span>
                       </TableCell>
-                      <TableCell className="text-xs truncate max-w-[280px]">{doc.note || source.description || '—'}</TableCell>
+                      <TableCell className="text-xs truncate max-w-[17.5rem]">{doc.note || source.description || '—'}</TableCell>
                       <TableCell className="text-right">
                         {amount} {source.settlementCurrency}
                       </TableCell>

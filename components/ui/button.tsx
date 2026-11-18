@@ -26,9 +26,9 @@ const buttonVariants = cva(
         // Primary pill — 16px / 24px padding per design tokens.
         default: "h-10 gap-2 px-6 has-data-[icon=inline-end]:pr-5 has-data-[icon=inline-start]:pl-5",
         xs: "h-7 gap-1 px-3 text-xs",
-        sm: "h-8 gap-1.5 px-4 text-[13px]",
+        sm: "h-8 gap-1.5 px-4 text-[0.8125rem]",
         // Header pill — 8px / 20px padding per design.
-        lg: "h-11 gap-2 px-7 text-[15px]",
+        lg: "h-11 gap-2 px-7 text-[0.9375rem]",
         icon: "size-10 rounded-full",
         "icon-xs": "size-7 rounded-full [&_svg:not([class*='size-'])]:size-3",
         "icon-sm": "size-8 rounded-full",

@@ -38,11 +38,11 @@ export default function AppHeader({ syncedAgo }: { syncedAgo: string }) {
           <Menu items={MORE} icon="gear" label="Settings menu" />
         </div>
       </header>
-      <nav aria-label="Main" className="fixed inset-x-0 bottom-0 z-30 flex justify-around border-t bg-chrome pt-2.5 pb-[calc(10px+env(safe-area-inset-bottom))] text-[11px] text-muted-foreground lg:hidden">
+      <nav aria-label="Main" className="fixed inset-x-0 bottom-0 z-30 flex justify-around border-t bg-chrome pt-2.5 pb-[calc(10px+env(safe-area-inset-bottom))] text-[0.6875rem] text-muted-foreground lg:hidden">
         {TABS.map(({ href, label, icon: Icon }) => (
           <Link key={href} href={href} aria-current={isActive(pathname, href) ? 'page' : undefined}
             className={cn('flex min-w-16 flex-col items-center gap-1', isActive(pathname, href) && 'font-semibold text-primary')}>
-            <Icon className="size-[22px]" />
+            <Icon className="size-[1.375rem]" />
             {label}
           </Link>
         ))}
@@ -54,13 +54,13 @@ export default function AppHeader({ syncedAgo }: { syncedAgo: string }) {
             <Link key={href} href={href} aria-current={isActive(pathname, href) ? 'page' : undefined}
               className={cn('flex items-center gap-3 rounded-lg px-3 py-2 text-muted-foreground hover:bg-accent',
                 isActive(pathname, href) && 'bg-secondary font-semibold text-foreground')}>
-              <Icon className="size-[18px]" />
+              <Icon className="size-[1.125rem]" />
               {label}
             </Link>
           ))}
         </nav>
         <div className="mt-auto flex flex-col gap-1">
-          <Link href="/upload" className="mb-2 flex items-center justify-center gap-2 rounded-[10px] bg-primary px-3 py-2.5 font-semibold text-primary-foreground">
+          <Link href="/upload" className="mb-2 flex items-center justify-center gap-2 rounded-[0.625rem] bg-primary px-3 py-2.5 font-semibold text-primary-foreground">
             <Upload className="size-4" />Upload statement
           </Link>
           <Link href="/settings" aria-current={isActive(pathname, '/settings') ? 'page' : undefined}

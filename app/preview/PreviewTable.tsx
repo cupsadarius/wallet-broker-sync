@@ -394,7 +394,7 @@ export default function PreviewTable() {
                             className={[
                               'inline-flex items-center gap-1.5 text-xs rounded border bg-background px-2 py-1 text-foreground transition-colors hover:bg-muted/60 focus:outline-none focus:ring-1 focus:ring-ring',
                               isLinked ? 'border-primary/40 text-primary' : 'border-input',
-                              'max-w-[260px] truncate',
+                              'max-w-[16.25rem] truncate',
                             ].join(' ')}
                             title={triggerLabel}
                           >
@@ -789,7 +789,7 @@ export default function PreviewTable() {
               ref={popoverRef}
               role="dialog"
               style={{ position: 'fixed', top: pickerCoords.top, left: pickerCoords.left, width: 'min(420px, calc(100vw - 16px))' }}
-              className="z-50 max-h-[360px] overflow-auto rounded-sm border border-lead/40 bg-card text-card-foreground"
+              className="z-50 max-h-[22.5rem] overflow-auto rounded-sm border border-lead/40 bg-card text-card-foreground"
             >
               <div className="sticky top-0 z-10 bg-card border-b border-border px-3 py-2 flex items-center justify-between">
                 <span className="text-xs font-medium">
@@ -821,7 +821,7 @@ export default function PreviewTable() {
               )}
               {near.length > 0 && (
                 <div>
-                  <p className="px-3 pt-2 pb-1 text-[10px] uppercase tracking-wide text-muted-foreground">
+                  <p className="px-3 pt-2 pb-1 text-[0.625rem] uppercase tracking-wide text-muted-foreground">
                     Most likely (same asset, side, day)
                   </p>
                   {near.map(c => {
@@ -845,7 +845,7 @@ export default function PreviewTable() {
               )}
               {others.length > 0 && (
                 <div className="border-t border-border">
-                  <p className="px-3 pt-2 pb-1 text-[10px] uppercase tracking-wide text-muted-foreground">
+                  <p className="px-3 pt-2 pb-1 text-[0.625rem] uppercase tracking-wide text-muted-foreground">
                     Other unmatched trades
                   </p>
                   {others.map(c => {

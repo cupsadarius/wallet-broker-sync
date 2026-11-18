@@ -16,7 +16,7 @@ export default async function UploadPage({ searchParams }: { searchParams: Promi
         <h1 className="font-heading text-3xl font-light leading-[1.1] tracking-wide text-foreground md:text-5xl">
           Upload broker export
         </h1>
-        <p className="mt-4 max-w-xl text-[15px] leading-relaxed text-muted-foreground md:text-[17px]">
+        <p className="mt-4 max-w-xl text-[0.9375rem] leading-relaxed text-muted-foreground md:text-[1.0625rem]">
           Drop your CSV (IBKR), XLSX (XTB), or PDF / HTML (Tradeville) export. We&apos;ll parse it locally
           and show you a diff before anything gets written to Wallet.
           Pension and policy PDFs (BT, Allianz, Signal Iduna, CNPP) save to Retirement as soon as you drop them.
