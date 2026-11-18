@@ -185,7 +185,3 @@
     letter-spacing: 0.01em;
   }
 }
-
-/* Wide desktop monitors: scale the whole app so its 12–14px text stays readable. */
-@media (min-width: 1800px) { html { zoom: 1.2; } }
-@media (min-width: 2400px) { html { zoom: 1.45; } }
