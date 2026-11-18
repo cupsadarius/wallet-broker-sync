@@ -1,4 +1,3 @@
-/** Short axis numbers: 600k, 1.2M. */
 /** "5 min ago", "3 h ago", "2 days ago"; "never" without a date. */
 export function ago(at: Date | null, now = Date.now()): string {
   if (!at) return 'never'
@@ -7,8 +6,12 @@ export function ago(at: Date | null, now = Date.now()): string {
   if (min < 48 * 60) return `${Math.round(min / 60)} h ago`
   return `${Math.round(min / 1440)} days ago`
 }
+/** Short axis numbers: 600k, 1.2M. */
 export const short = (n: number) =>
   n.toLocaleString('en-US', { notation: 'compact', maximumFractionDigits: 1 }).replace('K', 'k')
+/** Headline numbers to 3 digits: 2.56M, 478k. */
+export const big = (n: number) =>
+  n.toLocaleString('en-US', { notation: 'compact', maximumSignificantDigits: 3 }).replace('K', 'k')
 export const whole = (n: number) => Math.round(n).toLocaleString('en-US')
 
 const at = (d: string) => new Date(`${d.length === 7 ? `${d}-01` : d}T00:00:00Z`)

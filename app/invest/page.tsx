@@ -26,8 +26,8 @@ const MENU = [
   { href: '/invest/maturities', label: 'Deposits and bonds' },
 ]
 
-export default async function InvestPage({ searchParams }: { searchParams: Promise<{ tab?: string }> }) {
-  const { tab: raw } = await searchParams
+export default async function InvestPage({ searchParams }: { searchParams: Promise<{ tab?: string; view?: string; account?: string }> }) {
+  const { tab: raw, view, account } = await searchParams
   const tab: Tab = TABS.find(t => t.id === raw)?.id ?? 'positions'
   return (
     <main className="mx-auto max-w-xl px-4 lg:max-w-6xl lg:px-8">
@@ -51,7 +51,7 @@ export default async function InvestPage({ searchParams }: { searchParams: Promi
       {tab === 'positions' && <Positions />}
       {tab === 'performance' && <Performance />}
       {tab === 'plans' && <Plans />}
-      {tab === 'retirement' && <Retirement />}
+      {tab === 'retirement' && <Retirement view={view} account={account} />}
     </main>
   )
 }

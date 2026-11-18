@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { accountTimeline, defaultYearlyContribution, retirementTimeline } from '@/src/retirement/chart'
+import { accountTimeline, defaultYearlyContribution, inTodaysMoney, retirementTimeline } from '@/src/retirement/chart'
 import type { AccountView } from '@/src/retirement/compute'
 
 const view = (p: Partial<AccountView>): AccountView => ({
@@ -93,5 +93,15 @@ describe('retirementTimeline', () => {
     const b = view({ id: 'b', releaseDate: null, statements: [{ asOf: '2026-01-15', value: 100_000, paidIn: 100_000, fees: null }] })
     const t = retirementTimeline([a, b], { rate: 0, contributions: new Map(), today: '2026-01-20' })
     expect(t.atRelease.get('b')?.date).toBe('2026-03-15')
+  })
+})
+
+describe('inTodaysMoney', () => {
+  it('takes 3% a year of inflation off a future value', () => {
+    expect(Math.abs(inTodaysMoney(1_000_000, '2026-01-01', '2051-01-01') - 477_606)).toBeLessThan(50)
+  })
+  it('leaves the value as is for the same date or a date in the past', () => {
+    expect(inTodaysMoney(1_000_000, '2026-01-01', '2026-01-01')).toBe(1_000_000)
+    expect(inTodaysMoney(1_000_000, '2026-01-01', '2020-01-01')).toBe(1_000_000)
   })
 })

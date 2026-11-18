@@ -25,6 +25,11 @@ const endOf = (m: Month) => new Date(Date.parse(`${nextMonth(m)}-01T00:00:00Z`) 
 const years = (from: string, to: string) => (Date.parse(to) - Date.parse(from)) / (365.25 * DAY_MS)
 const contributions = (a: AccountView) => a.contributionsByYear.flatMap(y => y.items)
 
+/** A value at `toIso` in the money of `fromIso`, with `inflation` a year; a past or same date leaves it as is. */
+export function inTodaysMoney(value: number, fromIso: string, toIso: string, inflation = 0.03): number {
+  return value / (1 + inflation) ** Math.max(0, years(fromIso, toIso))
+}
+
 /** Money paid in during the 12 months before the last statement, as a yearly amount. */
 export function defaultYearlyContribution(a: AccountView): number {
   const yearAgo = new Date(Date.parse(a.asOf) - 365 * DAY_MS).toISOString().slice(0, 10)
@@ -68,14 +73,19 @@ export function accountTimeline(a: AccountView, opts: { rate: number; contributi
   }
   out.set(last, { value: a.value, paidIn: a.paidIn })
 
-  if (opts.until && monthOf(opts.until) > last) {
-    const growth = (1 + opts.rate) ** (1 / 12)
-    let { value, paidIn } = out.get(last)!
-    for (const m of months(nextMonth(last), monthOf(opts.until))) {
-      value = value * growth + opts.contribution / 12
-      paidIn += opts.contribution / 12
-      out.set(m, { value, paidIn })
-    }
+  if (opts.until) for (const [m, state] of projectFrom(out.get(last)!, a.asOf, opts.until, opts)) out.set(m, state)
+  return out
+}
+
+/** Month by month after `asOf` up to `until`: grows at `rate` a year and adds `contribution` a year, spread over the months. */
+export function projectFrom(start: State, asOf: string, until: string, opts: { rate: number; contribution: number }): Map<Month, State> {
+  const out = new Map<Month, State>()
+  const growth = (1 + opts.rate) ** (1 / 12)
+  let { value, paidIn } = start
+  for (const m of months(nextMonth(monthOf(asOf)), monthOf(until))) {
+    value = value * growth + opts.contribution / 12
+    paidIn += opts.contribution / 12
+    out.set(m, { value, paidIn })
   }
   return out
 }
