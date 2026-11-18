@@ -1,7 +1,6 @@
 'use client'
 
 import { startTransition, useActionState, useState } from 'react'
-import { Popover } from '@base-ui/react/popover'
 import { ArrowLeftRight, Check, ChevronDown, ChevronLeft, ChevronRight, Search, Trash2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { envelopeGroupName } from '@/src/dashboards/envelopes'
@@ -44,49 +43,45 @@ export function CategoryChip({ recordId, categoryId, label, unknown, income, gro
   )
   return (
     <div className="mt-1">
-      <Popover.Root open={open} onOpenChange={onOpenChange}>
-        <Popover.Trigger aria-label={`Category: ${label}`} disabled={pending} className={cn(
+      <Dialog open={open} onOpenChange={onOpenChange}>
+        <DialogTrigger aria-label={`Category: ${label}`} disabled={pending} className={cn(
           'inline-flex max-w-full items-center gap-1 truncate rounded-[10px] border px-2 py-0.5 text-xs',
           unknown ? 'border-warn/40 bg-warn/10 text-warn' : 'border-primary/40 bg-primary/10 text-primary',
           pending && 'opacity-60',
         )}>
           {label}<ChevronDown aria-hidden className="size-3 shrink-0" />
-        </Popover.Trigger>
-        <Popover.Portal>
-          <Popover.Positioner sideOffset={4} align="start" className="z-60 outline-none">
-            <Popover.Popup aria-label="Pick a category" className="flex max-h-[min(26rem,var(--available-height))] w-72 max-w-[calc(100vw-2rem)] flex-col overflow-hidden rounded-xl border bg-popover text-popover-foreground shadow-lg outline-none">
-              <div className="flex items-center gap-2 border-b px-3">
-                <Search aria-hidden className="size-4 shrink-0 text-muted-foreground" />
-                <input autoFocus value={query} onChange={e => setQuery(e.target.value)} placeholder="Search categories"
-                  aria-label="Search categories"
-                  onKeyDown={e => { if (e.key === 'Enter' && hits?.[0]) { e.preventDefault(); pick(hits[0].id) } }}
-                  className="h-10 min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground" />
-              </div>
-              <div className="overflow-y-auto overscroll-contain p-1">
-                {hits ? (
-                  hits.length ? hits.map(option) : <p className="px-2.5 py-3 text-sm text-muted-foreground">No category matches.</p>
-                ) : current ? (
-                  <>
-                    {shown.length > 1 && (
-                      <button type="button" onClick={() => setGroup(null)} className={cn(row, 'text-muted-foreground')}>
-                        <ChevronLeft aria-hidden className="size-4 shrink-0" />All groups
-                      </button>
-                    )}
-                    <p className="px-2.5 pt-1 pb-1.5 text-xs font-semibold text-muted-foreground">{current}</p>
-                    {shown.find(g => g.group === current)?.options.map(option)}
-                  </>
-                ) : shown.map(g => (
-                  <button key={g.group} type="button" onClick={() => setGroup(g.group)} className={row}>
-                    <span className="min-w-0 flex-1 truncate">{g.group}</span>
-                    <span className="text-xs text-muted-foreground">{g.options.length}</span>
-                    <ChevronRight aria-hidden className="size-4 shrink-0 text-muted-foreground" />
-                  </button>
-                ))}
-              </div>
-            </Popover.Popup>
-          </Popover.Positioner>
-        </Popover.Portal>
-      </Popover.Root>
+        </DialogTrigger>
+        <DialogContent className="flex max-h-[85dvh] flex-col gap-3 top-auto bottom-0 pb-[max(1rem,env(safe-area-inset-bottom))] translate-y-0 rounded-b-none sm:top-1/2 sm:bottom-auto sm:-translate-y-1/2 sm:rounded-b-xl">
+          <div className="flex min-h-8 items-center gap-1 pr-8">
+            {!hits && current && shown.length > 1 && (
+              <button type="button" aria-label="All groups" onClick={() => setGroup(null)} className="-ml-1.5 grid size-8 place-items-center rounded-lg hover:bg-accent">
+                <ChevronLeft aria-hidden className="size-4" />
+              </button>
+            )}
+            <DialogTitle>{hits ? 'Search' : current ?? 'Category'}</DialogTitle>
+          </div>
+          <div className="flex items-center gap-2 rounded-lg border px-3">
+            <Search aria-hidden className="size-4 shrink-0 text-muted-foreground" />
+            <input autoFocus value={query} onChange={e => setQuery(e.target.value)} placeholder="Search categories"
+              aria-label="Search categories"
+              onKeyDown={e => { if (e.key === 'Enter' && hits?.[0]) { e.preventDefault(); pick(hits[0].id) } }}
+              className="h-10 min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground" />
+          </div>
+          <div className="-mx-1 min-h-0 flex-1 overflow-y-auto overscroll-contain">
+            {hits ? (
+              hits.length ? hits.map(option) : <p className="px-2.5 py-3 text-sm text-muted-foreground">No category matches.</p>
+            ) : current ? (
+              shown.find(g => g.group === current)?.options.map(option)
+            ) : shown.map(g => (
+              <button key={g.group} type="button" onClick={() => setGroup(g.group)} className={row}>
+                <span className="min-w-0 flex-1 truncate">{g.group}</span>
+                <span className="text-xs text-muted-foreground">{g.options.length}</span>
+                <ChevronRight aria-hidden className="size-4 shrink-0 text-muted-foreground" />
+              </button>
+            ))}
+          </div>
+        </DialogContent>
+      </Dialog>
       {state?.error && <p role="alert" className="mt-1 text-xs text-down">{state.error}</p>}
     </div>
   )
