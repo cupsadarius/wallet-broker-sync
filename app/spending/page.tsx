@@ -326,9 +326,9 @@ function CategoryDetail({ c, d, q, mode, label, total }: { c: Row; d: Data; q: Q
 
 function Records({ records }: { records: CategoryRecord[] }) {
   return (
-    <ul className="text-[13px]">
+    <ul className="text-[13px] tabular-nums">
       {records.map(r => (
-        <li key={r.id} className="grid grid-cols-[4.5rem_minmax(0,1fr)_auto] gap-3 border-b py-2 last:border-0 sm:grid-cols-[4.5rem_minmax(0,1fr)_8rem_auto]">
+        <li key={r.id} className="grid grid-cols-[4.5rem_minmax(0,1fr)_5.5rem] gap-3 border-b py-2 last:border-0 sm:grid-cols-[4.5rem_minmax(0,1fr)_9rem_5.5rem]">
           <span className="text-muted-foreground">{shortDay(r.date)}</span>
           <span className="truncate">{r.note || '(no note)'}</span>
           <span className="hidden truncate text-muted-foreground sm:block">{r.accountName}</span>
