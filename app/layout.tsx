@@ -4,6 +4,8 @@ import "./globals.css";
 import AppHeader from "./components/AppHeader";
 import ThemeSync from "./theme/ThemeSync";
 import { readThemePref } from "@/src/theme/store";
+import { getLastMirrorSync } from "@/src/dashboards/mirror";
+import { ago } from "./ui/chartFormat";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -41,7 +43,7 @@ export default async function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  const pref = await readThemePref();
+  const [pref, lastSync] = await Promise.all([readThemePref(), getLastMirrorSync()]);
   return (
     <html
       lang="en"
@@ -52,13 +54,14 @@ export default async function RootLayout({
     >
       <head>
         {/* Blocking on purpose: sets data-theme before first paint. */}
+        {/* eslint-disable-next-line @next/next/no-sync-scripts */}
         <script src="/theme-boot.js" />
         <meta name="theme-color" content="#0f1115" />
       </head>
       <body className="min-h-full flex flex-col">
         <ThemeSync pref={pref} />
-        <AppHeader />
-        <div className="min-w-0 flex-1 pb-[calc(76px+env(safe-area-inset-bottom))] lg:pb-10 lg:pl-56 lg:pt-6">{children}</div>
+        <AppHeader syncedAgo={ago(lastSync)} />
+        <div className="min-w-0 flex-1 pb-[calc(76px+env(safe-area-inset-bottom))] lg:pb-10 lg:pl-56 lg:pt-9">{children}</div>
       </body>
     </html>
   );

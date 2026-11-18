@@ -14,7 +14,9 @@ export default function Appearance({ pref: saved }: { pref: string }) {
   const pick = (next: string) => {
     setPref(next)
     applyPref(next)
-    startTransition(() => saveTheme(next))
+    const form = new FormData()
+    form.set('pref', next)
+    startTransition(() => saveTheme(form))
   }
   return (
     <section aria-labelledby="appearance" className="flex flex-col gap-6">

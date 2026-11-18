@@ -1,0 +1,23 @@
+/** Short axis numbers: 600k, 1.2M. */
+/** "5 min ago", "3 h ago", "2 days ago"; "never" without a date. */
+export function ago(at: Date | null, now = Date.now()): string {
+  if (!at) return 'never'
+  const min = Math.round((now - at.getTime()) / 60_000)
+  if (min < 60) return `${Math.max(1, min)} min ago`
+  if (min < 48 * 60) return `${Math.round(min / 60)} h ago`
+  return `${Math.round(min / 1440)} days ago`
+}
+export const short = (n: number) =>
+  n.toLocaleString('en-US', { notation: 'compact', maximumFractionDigits: 1 }).replace('K', 'k')
+export const whole = (n: number) => Math.round(n).toLocaleString('en-US')
+
+const at = (d: string) => new Date(`${d.length === 7 ? `${d}-01` : d}T00:00:00Z`)
+/** Axis label for a YYYY-MM or YYYY-MM-DD date: the year on long spans, else the month. */
+export function dateTick(d: string, spanYears: number): string {
+  return spanYears > 3
+    ? String(at(d).getUTCFullYear())
+    : at(d).toLocaleDateString('en-GB', { month: 'short', ...(at(d).getUTCMonth() === 0 && { year: 'numeric' }), timeZone: 'UTC' })
+}
+export const dateLong = (d: string) =>
+  at(d).toLocaleDateString('en-GB', { ...(d.length > 7 && { day: 'numeric' }), month: 'short', year: 'numeric', timeZone: 'UTC' })
+export const spanYears = (first: string, last: string) => (at(last).getTime() - at(first).getTime()) / (365.25 * 86_400_000)

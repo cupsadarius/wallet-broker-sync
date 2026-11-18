@@ -5,7 +5,7 @@ import { db } from '@/src/storage/db'
 import { brokerAccountMap, maturity, plan as planTable } from '@/src/storage/schema'
 import type { BrokerId } from '@/src/types'
 import {
-  ensureFreshMirror, getBaseCurrency, getLastMirrorSync, withFallbackTrades, type MirrorSnapshot,
+  ensureFreshMirror, getBaseCurrency, getLastMirrorSync, readMirror, withFallbackTrades, type MirrorSnapshot,
 } from './mirror'
 import { latestClose, latestFx, resolveYahooTicker } from './prices'
 import { computeHoldings } from './compute/holdings'
@@ -234,4 +234,16 @@ export async function loadInvestCards() {
     idle: idleBrokerCash(brokers, s.records, s.transactions, c => rates.get(c) ?? null, today),
     gaps: planTasks(await loadPlans(s, await loadMaturities(), today)),
   }
+}
+
+/** How old each data source is, from the cached mirror (no network). */
+export async function loadDataAge() {
+  const s = await readMirror()
+  if (!s) return []
+  const lastSync = await getLastMirrorSync()
+  const pricesAsOf = db.all<{ d: string | null }>(sql`SELECT MAX(date) AS d FROM price_history`)[0]?.d ?? null
+  return dataAge({
+    accounts: s.accounts, records: s.records, lastImport: await lastImports(),
+    pricesAsOf, mirrorAsOf: lastSync?.toISOString() ?? null, now: new Date(),
+  })
 }
