@@ -1,0 +1,9 @@
+--- page 1
+Bucureşti, 15.02.2024
+Stimate Client,
+Grupul SIGNAL IDUNA este unul dintre cele mai mari grupuri financiare din Germania.
+Fond de investiţie
+Example Equity Fund 50 10,0000 0 1.000,00
+Total 10,0000 0 1.000,00
+--- page 2
+Taxa de emitere a poliţei 6,4 EUR

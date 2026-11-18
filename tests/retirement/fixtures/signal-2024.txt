@@ -1,0 +1,19 @@
+--- page 1
+VALOAREA CONTULUI 101 INVEST
+Poliţa de asigurare nr. 1000001 Oferta de asigurare nr. UL-000001
+Contractantul asigurării Popescu Ion
+Asigurător S.C. SIGNAL IDUNA ASIGURARE REASIGURARE S.A
+FONDURI DE INVESTIŢII PRIMA DE BAZĂ
+Example Equity Fund 10,0000 1.100,00
+Valoarea contului 10,0000 1.100,00
+Valoarea contului 0 0
+Valoarea totală a conturilor (prima de bază, Top-Up) la data de: 15.05.2024 10,0000 1.100,00
+PRIME ÎNCASATE
+Total prime încasate 1.000,50 EUR
+COSTURI AFERENTE POLITEI
+Componenta de protecţie 1,00 EUR
+Taxa de emitere a poliţei 5,00 EUR
+SIGNAL IDUNA ASIGURARE REASIGURARE S.A. – Str. Exemplu, Nr. 1, Bucureşti
+--- page 2
+Taxa de colectare a primelor 2,00 EUR
+Taxa de administrare a poliţei 30,00 EUR

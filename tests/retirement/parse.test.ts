@@ -67,10 +67,28 @@ describe('unit-linked statements', () => {
 
   it('parses a Signal Iduna 101 Invest statement', () => {
     expect(parseStatement(fixture('signal.txt'))).toEqual({
-      kind: 'unit-linked', provider: 'signal-iduna', product: '101 Invest', contract: '1000001/4', currency: 'EUR',
+      kind: 'unit-linked', provider: 'signal-iduna', product: '101 Invest', contract: '1000001', currency: 'EUR',
       asOf: '2026-07-14', value: 240_000, paidIn: 200_014,
       fees: 110 + 500 + 250 + 1000 + 2000 + 5000, contributions: null, birthDate: null,
     })
+  })
+
+  it('reads the older Signal Iduna layouts under the same contract', () => {
+    expect(parseStatement(fixture('signal-2025.txt'))).toMatchObject({
+      contract: '1000001', asOf: '2025-11-20', value: 240_000, paidIn: 200_014, fees: 110 + 500 + 250 + 1000 + 2000 + 5000,
+    })
+    expect(parseStatement(fixture('signal-2024.txt'))).toMatchObject({
+      contract: '1000001', asOf: '2024-05-15', value: 110_000, paidIn: 100_050, fees: 100 + 500 + 200 + 3000,
+    })
+  })
+
+  it('leaves Signal Iduna fees unknown when the statement has no cost section', () => {
+    const lines = fixture('signal-2024.txt').filter(l => !/^(Taxa|Componenta)/.test(l))
+    expect(parseStatement(lines)).toMatchObject({ asOf: '2024-05-15', fees: null })
+  })
+
+  it('rejects a Signal Iduna anniversary letter with a clear reason', () => {
+    expect(() => parseStatement(fixture('signal-letter.txt'))).toThrow(/anniversary letter/)
   })
 })
 
