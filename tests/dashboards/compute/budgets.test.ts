@@ -144,3 +144,12 @@ describe('budgetTasks', () => {
     }])
   })
 })
+
+describe('budgetStatus scope', () => {
+  it('lists the categories in scope, an envelope expanded to its categories', () => {
+    expect(budgetStatus(budget({ envelopes: [1000, 1001], categoryIds: ['fuel'] }), [], ctx).categoryIds?.sort()).toEqual(['fuel', 'groceries', 'restaurant'])
+  })
+  it('is null when the budget covers every category', () => {
+    expect(budgetStatus(budget({ envelopes: [] }), [], ctx).categoryIds).toBeNull()
+  })
+})

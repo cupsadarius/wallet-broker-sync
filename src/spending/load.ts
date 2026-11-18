@@ -8,6 +8,8 @@ import { matchingRecords } from './proposals'
 import { likelyTransfers, reviewQueue, unexplainedOutflows, type ReviewState } from './review'
 import { loadInsights } from '@/src/insights/load'
 import { categorySpikes } from '@/src/insights/cards'
+import { aggregateSpending, budgetsByCategory, categoryDetails } from '@/src/dashboards/compute/spending'
+import { shiftMonth } from '@/src/dashboards/compute/budgets'
 
 export const REVIEW_CURSOR_KEY = 'spending.reviewCursor'
 export const REVIEW_ACCEPTED_KEY = 'spending.reviewAccepted'
@@ -31,14 +33,19 @@ export async function readReviewState(now = new Date()): Promise<ReviewState> {
   }
 }
 
-export async function loadSpending() {
+/** Spending over the last `months` months, the current one included. */
+export async function loadSpending(months = 12) {
   const s = await ensureFreshMirror(PAGE_MAX_AGE_MS)
   if (!s) return null
   const now = new Date()
   const base = await getBaseCurrency()
   const today = now.toISOString().slice(0, 10)
-
-
+  const monthList = Array.from({ length: months }, (_, i) => shiftMonth(today.slice(0, 7), i - months + 1))
+  const period = await aggregateSpending(s.records, base, {
+    accountIds: new Set(s.accounts.filter(a => a.accountType !== 7).map(a => a.id)),
+    accountNameById: new Map(s.accounts.map(a => [a.id, a.name])),
+    fromDate: `${monthList[0]}-01`,
+  })
   const outflows = await Promise.all(unexplainedOutflows(s.accounts, s.records, now).map(async o => {
     let total = 0
     for (const r of o.records) total += (r.amount / 100) * ((await latestFx(r.currencyCode || base, base, r.recordDate)) ?? 0)
@@ -64,5 +71,8 @@ export async function loadSpending() {
     queue: reviewQueue(s.records, await readReviewState(now)),
     transfers: likelyTransfers(s.records, today, new Set(await readDismissedTransfers())),
     outflows, proposals,
+    period, months: monthList,
+    categories: categoryDetails(period, monthList, s.rules, proposals),
+    budgetsByCategory: budgetsByCategory(budgets, period.byCategory),
   }
 }

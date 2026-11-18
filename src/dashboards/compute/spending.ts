@@ -12,7 +12,8 @@
  *     net to zero. They get bucketed separately so the UI can show "movement"
  *     while keeping income/expense honest.
  */
-import type { MirrorRecord } from '../mirror'
+import type { MirrorRecord, MirrorRule } from '../mirror'
+import type { BudgetStatus } from './budgets'
 import { latestFx } from '../prices'
 
 const TRANSFER_CATEGORY_NAMES = new Set([
@@ -232,4 +233,41 @@ export async function aggregateSpending(
     unconverted,
     monthsCovered: monthlyArr.length,
   }
+}
+
+/** The share of income not spent; null without income. */
+export const keptShare = (income: number, expense: number): number | null => income > 0 ? (income - expense) / income : null
+
+/** Per category: every budget that covers it, and the one budget scoped to exactly this category (its row note). */
+export function budgetsByCategory<B extends Pick<BudgetStatus, 'id' | 'categoryIds'>>(
+  budgets: B[], categories: Pick<CategorySlice, 'key' | 'categoryIds'>[],
+): Map<string, { rowNote: B | null; covering: B[] }> {
+  return new Map(categories.map(c => {
+    const covering = budgets.filter(b => b.categoryIds === null || b.categoryIds.some(id => c.categoryIds.includes(id)))
+    const exact = covering.filter(b => b.categoryIds !== null && b.categoryIds.every(id => c.categoryIds.includes(id)))
+    return [c.key, { rowNote: exact.length === 1 ? exact[0] : null, covering }]
+  }))
+}
+
+export function overBudgetMonths(monthly: { yearMonth: string; amount: number }[], limit: number): { over: string[]; underCount: number } {
+  const over = monthly.filter(m => m.amount > limit).map(m => m.yearMonth)
+  return { over, underCount: monthly.length - over.length }
+}
+
+/** Per category: net spend in each of `months` (oldest first), its records in the last month, its rules and proposals. */
+export function categoryDetails<P extends { categoryId: string }>(
+  result: { byCategory: Pick<CategorySlice, 'key' | 'categoryIds'>[]; records: SpendingResult['records'] },
+  months: string[], rules: MirrorRule[], proposals: P[],
+) {
+  const last = months.at(-1)
+  return new Map(result.byCategory.map(c => {
+    const records = result.records[c.key] ?? []
+    const mine = (id?: string) => !!id && c.categoryIds.includes(id)
+    return [c.key, {
+      monthly: months.map(ym => ({ yearMonth: ym, amount: Math.round(records.filter(r => r.date.startsWith(ym)).reduce((n, r) => n - r.amountBase, 0) * 100) / 100 })),
+      latest: last ? records.filter(r => r.date.startsWith(last)) : [],
+      rules: rules.filter(r => mine(r.categoryId)),
+      proposals: proposals.filter(p => mine(p.categoryId)),
+    }]
+  }))
 }

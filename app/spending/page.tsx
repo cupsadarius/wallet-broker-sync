@@ -10,7 +10,6 @@ import type { BudgetStatus } from '@/src/dashboards/compute/budgets'
 import { cn } from '@/lib/utils'
 import { ActionForm, CategoryChip, DeleteRuleButton, TransferButton, type CategoryGroup } from './ui'
 import { CategoryBreakdown, MonthlyChart } from './charts'
-import { aggregateSpending } from '@/src/dashboards/compute/spending'
 
 const AI_MESSAGE: Record<string, string> = {
   unavailable: 'AI proposals are not available yet.',
@@ -35,17 +34,12 @@ const money = (r: MirrorRecord) =>
 const PERIODS = [{ months: 1, label: 'This month' }, { months: 6, label: '6 months' }, { months: 12, label: '12 months' }, { months: 24, label: '24 months' }]
 
 export default async function SpendingPage({ searchParams }: { searchParams: Promise<{ ai?: string; budgetAi?: string; note?: string; months?: string }> }) {
-  const d = await loadSpending()
-  if (!d) redirect('/setup')
   const { ai, budgetAi, note, months: monthsParam } = await searchParams
-  const s = d.snapshot
   const months = PERIODS.find(p => String(p.months) === monthsParam)?.months ?? 12
-  const now = new Date()
-  const period = await aggregateSpending(s.records, d.base, {
-    accountIds: new Set(s.accounts.filter(a => a.accountType !== 7).map(a => a.id)),
-    accountNameById: new Map(s.accounts.map(a => [a.id, a.name])),
-    fromDate: new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - months + 1, 1)).toISOString().slice(0, 10),
-  })
+  const d = await loadSpending(months)
+  if (!d) redirect('/setup')
+  const s = d.snapshot
+  const period = d.period
   const perMonth = (n: number) => n / Math.max(1, period.monthsCovered)
   const categoryName = (id?: string) => (id && s.byCategoryId.get(id)?.name) || 'Uncategorized'
   const groups: CategoryGroup[] = Object.entries(Object.groupBy(

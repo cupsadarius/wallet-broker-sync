@@ -21,6 +21,7 @@ export type BudgetStatus = BudgetSpend & {
   limit: number
   projected: number | null
   state: 'over' | 'pace' | 'ok'
+  categoryIds: string[] | null   // categories in scope, envelopes expanded; null = every category
 }
 
 // Wallet leaves these out of a budget even when the scope matches.
@@ -49,6 +50,14 @@ function inScope(b: MirrorBudget, r: MirrorRecord, byCategoryId: Map<string, Mir
   return !b.labelIds.length || (r.labels ?? []).some(l => b.labelIds.includes(l))
 }
 
+function scope(b: MirrorBudget, byCategoryId: Map<string, MirrorCategory>): string[] | null {
+  if (!b.envelopes.length && !b.categoryIds.length) return null
+  return [...byCategoryId.values()]
+    .filter(c => !NOT_SPEND_GROUPS.has(c.groupName)
+      && ((c.envelopeId !== undefined && b.envelopes.includes(c.envelopeId)) || b.categoryIds.includes(c.id)))
+    .map(c => c.id)
+}
+
 /** Wallet's budget model: spent = max(0, expenses − incomes) over the records in scope. */
 function spend(b: MirrorBudget, records: MirrorRecord[], from: string, to: string, ctx: BudgetContext): BudgetSpend {
   let expenses = 0, incomes = 0, count = 0, missing = false
@@ -74,7 +83,7 @@ export function budgetStatus(b: MirrorBudget, records: MirrorRecord[], ctx: Budg
   const projected = s.spent === null ? null
     : round2(s.spent * Number(periodEnd.slice(8)) / Number(ctx.today.slice(8, 10)))
   const state = s.spent !== null && s.spent > limit ? 'over' : projected !== null && projected > limit ? 'pace' : 'ok'
-  return { id: b.id, name: b.name, currency: ctx.currency, period, periodStart, periodEnd, limit, ...s, projected, state }
+  return { id: b.id, name: b.name, currency: ctx.currency, period, periodStart, periodEnd, limit, ...s, projected, state, categoryIds: scope(b, ctx.byCategoryId) }
 }
 
 /** Spent and limit for each of the `months` full months before the current one, oldest first. */
