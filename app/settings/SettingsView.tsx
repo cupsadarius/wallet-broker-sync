@@ -10,6 +10,12 @@ import { Badge } from '@/components/ui/badge'
 import BackupRestore from '@/app/components/BackupRestore'
 import NotificationsCard from './NotificationsCard'
 import Appearance from './Appearance'
+import Page from '@/app/ui/Page'
+import PageHeader from '@/app/ui/PageHeader'
+import ListDetail from '@/app/ui/ListDetail'
+import { pickSelected } from '@/app/ui/select'
+import { cn } from '@/lib/utils'
+import { fmtDay, type AgeEntry } from '@/src/dashboards/compute/today'
 import {
   Table,
   TableBody,
@@ -549,32 +555,75 @@ function ManualLinksSection({ links }: { links: ManualLink[] }) {
 
 // ---------- Main SettingsView ----------
 
-export default function SettingsView({ connection, mappings, aliases, fallbacks, links, dashboard, themePref }: Props) {
-  return (
-    <main className="container mx-auto max-w-3xl py-4 px-4 md:py-20 md:px-6">
-      <div className="mb-14">
-        <p className="mb-6 inline-flex items-center gap-2 rounded-full bg-ghost-blue/10 px-4 py-1.5 text-xs font-medium text-foreground/80 ring-1 ring-lead/30">
-          <span className="size-1.5 rounded-full bg-primary" aria-hidden />
-          <span className="uppercase tracking-[0.18em]">Configuration</span>
-        </p>
-        <h1 className="font-heading text-3xl font-light leading-[1.1] tracking-wide text-foreground md:text-5xl">Settings</h1>
-        <p className="mt-5 max-w-xl text-[15px] text-muted-foreground">
-          Manage all persistent rules for wallet-broker-sync — connection, mappings, aliases, and overrides.
-        </p>
-      </div>
+const SECTIONS = [
+  { id: 'appearance', label: 'Appearance', hint: 'Mode and theme' },
+  { id: 'general', label: 'General', hint: 'Base currency, refresh and prices' },
+  { id: 'connection', label: 'Wallet connection', hint: 'Where your Wallet data comes from' },
+  { id: 'accounts', label: 'Broker accounts', hint: 'Which Wallet account each broker uses' },
+  { id: 'records', label: 'Records', hint: 'Fallbacks, linked trades and aliases' },
+  { id: 'notifications', label: 'Notifications', hint: 'Push alerts on this device' },
+  { id: 'backup', label: 'Backup', hint: 'Export and restore your rules' },
+] as const
+const LINKS = [{ href: '/aliases', label: 'Aliases' }, { href: '/history', label: 'Import history' }]
 
-      <div className="space-y-6">
-        <Appearance pref={themePref} />
-        <ConnectionSection connection={connection} />
-        <NotificationsCard />
-        <MappingsSection mappings={mappings} />
-        <DashboardSection initial={dashboard} />
-        <AliasSection aliases={aliases} />
-        <RecordFallbackSection fallbacks={fallbacks} />
-        <ManualLinksSection links={links} />
-        <BackupRestoreSection />
-      </div>
-    </main>
+export default function SettingsView({ connection, mappings, aliases, fallbacks, links, dashboard, themePref, section, ages }: Props & {
+  section?: string; ages: AgeEntry[]
+}) {
+  const { selected, fromParam } = pickSelected([...SECTIONS], section)
+  const id = selected?.id ?? 'appearance'
+  return (
+    <Page>
+      <PageHeader title="Settings" />
+      <ListDetail open={fromParam} backHref="/settings" backLabel="Settings" listWidth="lg:grid-cols-[300px_minmax(0,1fr)]"
+        list={
+          <nav aria-label="Settings sections" className="flex flex-col gap-6">
+            <ul className="flex flex-col gap-1">
+              {SECTIONS.map(s => (
+                <li key={s.id}>
+                  <Link href={`/settings?section=${s.id}`} scroll={false} aria-current={s.id === id ? 'true' : undefined}
+                    className={cn('flex min-h-12 flex-col justify-center rounded-xl px-4 py-2.5 hover:bg-accent', s.id === id && 'lg:bg-secondary')}>
+                    <span className="font-medium">{s.label}</span>
+                    <span className="text-[13px] text-muted-foreground">{s.hint}</span>
+                  </Link>
+                </li>
+              ))}
+              {LINKS.map(l => (
+                <li key={l.href}>
+                  <Link href={l.href} className="flex min-h-12 items-center justify-between rounded-xl px-4 py-2.5 font-medium hover:bg-accent">
+                    {l.label}<span aria-hidden className="text-muted-foreground">›</span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+            <section aria-labelledby="data-age" className="flex flex-col gap-2 px-4 lg:hidden">
+              <h2 id="data-age" className="text-sm font-semibold">Data sources</h2>
+              <ul className="flex flex-col gap-1.5 text-[13px]">
+                {ages.map(a => (
+                  <li key={a.label} className="flex justify-between gap-3">
+                    <span>{a.label}</span>
+                    <span className={cn('tabular-nums text-muted-foreground', a.stale && 'text-warn')}>{a.asOf ? fmtDay(a.asOf) : 'never'}{a.stale && ', old'}</span>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          </nav>
+        }
+        detail={
+          <div className="flex flex-col gap-6">
+            {id === 'appearance' && <Appearance pref={themePref} />}
+            {id === 'general' && <DashboardSection initial={dashboard} />}
+            {id === 'connection' && <ConnectionSection connection={connection} />}
+            {id === 'accounts' && <MappingsSection mappings={mappings} />}
+            {id === 'records' && <>
+              <RecordFallbackSection fallbacks={fallbacks} />
+              <ManualLinksSection links={links} />
+              <AliasSection aliases={aliases} />
+            </>}
+            {id === 'notifications' && <NotificationsCard />}
+            {id === 'backup' && <BackupRestoreSection />}
+          </div>
+        } />
+    </Page>
   )
 }
 

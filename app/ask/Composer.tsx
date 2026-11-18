@@ -47,10 +47,10 @@ export default function Composer({ chatId, busy = false }: { chatId: number | nu
     <form
       onSubmit={e => { e.preventDefault(); send() }}
       style={keyboard > 0 ? { bottom: keyboard } : undefined}
-      className="fixed inset-x-0 bottom-[calc(61px+env(safe-area-inset-bottom))] z-20 border-t bg-background/95 px-4 py-2 backdrop-blur"
+      className="fixed inset-x-0 bottom-[calc(61px+env(safe-area-inset-bottom))] z-20 border-t bg-background/95 px-4 py-2 backdrop-blur lg:sticky lg:bottom-0 lg:mt-auto lg:border-t-0 lg:px-0 lg:py-4"
     >
-      {error && <p className="mx-auto mb-1 max-w-xl text-xs text-destructive">{error}</p>}
-      <div className="mx-auto flex max-w-xl items-end gap-2">
+      {error && <p className="mx-auto mb-1 max-w-xl text-xs text-destructive lg:max-w-none">{error}</p>}
+      <div className="mx-auto flex max-w-xl items-end gap-2 lg:max-w-none">
         <textarea
           value={text}
           onChange={e => setText(e.target.value)}

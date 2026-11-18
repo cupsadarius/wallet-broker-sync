@@ -4,8 +4,10 @@ import { config, brokerAccountMap, assetAlias, recordFallback, manualLink } from
 import { getBaseCurrency, getMirrorIntervalMs } from '@/src/dashboards/mirror'
 import SettingsView from './SettingsView'
 import { readThemePref } from '@/src/theme/store'
+import { loadDataAge } from '@/src/dashboards/portfolio'
 
-export default async function SettingsPage() {
+export default async function SettingsPage({ searchParams }: { searchParams: Promise<{ section?: string }> }) {
+  const { section } = await searchParams
   // Connection
   const creds = await loadCouchCreds()
   const cfgRows = await db.select().from(config)
@@ -45,6 +47,8 @@ export default async function SettingsPage() {
       links={links}
       dashboard={{ baseCurrency, mirrorIntervalMs }}
       themePref={await readThemePref()}
+      section={section}
+      ages={await loadDataAge()}
     />
   )
 }
