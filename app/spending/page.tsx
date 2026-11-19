@@ -456,7 +456,7 @@ function RecordsTab({ d }: { d: Data }) {
                 <TransferButton
                   recordId={r.id} incoming={r.recordType === 0}
                   summary={`${payeeLabel(r) || '(no note)'} · ${money(r)} ${r.currencyCode} · ${accountName(r.accountId)} · ${shortDay(r.recordDate)}`}
-                  candidates={findTransferCounterparts(r, s.records).map(c => ({
+                  candidates={findTransferCounterparts(r, s.records, d.rates).map(c => ({
                     id: c.id, account: accountName(c.accountId), date: shortDay(c.recordDate),
                     amount: `${money(c)} ${c.currencyCode}`, payee: payeeLabel(c),
                   }))}

@@ -121,6 +121,20 @@ describe('findTransferCounterparts', () => {
     const sent = out('sent')
     expect(findTransferCounterparts(sent, [sent, topUp]).map(r => r.id)).toEqual(['topup'])
   })
+
+  it('matches a currency exchange within 5% of the rate to the base currency', () => {
+    const rates = new Map([['RON', 1], ['USD', 4.5], ['EUR', 5]])
+    const got = rec({ id: 'got-eur', accountId: 'r-eur', recordType: 0, amount: 27_500, currencyCode: 'EUR', recordDate: '2026-10-30' })
+    const records = [
+      got,
+      rec({ id: 'sold-usd', accountId: 'r-usd', recordType: 1, amount: 30_000, currencyCode: 'USD', recordDate: '2026-10-30', transfer: true, transferId: 'solo' }),
+      rec({ id: 'too-far', accountId: 'r-usd', recordType: 1, amount: 34_000, currencyCode: 'USD', recordDate: '2026-10-30' }),
+      rec({ id: 'no-rate', accountId: 'r-gbp', recordType: 1, amount: 24_000, currencyCode: 'GBP', recordDate: '2026-10-30' }),
+      rec({ id: 'days-apart', accountId: 'bt', recordType: 1, amount: 137_000, currencyCode: 'RON', recordDate: '2026-10-27' }),
+    ]
+    expect(findTransferCounterparts(got, records, rates).map(r => r.id)).toEqual(['sold-usd'])
+    expect(findTransferCounterparts(got, records, new Map()).map(r => r.id)).toEqual([])
+  })
 })
 
 describe('likelyTransfers', () => {

@@ -16,8 +16,25 @@ function paidOn(r: MirrorRecord): number {
 }
 const gapDays = (a: MirrorRecord, b: MirrorRecord) => Math.abs(paidOn(a) - paidOn(b)) / 86_400_000
 
-/** The other leg of a transfer between own accounts: opposite direction, same amount and currency, within a week. */
-export function findTransferCounterparts(record: MirrorRecord, records: MirrorRecord[]): MirrorRecord[] {
+const FX_TOLERANCE = 0.05
+const FX_WINDOW_DAYS = 1
+
+/**
+ * Same currency: same amount within a week. Across currencies (an exchange, a card top-up): within 5%
+ * after conversion with `rates` (1 unit in base) and within a day, since a loose amount needs a tight date.
+ */
+function sameMoney(a: MirrorRecord, b: MirrorRecord, rates: ReadonlyMap<string, number>): boolean {
+  if (a.currencyCode === b.currencyCode) return Math.abs(a.amount) === Math.abs(b.amount) && gapDays(a, b) <= TRANSFER_WINDOW_DAYS
+  const ra = rates.get(a.currencyCode)
+  const rb = rates.get(b.currencyCode)
+  if (!ra || !rb || gapDays(a, b) > FX_WINDOW_DAYS) return false
+  const x = Math.abs(a.amount) * ra
+  const y = Math.abs(b.amount) * rb
+  return Math.abs(x - y) <= FX_TOLERANCE * Math.max(x, y)
+}
+
+/** The other leg of a transfer between own accounts: opposite direction, same money, close in date. */
+export function findTransferCounterparts(record: MirrorRecord, records: MirrorRecord[], rates: ReadonlyMap<string, number> = new Map()): MirrorRecord[] {
   const days = (r: MirrorRecord) => gapDays(r, record)
   // Wallet's bank sync marks some legs as transfers alone: no transferId, or one no other leg shares.
   const legs = new Map<string, number>()
@@ -26,8 +43,7 @@ export function findTransferCounterparts(record: MirrorRecord, records: MirrorRe
     && (r.transferAccountId === undefined || r.transferAccountId === record.accountId)
   return records
     .filter(r => (reviewable(r) || oneSided(r)) && r.accountId !== record.accountId && r.recordType !== record.recordType
-      && Math.abs(r.amount) === Math.abs(record.amount) && r.currencyCode === record.currencyCode
-      && days(r) <= TRANSFER_WINDOW_DAYS)
+      && sameMoney(r, record, rates))
     .sort((a, b) => days(a) - days(b))
 }
 
@@ -36,12 +52,12 @@ export const pairKey = (a: string, b: string) => [a, b].sort().join('|')
 const LIKELY_DAYS = 90
 
 /** Income and spend from the last 90 days that look like one transfer between own accounts; each pair once. */
-export function likelyTransfers(records: MirrorRecord[], today: string, dismissed: Set<string>) {
+export function likelyTransfers(records: MirrorRecord[], today: string, dismissed: Set<string>, rates: ReadonlyMap<string, number> = new Map()) {
   const since = new Date(Date.parse(today) - LIKELY_DAYS * 86_400_000).toISOString().slice(0, 10)
   const near = records.filter(r => r.recordDate.slice(0, 10) >= since)
   const found = near
     .filter(r => reviewable(r))
-    .map(record => ({ record, candidates: findTransferCounterparts(record, near).filter(c => !dismissed.has(pairKey(record.id, c.id))) }))
+    .map(record => ({ record, candidates: findTransferCounterparts(record, near, rates).filter(c => !dismissed.has(pairKey(record.id, c.id))) }))
     .filter(t => t.candidates.length > 0)
     // Closest pair claims a shared leg first; on a tie, a record with several matches leads.
     .sort((a, b) => gapDays(a.record, a.candidates[0]) - gapDays(b.record, b.candidates[0])

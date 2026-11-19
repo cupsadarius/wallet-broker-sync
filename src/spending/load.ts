@@ -32,6 +32,16 @@ export async function outflowTotals(s: MirrorSnapshot, base: string, now: Date) 
   }))
 }
 
+/** 1 unit of each record currency in `base`, at the rate on `date`; currencies with no rate are left out. */
+export async function baseRates(s: MirrorSnapshot, base: string, date: string): Promise<Map<string, number>> {
+  const rates = new Map<string, number>()
+  for (const c of new Set(s.records.map(r => r.currencyCode || base))) {
+    const rate = await latestFx(c, base, date)
+    if (rate) rates.set(c, rate)
+  }
+  return rates
+}
+
 /** Ids of spending records from `from` on that have no category. */
 export function uncategorizedIds(s: MirrorSnapshot, from: string): Set<string> {
   return new Set(s.records
@@ -63,6 +73,7 @@ export async function loadSpending(months = 12) {
     fromDate: `${monthList[0]}-01`,
   })
   const outflows = await outflowTotals(s, base, now)
+  const rates = await baseRates(s, base, today)
 
   const proposals = (await db.select().from(ruleProposal).where(eq(ruleProposal.status, 'open'))).map(p => {
     const matches = matchingRecords(s.records, p.keywords)
@@ -82,7 +93,8 @@ export async function loadSpending(months = 12) {
     spikes: categorySpikes(s.records, insights.spend, insights.today),
     notes: await db.select().from(weeklyNote).orderBy(desc(weeklyNote.id)).limit(NOTES_SHOWN),
     queue: reviewQueue(s.records, await readReviewState(now)),
-    transfers: likelyTransfers(s.records, today, new Set(await readDismissedTransfers())),
+    transfers: likelyTransfers(s.records, today, new Set(await readDismissedTransfers()), rates),
+    rates,
     outflows, proposals,
     period, months: monthList,
     categories: categoryDetails(period, monthList, s.rules, proposals),

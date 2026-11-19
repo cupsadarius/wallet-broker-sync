@@ -6,13 +6,13 @@ import { z } from 'zod'
 import { db } from '@/src/storage/db'
 import { budgetProposal, ruleProposal } from '@/src/storage/schema'
 import { loadCouchCreds } from '@/src/storage/credentials'
-import { buildCouchContext, readMirror, writeConfig } from '@/src/dashboards/mirror'
+import { buildCouchContext, getBaseCurrency, readMirror, writeConfig } from '@/src/dashboards/mirror'
 import { cacheDocs, cachedDocs, uncacheDocs } from '@/src/sync/couch-cache'
 import { formatError } from '@/src/sync/format-error'
 import { matchingRecords } from '@/src/spending/proposals'
 import { deleteRule, magicRuleDoc, markTransfer, patchDocs, writeRule } from '@/src/spending/write'
 import { findTransferCounterparts, reviewable } from '@/src/spending/review'
-import { readDismissedTransfers, readReviewState, REVIEW_ACCEPTED_KEY, REVIEW_CURSOR_KEY, TRANSFERS_DISMISSED_KEY } from '@/src/spending/load'
+import { baseRates, readDismissedTransfers, readReviewState, REVIEW_ACCEPTED_KEY, REVIEW_CURSOR_KEY, TRANSFERS_DISMISSED_KEY } from '@/src/spending/load'
 import { limitChanges } from '@/src/dashboards/compute/budgets'
 
 export type ActionState = { error?: string } | null
@@ -78,7 +78,8 @@ export async function markAsTransfer(_: ActionState, form: FormData): Promise<Ac
     const category = snapshot.categories.find(c => c.name === 'Transfer')
     if (!record || !reviewable(record)) return { error: 'This record is gone or already a transfer' }
     if (!category) return { error: 'Wallet has no Transfer category' }
-    if (counterpartId && !findTransferCounterparts(record, snapshot.records).some(r => r.id === counterpartId)) {
+    const rates = await baseRates(snapshot, await getBaseCurrency(), new Date().toISOString().slice(0, 10))
+    if (counterpartId && !findTransferCounterparts(record, snapshot.records, rates).some(r => r.id === counterpartId)) {
       return { error: 'That match is gone' }
     }
     if (!counterpartId && (!accountId || accountId === record.accountId || !snapshot.byAccountId.has(accountId))) {
