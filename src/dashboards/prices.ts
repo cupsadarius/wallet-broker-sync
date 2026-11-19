@@ -363,5 +363,5 @@ export async function latestFx(
       ORDER BY date DESC LIMIT 1
     `)
     return rows[0] ? rows[0].rate / 1_000_000 : null
-  })
+  }, await getBaseCurrency())
 }

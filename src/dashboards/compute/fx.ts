@@ -1,7 +1,5 @@
 export type DirectRate = (base: string, quote: string) => number | null
 
-const PIVOT = 'EUR'
-
 function pair(base: string, quote: string, direct: DirectRate): number | null {
   if (base === quote) return 1
   const d = direct(base, quote)
@@ -10,13 +8,17 @@ function pair(base: string, quote: string, direct: DirectRate): number | null {
   return inv ? 1 / inv : null
 }
 
-/** 1 unit of `base` in `quote`: stored pair, its inverse, or a cross through EUR. */
-export function crossRate(base: string, quote: string, direct: DirectRate): number | null {
+/**
+ * 1 unit of `base` in `quote`. Goes through `pivot` (the base currency, which every sync keeps fresh)
+ * before a direct pair, because a direct pair can be left over from an old base currency.
+ */
+export function crossRate(base: string, quote: string, direct: DirectRate, pivot: string): number | null {
   const b = base.toUpperCase()
   const q = quote.toUpperCase()
-  const p = pair(b, q, direct)
-  if (p !== null) return p
-  const toPivot = pair(b, PIVOT, direct)
-  const fromPivot = pair(PIVOT, q, direct)
-  return toPivot !== null && fromPivot !== null ? toPivot * fromPivot : null
+  const p = pivot.toUpperCase()
+  if (b === q) return 1
+  // Sync stores X→pivot, so read both legs in that direction.
+  const toPivot = pair(b, p, direct)
+  const quoteToPivot = pair(q, p, direct)
+  return toPivot !== null && quoteToPivot ? toPivot / quoteToPivot : pair(b, q, direct)
 }
